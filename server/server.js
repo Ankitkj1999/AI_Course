@@ -17,6 +17,8 @@ import Stripe from 'stripe';
 import Flutterwave from 'flutterwave-node-v3';
 import logger from './utils/logger.js';
 import errorHandler from './middleware/errorHandler.js';
+import { generateUniqueSlug, extractTitleFromContent } from './utils/slugify.js';
+import { generateCourseSEO } from './utils/seo.js';
 
 // Load environment variables
 dotenv.config();
@@ -89,6 +91,7 @@ const courseSchema = new mongoose.Schema({
     content: { type: String, required: true },
     type: String,
     mainTopic: String,
+    slug: { type: String, unique: true, index: true },
     photo: String,
     date: { type: Date, default: Date.now },
     end: { type: Date, default: Date.now },
@@ -536,13 +539,24 @@ app.post('/api/course', async (req, res) => {
         const photos = result.response.results;
         const photo = photos[0].urls.regular
         try {
-            const newCourse = new Course({ user, content, type, mainTopic, photo });
+            // Generate SEO-friendly slug
+            const title = extractTitleFromContent(content, mainTopic);
+            const slug = await generateUniqueSlug(title, Course);
+            
+            const newCourse = new Course({ user, content, type, mainTopic, slug, photo });
             await newCourse.save();
             const newLang = new LangSchema({ course: newCourse._id, lang: lang });
             await newLang.save();
-            res.json({ success: true, message: 'Course created successfully', courseId: newCourse._id });
+            
+            logger.info(`Course created: ${newCourse._id} with slug: ${slug}`);
+            res.json({ 
+                success: true, 
+                message: 'Course created successfully', 
+                courseId: newCourse._id,
+                slug: slug
+            });
         } catch (error) {
-            console.log('Error', error);
+            logger.error(`Course creation error: ${error.message}`, { error: error.stack, user, mainTopic });
             res.status(500).json({ success: false, message: 'Internal server error' });
         }
     }).catch(error => {
@@ -564,11 +578,22 @@ app.post('/api/courseshared', async (req, res) => {
         const photos = result.response.results;
         const photo = photos[0].urls.regular
         try {
-            const newCourse = new Course({ user, content, type, mainTopic, photo });
+            // Generate SEO-friendly slug for shared course
+            const title = extractTitleFromContent(content, mainTopic);
+            const slug = await generateUniqueSlug(title, Course);
+            
+            const newCourse = new Course({ user, content, type, mainTopic, slug, photo });
             await newCourse.save();
-            res.json({ success: true, message: 'Course created successfully', courseId: newCourse._id });
+            
+            logger.info(`Shared course created: ${newCourse._id} with slug: ${slug}`);
+            res.json({ 
+                success: true, 
+                message: 'Course created successfully', 
+                courseId: newCourse._id,
+                slug: slug
+            });
         } catch (error) {
-            console.log('Error', error);
+            logger.error(`Shared course creation error: ${error.message}`, { error: error.stack, user, mainTopic });
             res.status(500).json({ success: false, message: 'Internal server error' });
         }
     })
@@ -683,8 +708,100 @@ app.get('/api/shareable', async (req, res) => {
             res.json(result);
         });
     } catch (error) {
-        console.log('Error', error);
+        logger.error(`Get shareable course error: ${error.message}`, { error: error.stack, id });
         res.status(500).send('Internal Server Error');
+    }
+});
+
+//GET COURSE BY SLUG
+app.get('/api/course/:slug', async (req, res) => {
+    try {
+        const { slug } = req.params;
+        const course = await Course.findOne({ slug });
+        
+        if (!course) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Course not found' 
+            });
+        }
+        
+        logger.info(`Course accessed by slug: ${slug}`);
+        res.json({
+            success: true,
+            course: course
+        });
+    } catch (error) {
+        logger.error(`Get course by slug error: ${error.message}`, { error: error.stack, slug: req.params.slug });
+        res.status(500).json({ 
+            success: false, 
+            message: 'Internal server error' 
+        });
+    }
+});
+
+//GET COURSE BY ID (Legacy support)
+app.get('/api/course/id/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const course = await Course.findById(id);
+        
+        if (!course) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Course not found' 
+            });
+        }
+        
+        // If course has slug, redirect to slug URL
+        if (course.slug) {
+            return res.json({
+                success: true,
+                redirect: `/course/${course.slug}`,
+                course: course
+            });
+        }
+        
+        logger.info(`Course accessed by ID: ${id}`);
+        res.json({
+            success: true,
+            course: course
+        });
+    } catch (error) {
+        logger.error(`Get course by ID error: ${error.message}`, { error: error.stack, id: req.params.id });
+        res.status(500).json({ 
+            success: false, 
+            message: 'Internal server error' 
+        });
+    }
+});
+
+//GET SEO DATA FOR COURSE
+app.get('/api/seo/course/:slug', async (req, res) => {
+    try {
+        const { slug } = req.params;
+        const course = await Course.findOne({ slug });
+        
+        if (!course) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Course not found' 
+            });
+        }
+        
+        const baseUrl = process.env.WEBSITE_URL || 'http://localhost:8080';
+        const seoData = generateCourseSEO(course, baseUrl);
+        
+        res.json({
+            success: true,
+            seo: seoData
+        });
+    } catch (error) {
+        logger.error(`Get SEO data error: ${error.message}`, { error: error.stack, slug: req.params.slug });
+        res.status(500).json({ 
+            success: false, 
+            message: 'Internal server error' 
+        });
     }
 });
 
