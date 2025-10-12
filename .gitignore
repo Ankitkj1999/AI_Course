@@ -33,6 +33,7 @@ build/
 
 # Logs
 logs/
+server/logs/
 *.log
 
 # Runtime data

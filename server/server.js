@@ -15,6 +15,8 @@ import showdown from 'showdown';
 import axios from 'axios';
 import Stripe from 'stripe';
 import Flutterwave from 'flutterwave-node-v3';
+import logger from './utils/logger.js';
+import errorHandler from './middleware/errorHandler.js';
 
 // Load environment variables
 dotenv.config();
@@ -38,6 +40,12 @@ app.use(cors(corsOptions));
 
 // Handle preflight requests
 app.options('*', cors(corsOptions));
+
+// Logging middleware
+app.use((req, res, next) => {
+    logger.http(`${req.method} ${req.url} - ${req.ip}`);
+    next();
+});
 
 const PORT = process.env.PORT;
 app.use(bodyParser.json({ limit: '50mb' }));
@@ -144,6 +152,48 @@ const LangSchema = mongoose.model('Lang', langSchema);
 const BlogSchema = mongoose.model('Blog', blogSchema);
 
 //REQUEST
+
+//HEALTH CHECK
+app.get('/health', async (req, res) => {
+    try {
+        // Check database connection
+        const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+        
+        // Check AI service (optional - can be slow)
+        let aiStatus = 'unknown';
+        try {
+            const testModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+            await testModel.generateContent("test");
+            aiStatus = 'connected';
+        } catch (error) {
+            aiStatus = 'error';
+        }
+
+        const healthCheck = {
+            status: 'OK',
+            timestamp: new Date().toISOString(),
+            uptime: process.uptime(),
+            environment: process.env.NODE_ENV || 'development',
+            version: '1.0.0',
+            services: {
+                database: dbStatus,
+                ai: aiStatus
+            },
+            memory: {
+                used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + ' MB',
+                total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + ' MB'
+            }
+        };
+
+        res.status(200).json(healthCheck);
+    } catch (error) {
+        res.status(503).json({
+            status: 'ERROR',
+            timestamp: new Date().toISOString(),
+            error: error.message
+        });
+    }
+});
 
 //SIGNUP
 app.post('/api/signup', async (req, res) => {
@@ -2464,6 +2514,36 @@ app.get('/api/getblogs', async (req, res) => {
 });
 
 //LISTEN
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+// Error handling middleware (must be last)
+app.use(errorHandler);
+
+const server = app.listen(PORT, () => {
+    logger.info(`Server is running on port ${PORT}`);
+    logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    logger.info(`Health check available at: http://localhost:${PORT}/health`);
 });
+
+// Graceful shutdown
+const gracefulShutdown = (signal) => {
+    logger.info(`Received ${signal}. Starting graceful shutdown...`);
+    
+    server.close(() => {
+        logger.info('HTTP server closed.');
+        
+        // Close database connection
+        mongoose.connection.close(false, () => {
+            logger.info('MongoDB connection closed.');
+            process.exit(0);
+        });
+    });
+
+    // Force close server after 30 seconds
+    setTimeout(() => {
+        logger.error('Could not close connections in time, forcefully shutting down');
+        process.exit(1);
+    }, 30000);
+};
+
+// Listen for termination signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

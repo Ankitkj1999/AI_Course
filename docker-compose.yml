@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: aicourse-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: aicourse
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - aicourse-network
+
+  # AiCourse Application
+  aicourse:
+    build: .
+    container_name: aicourse-app
+    restart: unless-stopped
+    ports:
+      - "5010:5010"
+    environment:
+      - NODE_ENV=production
+      - PORT=5010
+      - MONGODB_URI=mongodb://admin:password123@mongodb:27017/aicourse?authSource=admin
+    env_file:
+      - server/.env
+    depends_on:
+      - mongodb
+    volumes:
+      - ./server/logs:/app/server/logs
+    networks:
+      - aicourse-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5010/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Nginx Reverse Proxy (Optional)
+  nginx:
+    image: nginx:alpine
+    container_name: aicourse-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - aicourse
+    networks:
+      - aicourse-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  aicourse-network:
+    driver: bridge

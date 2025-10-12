@@ -7,11 +7,18 @@
     "start": "npm run dev",
     "dev": "vite",
     "dev:full": "concurrently \"npm run server\" \"npm run dev\"",
+    "dev:clean": "./scripts/dev.sh",
     "server": "cd server && npm start",
+    "server:prod": "cd server && NODE_ENV=production npm start",
     "build": "vite build",
     "build:dev": "vite build --mode development",
+    "build:prod": "NODE_ENV=production vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "docker:build": "docker build -t aicourse .",
+    "docker:run": "docker-compose up -d",
+    "docker:stop": "docker-compose down",
+    "docker:logs": "docker-compose logs -f aicourse"
   },
   "dependencies": {
     "@google/generative-ai": "^0.1.1",

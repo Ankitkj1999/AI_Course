@@ -21,6 +21,7 @@
     "showdown": "^2.1.0",
     "stripe": "^15.7.0",
     "unsplash-js": "^7.0.19",
+    "winston": "^3.18.3",
     "youtube-search-api": "^1.2.1",
     "youtube-transcript": "^1.0.6"
   }
