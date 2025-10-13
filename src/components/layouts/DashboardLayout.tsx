@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Home, User, DollarSign, LogOut, Sparkles, Menu, Settings2Icon } from 'lucide-react';
+import { Home, User, DollarSign, LogOut, Sparkles, Menu, Settings2Icon, Brain, List, Plus } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -137,6 +137,24 @@ const DashboardLayout = () => {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
 
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="My Quizzes" isActive={isActive('/dashboard/quizzes')}>
+                      <Link to="/dashboard/quizzes" className={cn(isActive('/dashboard/quizzes') && "text-primary")}>
+                        <List />
+                        <span>My Quizzes</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Create Quiz" isActive={isActive('/dashboard/create-quiz')}>
+                      <Link to="/dashboard/create-quiz" className={cn(isActive('/dashboard/create-quiz') && "text-primary")}>
+                        <Brain />
+                        <span>Create Quiz</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+
                   {admin ?
                     <SidebarMenuItem>
                       <SidebarMenuButton asChild tooltip="Admin Panel" isActive={isActive('/admin')}>
@@ -154,7 +172,7 @@ const DashboardLayout = () => {
 
             <SidebarGroup>
               <SidebarGroupContent>
-                <div className="px-2">
+                <div className="px-2 space-y-2">
                   <Button
                     className="w-full bg-gradient-to-r from-primary to-indigo-500 hover:from-indigo-500 hover:to-primary shadow-md transition-all"
                     size="sm"
@@ -163,6 +181,16 @@ const DashboardLayout = () => {
                     <Link to="/dashboard/generate-course">
                       <Sparkles className="mr-2 h-4 w-4" />
                       Generate Course
+                    </Link>
+                  </Button>
+                  <Button
+                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-pink-500 hover:to-purple-500 shadow-md transition-all"
+                    size="sm"
+                    asChild
+                  >
+                    <Link to="/dashboard/create-quiz">
+                      <Brain className="mr-2 h-4 w-4" />
+                      Create Quiz
                     </Link>
                   </Button>
                 </div>

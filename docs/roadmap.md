@@ -68,6 +68,9 @@ A comprehensive roadmap for improving AiCourse from basic functionality to enter
 - [ ] **File Management** - Course attachments and resources
 - [ ] **Version Control** - Course version history
 - [ ] **Draft System** - Save courses as drafts
+- [x] **Quiz Creation** - AI-powered quiz generation ✅
+- [x] **Quiz Management** - Create, view, and delete quizzes ✅
+- [x] **Quiz Taking** - Interactive quiz experience with scoring ✅
 
 ### API Improvements
 - [ ] **API Versioning** - `/api/v1/` structure

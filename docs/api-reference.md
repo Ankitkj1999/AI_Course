@@ -384,6 +384,130 @@ API endpoints are rate-limited to prevent abuse:
 - 100 requests per minute per IP
 - 1000 requests per hour per user
 
+## Quiz Management
+
+### Create Quiz
+Generate a new AI quiz.
+
+**Endpoint:** `POST /quiz/create`
+
+**Request Body:**
+```json
+{
+  "userId": "64f8a1b2c3d4e5f6g7h8i9j0",
+  "keyword": "Node.js fundamentals",
+  "title": "Node.js Fundamentals Quiz",
+  "format": "mixed",
+  "questionAndAnswers": []
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Quiz created successfully",
+  "quiz": {
+    "_id": "64f8a1b2c3d4e5f6g7h8i9j2",
+    "slug": "nodejs-fundamentals-quiz-1234567890",
+    "title": "Node.js Fundamentals Quiz",
+    "keyword": "Node.js fundamentals"
+  }
+}
+```
+
+### Get User Quizzes
+Retrieve quizzes for a user with pagination.
+
+**Endpoint:** `GET /quizzes`
+
+**Query Parameters:**
+- `userId` (required): User ID
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Items per page (default: 10)
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "_id": "64f8a1b2c3d4e5f6g7h8i9j2",
+      "userId": "64f8a1b2c3d4e5f6g7h8i9j0",
+      "keyword": "Node.js fundamentals",
+      "title": "Node.js Fundamentals Quiz",
+      "slug": "nodejs-fundamentals-quiz-1234567890",
+      "format": "mixed",
+      "tokens": {
+        "prompt": 1034,
+        "completion": 2233,
+        "total": 3267
+      },
+      "viewCount": 8,
+      "lastVisitedAt": "2025-10-13T12:52:56.496Z",
+      "createdAt": "2025-08-15T17:15:25.640Z",
+      "updatedAt": "2025-10-13T12:52:56.497Z"
+    }
+  ],
+  "totalCount": 1,
+  "totalPages": 1,
+  "currPage": 1,
+  "perPage": 10
+}
+```
+
+### Get Quiz by Slug
+Retrieve a quiz using its SEO-friendly slug.
+
+**Endpoint:** `GET /quiz/:slug`
+
+**Parameters:**
+- `slug` (required): Quiz slug
+
+**Response:**
+```json
+{
+  "success": true,
+  "quiz": {
+    "_id": "64f8a1b2c3d4e5f6g7h8i9j2",
+    "userId": "64f8a1b2c3d4e5f6g7h8i9j0",
+    "keyword": "Node.js fundamentals",
+    "title": "Node.js Fundamentals Quiz",
+    "slug": "nodejs-fundamentals-quiz-1234567890",
+    "format": "mixed",
+    "content": "# Question 1?\n- Option A\n-* Correct Option B\n- Option C\n## Explanation here",
+    "viewCount": 9,
+    "lastVisitedAt": "2025-10-13T12:54:15.618Z",
+    "questionAndAnswers": [],
+    "createdAt": "2025-08-15T17:15:25.640Z",
+    "updatedAt": "2025-10-13T12:54:15.618Z"
+  }
+}
+```
+
+### Delete Quiz
+Delete a quiz by slug.
+
+**Endpoint:** `DELETE /quiz/:slug`
+
+**Parameters:**
+- `slug` (required): Quiz slug
+
+**Request Body:**
+```json
+{
+  "userId": "64f8a1b2c3d4e5f6g7h8i9j0"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Quiz deleted successfully"
+}
+```
+
 ## Need Help?
 
 - Check [Troubleshooting Guide](troubleshooting.md)

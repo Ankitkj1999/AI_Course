@@ -17,7 +17,7 @@ import Stripe from 'stripe';
 import Flutterwave from 'flutterwave-node-v3';
 import logger from './utils/logger.js';
 import errorHandler from './middleware/errorHandler.js';
-import { generateUniqueSlug, extractTitleFromContent } from './utils/slugify.js';
+import { generateSlug, generateUniqueSlug, extractTitleFromContent } from './utils/slugify.js';
 import { generateCourseSEO } from './utils/seo.js';
 import { getServerPort, getServerURL, validateConfig } from './utils/config.js';
 
@@ -173,6 +173,30 @@ const blogSchema = new mongoose.Schema({
     date: { type: Date, default: Date.now },
 });
 
+const quizSchema = new mongoose.Schema({
+    userId: { type: String, required: true, index: true },
+    keyword: { type: String, required: true },
+    title: { type: String, required: true },
+    slug: { type: String, unique: true, index: true },
+    format: { type: String, default: 'mixed' },
+    content: { type: String, required: true }, // Quiz questions in markdown format
+    tokens: {
+        prompt: { type: Number, default: 0 },
+        completion: { type: Number, default: 0 },
+        total: { type: Number, default: 0 }
+    },
+    viewCount: { type: Number, default: 0 },
+    lastVisitedAt: { type: Date, default: Date.now },
+    questionAndAnswers: [{ // Pre-quiz questions for customization
+        role: { type: String, enum: ['assistant', 'user'] },
+        question: String,
+        answer: String,
+        possibleAnswers: [String]
+    }],
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+});
+
 //MODEL
 const User = mongoose.model('User', userSchema);
 const Course = mongoose.model('Course', courseSchema);
@@ -183,6 +207,7 @@ const NotesSchema = mongoose.model('Notes', notesSchema);
 const ExamSchema = mongoose.model('Exams', examSchema);
 const LangSchema = mongoose.model('Lang', langSchema);
 const BlogSchema = mongoose.model('Blog', blogSchema);
+const Quiz = mongoose.model('Quiz', quizSchema);
 
 //REQUEST
 
@@ -2696,6 +2721,243 @@ const startServer = async () => {
 };
 
 const server = await startServer();
+
+//QUIZ ENDPOINTS
+
+//CREATE QUIZ
+app.post('/api/quiz/create', async (req, res) => {
+    try {
+        const { userId, keyword, title, format, questionAndAnswers } = req.body;
+        
+        if (!userId || !keyword || !title) {
+            return res.status(400).json({
+                success: false,
+                message: 'userId, keyword, and title are required'
+            });
+        }
+
+        // Generate quiz content using AI
+        const quizPrompt = `Create a comprehensive quiz about "${keyword}" with the title "${title}". 
+        Format: ${format || 'mixed'}
+        
+        Generate 15-20 multiple choice questions in this markdown format:
+        # Question text here?
+        - Wrong answer option
+        -* Correct answer option (marked with *)
+        - Wrong answer option
+        - Wrong answer option
+        ## Explanation of the correct answer here
+        
+        Make the questions challenging and cover various aspects of the topic.`;
+
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const result = await model.generateContent(quizPrompt);
+        const quizContent = result.response.text();
+
+        // Generate unique slug
+        const baseSlug = generateSlug(`${title}-${Date.now()}`);
+        const slug = await generateUniqueSlug(baseSlug, Quiz);
+
+        // Create quiz
+        const newQuiz = new Quiz({
+            userId,
+            keyword,
+            title,
+            slug,
+            format: format || 'mixed',
+            content: quizContent,
+            tokens: {
+                prompt: quizPrompt.length,
+                completion: quizContent.length,
+                total: quizPrompt.length + quizContent.length
+            },
+            questionAndAnswers: questionAndAnswers || [],
+            viewCount: 0,
+            lastVisitedAt: new Date(),
+            createdAt: new Date(),
+            updatedAt: new Date()
+        });
+
+        await newQuiz.save();
+
+        logger.info(`Quiz created: ${newQuiz._id} with slug: ${slug}`);
+        
+        res.json({
+            success: true,
+            message: 'Quiz created successfully',
+            quiz: {
+                _id: newQuiz._id,
+                slug: newQuiz.slug,
+                title: newQuiz.title,
+                keyword: newQuiz.keyword
+            }
+        });
+
+    } catch (error) {
+        logger.error(`Quiz creation error: ${error.message}`, { error: error.stack });
+        res.status(500).json({
+            success: false,
+            message: 'Failed to create quiz'
+        });
+    }
+});
+
+//GET USER QUIZZES
+app.get('/api/quizzes', async (req, res) => {
+    try {
+        const { userId, page = 1, limit = 10 } = req.query;
+        
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                message: 'userId is required'
+            });
+        }
+
+        const skip = (page - 1) * limit;
+        const totalCount = await Quiz.countDocuments({ userId });
+        const totalPages = Math.ceil(totalCount / limit);
+
+        const quizzes = await Quiz.find({ userId })
+            .select('_id userId keyword title slug format tokens viewCount lastVisitedAt createdAt updatedAt')
+            .sort({ updatedAt: -1 })
+            .skip(parseInt(skip))
+            .limit(parseInt(limit));
+
+        res.json({
+            success: true,
+            data: quizzes,
+            totalCount,
+            totalPages,
+            currPage: parseInt(page),
+            perPage: parseInt(limit)
+        });
+
+    } catch (error) {
+        logger.error(`Get quizzes error: ${error.message}`, { error: error.stack });
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch quizzes'
+        });
+    }
+});
+
+//GET QUIZ BY SLUG
+app.get('/api/quiz/:slug', async (req, res) => {
+    try {
+        const { slug } = req.params;
+        
+        const quiz = await Quiz.findOne({ slug });
+        
+        if (!quiz) {
+            return res.status(404).json({
+                success: false,
+                message: 'Quiz not found'
+            });
+        }
+
+        // Increment view count
+        quiz.viewCount += 1;
+        quiz.lastVisitedAt = new Date();
+        await quiz.save();
+
+        logger.info(`Quiz accessed by slug: ${slug}`);
+        
+        res.json({
+            success: true,
+            quiz: quiz
+        });
+
+    } catch (error) {
+        logger.error(`Get quiz by slug error: ${error.message}`, { error: error.stack, slug: req.params.slug });
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch quiz'
+        });
+    }
+});
+
+//GET QUIZ BY ID (Legacy support)
+app.get('/api/quiz/id/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const quiz = await Quiz.findById(id);
+        
+        if (!quiz) {
+            return res.status(404).json({
+                success: false,
+                message: 'Quiz not found'
+            });
+        }
+
+        // Increment view count
+        quiz.viewCount += 1;
+        quiz.lastVisitedAt = new Date();
+        await quiz.save();
+
+        // If quiz has slug, suggest redirect
+        if (quiz.slug) {
+            return res.json({
+                success: true,
+                quiz: quiz,
+                redirect: `/quiz/${quiz.slug}`
+            });
+        }
+
+        logger.info(`Quiz accessed by ID: ${id}`);
+        
+        res.json({
+            success: true,
+            quiz: quiz
+        });
+
+    } catch (error) {
+        logger.error(`Get quiz by ID error: ${error.message}`, { error: error.stack, id: req.params.id });
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch quiz'
+        });
+    }
+});
+
+//DELETE QUIZ
+app.delete('/api/quiz/:slug', async (req, res) => {
+    try {
+        const { slug } = req.params;
+        const { userId } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                message: 'userId is required'
+            });
+        }
+
+        const quiz = await Quiz.findOneAndDelete({ slug, userId });
+        
+        if (!quiz) {
+            return res.status(404).json({
+                success: false,
+                message: 'Quiz not found or unauthorized'
+            });
+        }
+
+        logger.info(`Quiz deleted: ${quiz._id} (${slug})`);
+        
+        res.json({
+            success: true,
+            message: 'Quiz deleted successfully'
+        });
+
+    } catch (error) {
+        logger.error(`Delete quiz error: ${error.message}`, { error: error.stack, slug: req.params.slug });
+        res.status(500).json({
+            success: false,
+            message: 'Failed to delete quiz'
+        });
+    }
+});
 
 // Graceful shutdown
 const gracefulShutdown = (signal) => {

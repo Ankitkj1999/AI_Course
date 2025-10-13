@@ -28,6 +28,11 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import PaymentPending from "./pages/PaymentPending";
 import PaymentFailed from "./pages/PaymentFailed";
 
+// Quiz imports
+import DashboardQuizListPage from "./pages/dashboard/QuizList";
+import DashboardCreateQuizPage from "./pages/dashboard/CreateQuiz";
+import QuizViewerPage from "./pages/QuizViewer";
+
 // Admin imports
 import AdminLayout from "./components/layouts/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -91,12 +96,18 @@ const App = () => (
                   <Route path="pricing" element={<ProfilePricing />} />
                   <Route path="payment/:planId" element={<PaymentDetails />} />
                   <Route path="profile" element={<Profile />} />
+                  <Route path="quizzes" element={<DashboardQuizListPage />} />
+                  <Route path="create-quiz" element={<DashboardCreateQuizPage />} />
                 </Route>
 
                 {/* Course Routes */}
                 <Route path="/course/:courseId" element={<CoursePage />} />
                 <Route path="/course/:courseId/certificate" element={<Certificate />} />
                 <Route path="/course/:courseId/quiz" element={<QuizPage />} />
+
+                {/* Quiz Routes */}
+                <Route path="/quiz/:slug" element={<QuizViewerPage />} />
+                <Route path="/quiz/id/:id" element={<QuizViewerPage />} />
 
                 {/* Payment Routes */}
                 <Route path="/payment-success/:planId" element={<PaymentSuccess />} />

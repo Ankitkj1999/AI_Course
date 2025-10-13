@@ -125,6 +125,33 @@ export const config = {
   }
 };
 
+// Quiz URL utilities
+export const getQuizURL = (quiz: { slug?: string; _id: string }) => {
+  if (quiz.slug) {
+    return `/quiz/${quiz.slug}`;
+  }
+  return `/quiz/id/${quiz._id}`;
+};
+
+export const getShareableQuizURL = (quiz: { slug?: string; _id: string }) => {
+  const relativePath = getQuizURL(quiz);
+  return `${config.urls.website}${relativePath}`;
+};
+
+export const getQuizShareURL = (quiz: { slug?: string; _id: string; title?: string }) => {
+  const baseURL = getShareableQuizURL(quiz);
+  const title = encodeURIComponent(quiz.title || 'AI Generated Quiz');
+  
+  return {
+    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(baseURL)}`,
+    twitter: `https://twitter.com/intent/tweet?url=${encodeURIComponent(baseURL)}&text=${title}`,
+    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(baseURL)}`,
+    whatsapp: `https://wa.me/?text=${title}%20${encodeURIComponent(baseURL)}`,
+    email: `mailto:?subject=${title}&body=Check out this quiz: ${baseURL}`,
+    copy: baseURL
+  };
+};
+
 // Log configuration in development
 if (isDevelopment()) {
   console.log('🔧 AiCourse Configuration:', config);
