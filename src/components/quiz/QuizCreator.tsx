@@ -78,22 +78,22 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
 
   return (
     <div className="max-w-2xl mx-auto p-6">
-      <div className="bg-white rounded-lg shadow-md p-8">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
             <Brain className="h-12 w-12 text-blue-600 mr-3" />
             <Sparkles className="h-8 w-8 text-yellow-500" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create AI Quiz</h1>
-          <p className="text-gray-600">Generate a comprehensive quiz on any topic using AI</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Create AI Quiz</h1>
+          <p className="text-gray-600 dark:text-gray-300">Generate a comprehensive quiz on any topic using AI</p>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Topic/Keyword */}
           <div>
-            <label htmlFor="keyword" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="keyword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Topic/Keyword *
             </label>
             <input
@@ -103,17 +103,17 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
               value={formData.keyword}
               onChange={handleInputChange}
               placeholder="e.g., JavaScript fundamentals, React hooks, Node.js..."
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
               required
             />
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               Enter the main topic or keywords for your quiz
             </p>
           </div>
 
           {/* Quiz Title */}
           <div>
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Quiz Title *
             </label>
             <input
@@ -123,17 +123,17 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
               value={formData.title}
               onChange={handleInputChange}
               placeholder="e.g., JavaScript Fundamentals Quiz"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
               required
             />
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               Give your quiz a descriptive title
             </p>
           </div>
 
           {/* Format */}
           <div>
-            <label htmlFor="format" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="format" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Quiz Format
             </label>
             <select
@@ -141,21 +141,21 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
               name="format"
               value={formData.format}
               onChange={handleInputChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
               <option value="mixed">Mixed Questions</option>
               <option value="multiple-choice">Multiple Choice Only</option>
               <option value="open-ended">Open-Ended Questions</option>
             </select>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               Choose the type of questions for your quiz
             </p>
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-red-800 text-sm">{error}</p>
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+              <p className="text-red-800 dark:text-red-400 text-sm">{error}</p>
             </div>
           )}
 
@@ -171,9 +171,9 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
         </form>
 
         {/* Info */}
-        <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-          <h3 className="text-sm font-medium text-blue-900 mb-2">What happens next?</h3>
-          <ul className="text-sm text-blue-800 space-y-1">
+        <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+          <h3 className="text-sm font-medium text-blue-900 dark:text-blue-400 mb-2">What happens next?</h3>
+          <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
             <li>• AI will generate 15-20 comprehensive questions</li>
             <li>• Questions will include explanations for learning</li>
             <li>• Quiz will be saved with a shareable link</li>

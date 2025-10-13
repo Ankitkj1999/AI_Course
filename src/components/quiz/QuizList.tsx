@@ -137,8 +137,8 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Quizzes</h1>
-          <p className="text-gray-600">Manage your AI-generated quizzes</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Quizzes</h1>
+          <p className="text-gray-600 dark:text-gray-300">Manage your AI-generated quizzes</p>
         </div>
         <Link
           to="/dashboard/create-quiz"
@@ -153,8 +153,8 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
       {quizzes.length === 0 ? (
         <div className="text-center py-12">
           <Brain className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No quizzes yet</h3>
-          <p className="text-gray-600 mb-6">Create your first AI-generated quiz to get started</p>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No quizzes yet</h3>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">Create your first AI-generated quiz to get started</p>
           <Link
             to="/dashboard/create-quiz"
             className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -170,15 +170,15 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
             const isDeleting = deletingQuiz === quiz.slug;
             
             return (
-              <div key={quiz._id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+              <div key={quiz._id} className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
                 {/* Quiz Header */}
                 <div className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
-                      <h3 className="font-semibold text-lg text-gray-900 mb-2 line-clamp-2">
+                      <h3 className="font-semibold text-lg text-gray-900 dark:text-white mb-2 line-clamp-2">
                         {quiz.title}
                       </h3>
-                      <p className="text-sm text-gray-600 mb-3">
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
                         Topic: {quiz.keyword}
                       </p>
                     </div>
@@ -187,11 +187,11 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
 
                   {/* Stats */}
                   <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="flex items-center text-sm text-gray-600">
+                    <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
                       <Eye className="h-4 w-4 mr-2" />
                       {quiz.viewCount} views
                     </div>
-                    <div className="flex items-center text-sm text-gray-600">
+                    <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
                       <BarChart3 className="h-4 w-4 mr-2" />
                       {quiz.format}
                     </div>
@@ -199,22 +199,22 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
 
                   {/* Dates */}
                   <div className="space-y-1 mb-4">
-                    <div className="flex items-center text-xs text-gray-500">
+                    <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
                       <Calendar className="h-3 w-3 mr-2" />
                       Created: {formatDate(quiz.createdAt)}
                     </div>
-                    <div className="flex items-center text-xs text-gray-500">
+                    <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
                       <Clock className="h-3 w-3 mr-2" />
                       Last viewed: {formatDate(quiz.lastVisitedAt)}
                     </div>
                   </div>
 
                   {/* URL Display */}
-                  <div className="text-xs text-gray-400 mb-4 font-mono bg-gray-50 p-2 rounded">
+                  <div className="text-xs text-gray-400 dark:text-gray-500 mb-4 font-mono bg-gray-50 dark:bg-gray-700 p-2 rounded">
                     {quiz.slug ? (
-                      <span className="text-green-600">✓ SEO: {quizURL}</span>
+                      <span className="text-green-600 dark:text-green-400">✓ SEO: {quizURL}</span>
                     ) : (
-                      <span className="text-orange-600">⚠ ID: {quizURL}</span>
+                      <span className="text-orange-600 dark:text-orange-400">⚠ ID: {quizURL}</span>
                     )}
                   </div>
 
@@ -230,7 +230,7 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => handleShare(quiz)}
-                        className="p-2 text-gray-600 hover:text-gray-800 transition-colors"
+                        className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white transition-colors"
                         title="Share quiz"
                       >
                         <Share2 className="w-4 h-4" />
@@ -239,7 +239,7 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
                       <button
                         onClick={() => handleDelete(quiz)}
                         disabled={isDeleting}
-                        className="p-2 text-red-600 hover:text-red-800 transition-colors disabled:opacity-50"
+                        className="p-2 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition-colors disabled:opacity-50"
                         title="Delete quiz"
                       >
                         <Trash2 className="w-4 h-4" />
