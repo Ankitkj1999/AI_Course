@@ -181,9 +181,24 @@ function useToast() {
     }
   }, [state])
 
+  // Convenience methods for different toast types
+  const toastHelpers = {
+    success: (message: string, options?: Omit<Toast, 'description' | 'variant'>) =>
+      toast({ description: message, variant: 'success', ...options }),
+    
+    error: (message: string, options?: Omit<Toast, 'description' | 'variant'>) =>
+      toast({ description: message, variant: 'destructive', ...options }),
+    
+    warning: (message: string, options?: Omit<Toast, 'description' | 'variant'>) =>
+      toast({ description: message, variant: 'warning', ...options }),
+    
+    info: (message: string, options?: Omit<Toast, 'description' | 'variant'>) =>
+      toast({ description: message, variant: 'info', ...options }),
+  };
+
   return {
     ...state,
-    toast,
+    toast: Object.assign(toast, toastHelpers),
     dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
   }
 }

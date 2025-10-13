@@ -1,9 +1,37 @@
 //BRAND
-export const appName = 'AiCourse';
-export const companyName = 'Spacester';
-export const websiteURL = 'http://localhost:8080';
-export const serverURL = 'http://localhost:5010';
-export const appLogo = 'https://firebasestorage.googleapis.com/v0/b/aicourse-81b42.appspot.com/o/aicouse.png?alt=media&token=7175cdbe-64b4-4fe4-bb6d-b519347ad8af';
+export const appName = import.meta.env.VITE_APP_NAME || 'AiCourse';
+export const companyName = import.meta.env.VITE_COMPANY_NAME || 'Spacester';
+
+// Dynamic URL detection based on environment
+export const websiteURL = typeof window !== 'undefined' 
+  ? `${window.location.protocol}//${window.location.host}`
+  : import.meta.env.VITE_WEBSITE_URL || 'http://localhost:8080';
+
+// Dynamic server URL detection
+const getServerURL = () => {
+  // If environment variable is set, use it
+  if (import.meta.env.VITE_SERVER_URL) {
+    return import.meta.env.VITE_SERVER_URL;
+  }
+  
+  // In development, try to detect from browser
+  if (import.meta.env.DEV && typeof window !== 'undefined') {
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    
+    // Check if there's a server running on common ports
+    // This is a synchronous fallback - for async detection use the API client
+    const commonPorts = [5011, 5010, 5012, 5013]; // 5011 first since that's what's running
+    
+    // For now, return the most likely port based on current setup
+    return `${protocol}//${hostname}:5011`;
+  }
+  
+  return 'http://localhost:5010';
+};
+
+export const serverURL = getServerURL();
+export const appLogo = import.meta.env.VITE_APP_LOGO || 'https://firebasestorage.googleapis.com/v0/b/aicourse-81b42.appspot.com/o/aicouse.png?alt=media&token=7175cdbe-64b4-4fe4-bb6d-b519347ad8af';
 export const razorpayEnabled = true;
 export const paypalEnabled = true;
 export const stripeEnabled = true;

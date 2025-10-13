@@ -8,7 +8,8 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
-    port: 8080,
+    port: parseInt(process.env.VITE_PORT || '8080'),
+    strictPort: false, // Allow Vite to use next available port if specified port is busy
   },
   plugins: [
     react(),
@@ -66,9 +67,12 @@ export default defineConfig(({ mode }) => ({
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         runtimeCaching: [
-          // API calls - Network First strategy
+          // API calls - Network First strategy (dynamic server URL)
           {
-            urlPattern: /^http:\/\/localhost:5010\/api\/.*/i,
+            urlPattern: ({ url }) => {
+              const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:5010';
+              return url.href.startsWith(`${serverUrl}/api/`);
+            },
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',

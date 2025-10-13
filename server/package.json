@@ -18,6 +18,7 @@
     "g-i-s": "^2.1.7",
     "mongoose": "^8.0.2",
     "nodemailer": "^6.9.7",
+    "portfinder": "^1.0.38",
     "showdown": "^2.1.0",
     "stripe": "^15.7.0",
     "unsplash-js": "^7.0.19",

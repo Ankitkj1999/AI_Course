@@ -19,9 +19,13 @@ import logger from './utils/logger.js';
 import errorHandler from './middleware/errorHandler.js';
 import { generateUniqueSlug, extractTitleFromContent } from './utils/slugify.js';
 import { generateCourseSEO } from './utils/seo.js';
+import { getServerPort, getServerURL, validateConfig } from './utils/config.js';
 
 // Load environment variables
 dotenv.config();
+
+// Validate configuration
+validateConfig();
 
 // Initialize services that need config
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -30,11 +34,37 @@ const flw = new Flutterwave(process.env.FLUTTERWAVE_PUBLIC_KEY, process.env.FLUT
 //INITIALIZE
 const app = express();
 
-// Configure CORS properly
+// Configure CORS properly - Dynamic origin handling
 const corsOptions = {
-    origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:8080', 'http://127.0.0.1:8080'],
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        
+        // In development, allow any localhost/127.0.0.1 port
+        if (process.env.NODE_ENV !== 'production') {
+            const localhostRegex = /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/;
+            if (localhostRegex.test(origin)) {
+                logger.info(`CORS: Allowing development origin: ${origin}`);
+                return callback(null, true);
+            }
+        }
+        
+        // Production allowed origins
+        const allowedOrigins = [
+            process.env.WEBSITE_URL,
+            // Add any additional production domains here
+        ].filter(Boolean);
+        
+        if (allowedOrigins.includes(origin)) {
+            logger.info(`CORS: Allowing production origin: ${origin}`);
+            callback(null, true);
+        } else {
+            logger.warn(`CORS: Blocked origin: ${origin}`);
+            callback(new Error(`Origin ${origin} not allowed by CORS`));
+        }
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true
 };
 
@@ -2634,11 +2664,38 @@ app.get('/api/getblogs', async (req, res) => {
 // Error handling middleware (must be last)
 app.use(errorHandler);
 
-const server = app.listen(PORT, () => {
-    logger.info(`Server is running on port ${PORT}`);
-    logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    logger.info(`Health check available at: http://localhost:${PORT}/health`);
-});
+// Dynamic port handling
+const startServer = async () => {
+    try {
+        const serverPort = await getServerPort(PORT);
+        const serverURL = getServerURL(serverPort);
+        
+        const server = app.listen(serverPort, () => {
+            logger.info(`🚀 Server started successfully!`);
+            logger.info(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+            logger.info(`🌐 Server URL: ${serverURL}`);
+            logger.info(`❤️  Health check: ${serverURL}/health`);
+            logger.info(`🔗 API Base URL: ${serverURL}/api`);
+            
+            // Update environment variables for other parts of the app
+            process.env.ACTUAL_PORT = serverPort.toString();
+            process.env.ACTUAL_SERVER_URL = serverURL;
+            
+            // Log port change if different from preferred
+            if (serverPort !== PORT) {
+                logger.warn(`⚠️  Using port ${serverPort} instead of preferred port ${PORT}`);
+                logger.info(`💡 Update your frontend VITE_SERVER_URL to: ${serverURL}`);
+            }
+        });
+        
+        return server;
+    } catch (error) {
+        logger.error(`❌ Failed to start server: ${error.message}`);
+        process.exit(1);
+    }
+};
+
+const server = await startServer();
 
 // Graceful shutdown
 const gracefulShutdown = (signal) => {

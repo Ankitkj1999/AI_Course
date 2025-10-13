@@ -6,9 +6,11 @@
   "scripts": {
     "start": "npm run dev",
     "dev": "vite",
-    "dev:full": "concurrently \"npm run server\" \"npm run dev\"",
+    "dev:port": "vite --port",
+    "dev:full": "concurrently --names \"SERVER,CLIENT\" --prefix-colors \"blue,green\" \"npm run server\" \"npm run dev\"",
     "dev:clean": "./scripts/dev.sh",
     "server": "cd server && npm start",
+    "server:dev": "cd server && NODE_ENV=development npm start",
     "server:prod": "cd server && NODE_ENV=production npm start",
     "build": "vite build",
     "build:dev": "vite build --mode development",
@@ -18,7 +20,8 @@
     "docker:build": "docker build -t aicourse .",
     "docker:run": "docker-compose up -d",
     "docker:stop": "docker-compose down",
-    "docker:logs": "docker-compose logs -f aicourse"
+    "docker:logs": "docker-compose logs -f aicourse",
+    "health": "curl -f http://localhost:5010/health || curl -f http://localhost:5011/health || curl -f http://localhost:5012/health"
   },
   "dependencies": {
     "@google/generative-ai": "^0.1.1",
