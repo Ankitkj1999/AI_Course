@@ -35,12 +35,51 @@ import html2pdf from 'html2pdf.js';
 
 const CoursePage = () => {
 
+  // Helper function to detect content type
+  const detectContentType = (content) => {
+    if (!content) return 'html';
+    
+    // Check for HTML tags (more comprehensive)
+    const htmlTagPattern = /<\/?[a-z][\s\S]*>/i;
+    const hasHtmlTags = htmlTagPattern.test(content);
+    
+    // Check for markdown patterns
+    const markdownPatterns = [
+      /^#{1,6}\s+/m,           // Headers (# ## ###)
+      /\*\*.*?\*\*/,           // Bold text
+      /\*.*?\*/,               // Italic text
+      /```[\s\S]*?```/,        // Code blocks
+      /`.*?`/,                 // Inline code
+      /^\s*[-*+]\s+/m,         // Lists
+      /^\s*\d+\.\s+/m,         // Numbered lists
+    ];
+    
+    const hasMarkdownPatterns = markdownPatterns.some(pattern => pattern.test(content));
+    
+    // If it has HTML tags and no clear markdown patterns, it's HTML
+    if (hasHtmlTags && !hasMarkdownPatterns) {
+      console.log('Detected HTML content (has HTML tags, no markdown patterns)');
+      return 'html';
+    }
+    
+    // If it has markdown patterns, it's markdown
+    if (hasMarkdownPatterns) {
+      console.log('Detected markdown content (has markdown patterns)');
+      return 'markdown';
+    }
+    
+    // Default to HTML for backward compatibility
+    console.log('Defaulting to HTML (no clear patterns detected)');
+    return 'html';
+  };
+
   //ADDED FROM v4.0
   const { state } = useLocation();
   const { mainTopic, type, courseId, end, pass, lang } = state || {};
   const jsonData = JSON.parse(sessionStorage.getItem('jsonData'));
   const [selected, setSelected] = useState('');
   const [theory, setTheory] = useState('');
+  const [contentType, setContentType] = useState('html'); // Track content type for proper rendering
   const [media, setMedia] = useState('');
   const [percentage, setPercentage] = useState(0);
   const [isComplete, setIsCompleted] = useState(false);
@@ -176,6 +215,11 @@ const CoursePage = () => {
       firstSubtopic.done = true
       setSelected(firstSubtopic.title)
       setTheory(firstSubtopic.theory);
+      
+      // Detect content type using helper function
+      const detectedContentType = firstSubtopic.contentType || detectContentType(firstSubtopic.theory);
+      console.log('First subtopic content type:', detectedContentType, 'Content preview:', firstSubtopic.theory?.substring(0, 100));
+      setContentType(detectedContentType);
 
       if (type === 'video & text course') {
         setMedia(firstSubtopic.youtube);
@@ -297,6 +341,12 @@ const CoursePage = () => {
       } else {
         setSelected(mSubTopic.title)
         setTheory(mSubTopic.theory)
+        
+        // Detect content type using helper function
+        const detectedContentType = mSubTopic.contentType || detectContentType(mSubTopic.theory);
+        console.log('Subtopic content type:', detectedContentType, 'Content preview:', mSubTopic.theory?.substring(0, 100));
+        setContentType(detectedContentType);
+        
         if (type === 'video & text course') {
           setMedia(mSubTopic.youtube);
         } else {
@@ -314,10 +364,12 @@ const CoursePage = () => {
       const postURL = serverURL + '/api/generate';
       const res = await axios.post(postURL, dataToSend);
       const generatedText = res.data.text;
+      const contentType = res.data.contentType || 'html'; // Default to HTML for backward compatibility
       const htmlContent = generatedText;
       try {
         const parsedJson = htmlContent;
-        sendImage(parsedJson, promptImage, topics, sub);
+        // Pass content type to sendImage for proper handling
+        sendImage(parsedJson, promptImage, topics, sub, contentType);
       } catch (error) {
         console.error(error);
         toast({
@@ -337,7 +389,7 @@ const CoursePage = () => {
     }
   }
 
-  async function sendImage(parsedJson, promptImage, topics, sub) {
+  async function sendImage(parsedJson, promptImage, topics, sub, contentType = 'html') {
     const dataToSend = {
       prompt: promptImage,
     };
@@ -346,7 +398,7 @@ const CoursePage = () => {
       const res = await axios.post(postURL, dataToSend);
       try {
         const generatedText = res.data.url;
-        sendData(generatedText, parsedJson, topics, sub);
+        sendData(generatedText, parsedJson, topics, sub, contentType);
       } catch (error) {
         console.error(error);
         toast({
@@ -366,16 +418,18 @@ const CoursePage = () => {
     }
   }
 
-  async function sendData(image, theory, topics, sub) {
+  async function sendData(image, theory, topics, sub, contentType = 'html') {
 
     const mTopic = jsonData[mainTopic.toLowerCase()].find(topic => topic.title === topics);
     const mSubTopic = mTopic?.subtopics.find(subtopic => subtopic.title === sub);
-    mSubTopic.theory = theory
+    mSubTopic.theory = theory;
+    mSubTopic.contentType = contentType; // Store content type for proper rendering
     mSubTopic.image = image;
     setSelected(mSubTopic.title)
 
     setIsLoading(false);
     setTheory(theory)
+    setContentType(contentType); // Set content type for proper rendering
     if (type === 'video & text course') {
       setMedia(mSubTopic.youtube);
     } else {
@@ -385,16 +439,18 @@ const CoursePage = () => {
     updateCourse();
   }
 
-  async function sendDataVideo(image, theory, topics, sub) {
+  async function sendDataVideo(image, theory, topics, sub, contentType = 'html') {
 
     const mTopic = jsonData[mainTopic.toLowerCase()].find(topic => topic.title === topics);
     const mSubTopic = mTopic?.subtopics.find(subtopic => subtopic.title === sub);
-    mSubTopic.theory = theory
+    mSubTopic.theory = theory;
+    mSubTopic.contentType = contentType; // Store content type for proper rendering
     mSubTopic.youtube = image;
     setSelected(mSubTopic.title)
 
     setIsLoading(false);
     setTheory(theory)
+    setContentType(contentType); // Set content type for proper rendering
     if (type === 'video & text course') {
       setMedia(image);
     } else {
@@ -490,10 +546,11 @@ const CoursePage = () => {
       const postURL = serverURL + '/api/generate';
       const res = await axios.post(postURL, dataToSend);
       const generatedText = res.data.text;
+      const contentType = res.data.contentType || 'html'; // Default to HTML for backward compatibility
       const htmlContent = generatedText;
       try {
         const parsedJson = htmlContent;
-        sendDataVideo(url, parsedJson, mTopic, mSubTopic);
+        sendDataVideo(url, parsedJson, mTopic, mSubTopic, contentType);
       } catch (error) {
         console.error(error);
         toast({
@@ -953,7 +1010,7 @@ const CoursePage = () => {
                         <img className='overflow-hidden h-96 max-md:h-64' src={media} alt="Media" />
                       </div>
                     }
-                    <StyledText text={theory} />
+                    <StyledText text={theory} contentType={contentType} />
                   </div>
                 </>
               }

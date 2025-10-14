@@ -571,10 +571,12 @@ app.post('/api/generate', async (req, res) => {
     await model.generateContent(prompt).then(result => {
         const response = result.response;
         const txt = response.text();
-        const converter = new showdown.Converter();
-        const markdownText = txt;
-        const text = converter.makeHtml(markdownText);
-        res.status(200).json({ text });
+        // Store raw markdown instead of converting to HTML for better formatting
+        const text = txt;
+        res.status(200).json({ 
+            text,
+            contentType: 'markdown' // Add content type for frontend detection
+        });
     }).catch(error => {
         console.log('Error', error);
         res.status(500).json({ success: false, message: 'Internal server error' });
@@ -2394,10 +2396,12 @@ app.post('/api/chat', async (req, res) => {
     await model.generateContent(prompt).then(result => {
         const response = result.response;
         const txt = response.text();
-        const converter = new showdown.Converter();
-        const markdownText = txt;
-        const text = converter.makeHtml(markdownText);
-        res.status(200).json({ text });
+        // Store raw markdown instead of converting to HTML for better formatting
+        const text = txt;
+        res.status(200).json({ 
+            text,
+            contentType: 'markdown' // Add content type for frontend detection
+        });
     }).catch(error => {
         console.log('Error', error);
         res.status(500).json({ success: false, message: 'Internal server error' });
