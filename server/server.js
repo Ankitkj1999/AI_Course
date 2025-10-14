@@ -220,6 +220,26 @@ const flashcardSchema = new mongoose.Schema({
     updatedAt: { type: Date, default: Date.now }
 });
 
+const guideSchema = new mongoose.Schema({
+    userId: { type: String, required: true, index: true },
+    keyword: { type: String, required: true },
+    title: { type: String, required: true },
+    slug: { type: String, unique: true, index: true },
+    content: { type: String, required: true }, // Guide content in markdown format
+    relatedTopics: [String], // Array of related topic suggestions
+    deepDiveTopics: [String], // Array of advanced topics for further study
+    questions: [String], // Array of study questions
+    tokens: {
+        prompt: { type: Number, default: 0 },
+        completion: { type: Number, default: 0 },
+        total: { type: Number, default: 0 }
+    },
+    viewCount: { type: Number, default: 0 },
+    lastVisitedAt: { type: Date, default: Date.now },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+});
+
 //MODEL
 const User = mongoose.model('User', userSchema);
 const Course = mongoose.model('Course', courseSchema);
@@ -232,6 +252,7 @@ const LangSchema = mongoose.model('Lang', langSchema);
 const BlogSchema = mongoose.model('Blog', blogSchema);
 const Quiz = mongoose.model('Quiz', quizSchema);
 const Flashcard = mongoose.model('Flashcard', flashcardSchema);
+const Guide = mongoose.model('Guide', guideSchema);
 
 //REQUEST
 
@@ -3218,6 +3239,345 @@ app.delete('/api/flashcard/:slug', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to delete flashcard set'
+        });
+    }
+});
+
+//CREATE GUIDE
+app.post('/api/guide/create', async (req, res) => {
+    try {
+        const { userId, keyword, title, customization } = req.body;
+
+        if (!userId || !keyword || !title) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required fields: userId, keyword, title'
+            });
+        }
+
+        // Generate guide content using AI
+        const safetySettings = [
+            {
+                category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+            {
+                category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+            {
+                category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+            {
+                category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+        ];
+
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
+
+        const prompt = `Create a comprehensive study guide for the topic: "${keyword}".
+
+        Title: ${title}
+        
+        ${customization ? `Additional requirements: ${customization}` : ''}
+        
+        Create a detailed study guide with the following structure:
+
+        # ${title}
+
+        [Write comprehensive content here with sections, examples, and explanations]
+
+        ## Related Topics
+        - Topic 1
+        - Topic 2  
+        - Topic 3
+        - Topic 4
+
+        ## Deep Dive Topics
+        - Advanced Topic 1
+        - Advanced Topic 2
+        - Advanced Topic 3
+
+        ## Study Questions
+        1. Question 1?
+        2. Question 2?
+        3. Question 3?
+        4. Question 4?
+        5. Question 5?
+
+        Guidelines:
+        - Content should be comprehensive but concise (single-page format)
+        - Use markdown formatting with headers, lists, code blocks, and emphasis
+        - Include practical examples and real-world applications
+        - Make it suitable for quick reference and study
+        - Related topics should be closely connected concepts (3-5 topics)
+        - Deep dive topics should be advanced/specialized areas for further study (3-4 topics)
+        - Questions should test understanding of key concepts (5-8 questions)
+        - Aim for 2000-4000 words in the main content section
+        
+        Write the complete guide following this exact structure.`;
+
+        const result = await model.generateContent(prompt);
+        const response = result.response;
+        const generatedText = response.text();
+        
+        // Log the raw response for debugging (first 500 chars)
+        logger.info(`AI Response preview: ${generatedText.substring(0, 500)}...`);
+
+        // Parse the generated guide from markdown structure
+        let guideData = {};
+        try {
+            // Extract main content (everything before "## Related Topics")
+            const relatedTopicsIndex = generatedText.indexOf('## Related Topics');
+            let mainContent = relatedTopicsIndex > -1 ? generatedText.substring(0, relatedTopicsIndex).trim() : generatedText;
+            
+            // Extract related topics
+            let relatedTopics = [];
+            const relatedMatch = generatedText.match(/## Related Topics\s*([\s\S]*?)(?=## |$)/);
+            if (relatedMatch) {
+                const relatedSection = relatedMatch[1];
+                relatedTopics = relatedSection
+                    .split('\n')
+                    .filter(line => line.trim().startsWith('-'))
+                    .map(line => line.replace(/^-\s*/, '').trim())
+                    .filter(topic => topic.length > 0);
+            }
+            
+            // Extract deep dive topics
+            let deepDiveTopics = [];
+            const deepDiveMatch = generatedText.match(/## Deep Dive Topics\s*([\s\S]*?)(?=## |$)/);
+            if (deepDiveMatch) {
+                const deepDiveSection = deepDiveMatch[1];
+                deepDiveTopics = deepDiveSection
+                    .split('\n')
+                    .filter(line => line.trim().startsWith('-'))
+                    .map(line => line.replace(/^-\s*/, '').trim())
+                    .filter(topic => topic.length > 0);
+            }
+            
+            // Extract study questions
+            let questions = [];
+            const questionsMatch = generatedText.match(/## Study Questions\s*([\s\S]*?)(?=## |$)/);
+            if (questionsMatch) {
+                const questionsSection = questionsMatch[1];
+                questions = questionsSection
+                    .split('\n')
+                    .filter(line => line.trim().match(/^\d+\./))
+                    .map(line => line.replace(/^\d+\.\s*/, '').trim())
+                    .filter(question => question.length > 0);
+            }
+            
+            guideData = {
+                content: mainContent,
+                relatedTopics: relatedTopics,
+                deepDiveTopics: deepDiveTopics,
+                questions: questions
+            };
+            
+            logger.info(`Successfully parsed guide: ${relatedTopics.length} related topics, ${deepDiveTopics.length} deep dive topics, ${questions.length} questions`);
+            
+        } catch (parseError) {
+            logger.error(`Guide parsing error: ${parseError.message}`);
+            logger.error(`Stack trace: ${parseError.stack}`);
+            logger.info('Using fallback parsing method');
+            
+            // Fallback: Use the raw content and try to extract some basic structure
+            guideData = {
+                content: generatedText,
+                relatedTopics: [],
+                deepDiveTopics: [],
+                questions: []
+            };
+            
+            // Try to extract questions from anywhere in the content
+            const questionMatches = generatedText.match(/\d+\.\s+([^?\n]*\?)/g);
+            if (questionMatches) {
+                guideData.questions = questionMatches.slice(0, 10).map(q => q.replace(/^\d+\.\s*/, ''));
+            }
+        }
+        
+        // Ensure we always have valid data
+        if (!guideData || typeof guideData !== 'object') {
+            logger.warn('Guide data is invalid, creating minimal structure');
+            guideData = {
+                content: generatedText || `# ${title}\n\nGuide content could not be parsed properly.`,
+                relatedTopics: [],
+                deepDiveTopics: [],
+                questions: []
+            };
+        }
+
+        // Generate unique slug
+        logger.info('Generating unique slug for guide');
+        const slug = await generateUniqueSlug(title, Guide);
+        logger.info(`Generated slug: ${slug}`);
+
+        // Create guide
+        logger.info('Creating new guide document');
+        const newGuide = new Guide({
+            userId,
+            keyword,
+            title,
+            slug,
+            content: guideData.content || generatedText,
+            relatedTopics: guideData.relatedTopics || [],
+            deepDiveTopics: guideData.deepDiveTopics || [],
+            questions: guideData.questions || [],
+            tokens: {
+                prompt: result.response.usageMetadata?.promptTokenCount || 0,
+                completion: result.response.usageMetadata?.candidatesTokenCount || 0,
+                total: result.response.usageMetadata?.totalTokenCount || 0
+            }
+        });
+
+        logger.info('Saving guide to database');
+        await newGuide.save();
+        logger.info(`Guide saved successfully: ${newGuide._id} with slug: ${slug}`);
+        res.json({
+            success: true,
+            message: 'Guide created successfully',
+            guideId: newGuide._id,
+            slug: slug,
+            guide: {
+                title: newGuide.title,
+                keyword: newGuide.keyword,
+                relatedTopics: newGuide.relatedTopics,
+                deepDiveTopics: newGuide.deepDiveTopics,
+                questions: newGuide.questions
+            }
+        });
+
+    } catch (error) {
+        logger.error(`Guide creation error: ${error.message}`, { error: error.stack, userId, keyword, title });
+        res.status(500).json({
+            success: false,
+            message: `Failed to create guide: ${error.message}`
+        });
+    }
+});
+
+//TEST ENDPOINT TO VERIFY CODE VERSION
+app.get('/api/guide/test', (req, res) => {
+    res.json({ 
+        success: true, 
+        message: 'Guide API updated - v2.0',
+        timestamp: new Date().toISOString()
+    });
+});
+
+//GET USER GUIDES
+app.get('/api/guides', async (req, res) => {
+    try {
+        const { userId, page = 1, limit = 10 } = req.query;
+
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                message: 'userId is required'
+            });
+        }
+
+        const skip = (page - 1) * limit;
+        const guides = await Guide.find({ userId })
+            .select('title keyword slug createdAt viewCount relatedTopics')
+            .sort({ createdAt: -1 })
+            .skip(parseInt(skip))
+            .limit(parseInt(limit));
+
+        const total = await Guide.countDocuments({ userId });
+
+        res.json({
+            success: true,
+            guides: guides,
+            pagination: {
+                currentPage: parseInt(page),
+                totalPages: Math.ceil(total / limit),
+                totalItems: total,
+                hasNext: page * limit < total,
+                hasPrev: page > 1
+            }
+        });
+
+    } catch (error) {
+        logger.error(`Get guides error: ${error.message}`, { error: error.stack });
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch guides'
+        });
+    }
+});
+
+//GET GUIDE BY SLUG
+app.get('/api/guide/:slug', async (req, res) => {
+    try {
+        const { slug } = req.params;
+        const guide = await Guide.findOne({ slug });
+
+        if (!guide) {
+            return res.status(404).json({
+                success: false,
+                message: 'Guide not found'
+            });
+        }
+
+        // Update view count and last visited
+        guide.viewCount += 1;
+        guide.lastVisitedAt = new Date();
+        await guide.save();
+
+        logger.info(`Guide accessed by slug: ${slug}`);
+        res.json({
+            success: true,
+            guide: guide
+        });
+
+    } catch (error) {
+        logger.error(`Get guide by slug error: ${error.message}`, { error: error.stack, slug: req.params.slug });
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch guide'
+        });
+    }
+});
+
+//DELETE GUIDE
+app.delete('/api/guide/:slug', async (req, res) => {
+    try {
+        const { slug } = req.params;
+        const { userId } = req.body;
+
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                message: 'userId is required'
+            });
+        }
+
+        const guide = await Guide.findOne({ slug, userId });
+
+        if (!guide) {
+            return res.status(404).json({
+                success: false,
+                message: 'Guide not found or unauthorized'
+            });
+        }
+
+        await Guide.deleteOne({ _id: guide._id });
+
+        logger.info(`Guide deleted: ${guide._id} (${slug})`);
+
+        res.json({
+            success: true,
+            message: 'Guide deleted successfully'
+        });
+
+    } catch (error) {
+        logger.error(`Delete guide error: ${error.message}`, { error: error.stack, slug: req.params.slug });
+        res.status(500).json({
+            success: false,
+            message: 'Failed to delete guide'
         });
     }
 });

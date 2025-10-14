@@ -38,6 +38,11 @@ import FlashcardListPage from "./pages/FlashcardList";
 import CreateFlashcardPage from "./pages/CreateFlashcard";
 import FlashcardViewerPage from "./pages/FlashcardViewer";
 
+// Guide imports
+import GuideListPage from "./pages/GuideList";
+import CreateGuidePage from "./pages/CreateGuide";
+import GuideViewerPage from "./pages/GuideViewer";
+
 // Admin imports
 import AdminLayout from "./components/layouts/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -105,6 +110,8 @@ const App = () => (
                   <Route path="create-quiz" element={<DashboardCreateQuizPage />} />
                   <Route path="flashcards" element={<FlashcardListPage />} />
                   <Route path="create-flashcard" element={<CreateFlashcardPage />} />
+                  <Route path="guides" element={<GuideListPage />} />
+                  <Route path="create-guide" element={<CreateGuidePage />} />
                 </Route>
 
                 {/* Course Routes */}
@@ -118,6 +125,9 @@ const App = () => (
 
                 {/* Flashcard Routes */}
                 <Route path="/dashboard/flashcard/:slug" element={<FlashcardViewerPage />} />
+
+                {/* Guide Routes */}
+                <Route path="/dashboard/guide/:slug" element={<GuideViewerPage />} />
 
                 {/* Payment Routes */}
                 <Route path="/payment-success/:planId" element={<PaymentSuccess />} />

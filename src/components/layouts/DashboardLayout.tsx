@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Home, User, DollarSign, LogOut, Sparkles, Menu, Settings2Icon, Brain, List, Plus, CreditCard, Layers } from 'lucide-react';
+import { Home, User, DollarSign, LogOut, Sparkles, Menu, Settings2Icon, Brain, List, Plus, CreditCard, Layers, BookOpen, FileText } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -173,6 +173,24 @@ const DashboardLayout = () => {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
 
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="My Guides" isActive={isActive('/dashboard/guides')}>
+                      <Link to="/dashboard/guides" className={cn(isActive('/dashboard/guides') && "text-primary")}>
+                        <BookOpen />
+                        <span>My Guides</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Create Guide" isActive={isActive('/dashboard/create-guide')}>
+                      <Link to="/dashboard/create-guide" className={cn(isActive('/dashboard/create-guide') && "text-primary")}>
+                        <FileText />
+                        <span>Create Guide</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+
                   {admin ?
                     <SidebarMenuItem>
                       <SidebarMenuButton asChild tooltip="Admin Panel" isActive={isActive('/admin')}>
@@ -219,6 +237,16 @@ const DashboardLayout = () => {
                     <Link to="/dashboard/create-flashcard">
                       <CreditCard className="mr-2 h-4 w-4" />
                       Create Flashcards
+                    </Link>
+                  </Button>
+                  <Button
+                    className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-red-500 hover:to-orange-500 shadow-md transition-all"
+                    size="sm"
+                    asChild
+                  >
+                    <Link to="/dashboard/create-guide">
+                      <BookOpen className="mr-2 h-4 w-4" />
+                      Create Guide
                     </Link>
                   </Button>
                 </div>
