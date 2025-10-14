@@ -33,6 +33,11 @@ import DashboardQuizListPage from "./pages/dashboard/QuizList";
 import DashboardCreateQuizPage from "./pages/dashboard/CreateQuiz";
 import QuizViewerPage from "./pages/QuizViewer";
 
+// Flashcard imports
+import FlashcardListPage from "./pages/FlashcardList";
+import CreateFlashcardPage from "./pages/CreateFlashcard";
+import FlashcardViewerPage from "./pages/FlashcardViewer";
+
 // Admin imports
 import AdminLayout from "./components/layouts/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -98,6 +103,8 @@ const App = () => (
                   <Route path="profile" element={<Profile />} />
                   <Route path="quizzes" element={<DashboardQuizListPage />} />
                   <Route path="create-quiz" element={<DashboardCreateQuizPage />} />
+                  <Route path="flashcards" element={<FlashcardListPage />} />
+                  <Route path="create-flashcard" element={<CreateFlashcardPage />} />
                 </Route>
 
                 {/* Course Routes */}
@@ -108,6 +115,9 @@ const App = () => (
                 {/* Quiz Routes */}
                 <Route path="/quiz/:slug" element={<QuizViewerPage />} />
                 <Route path="/quiz/id/:id" element={<QuizViewerPage />} />
+
+                {/* Flashcard Routes */}
+                <Route path="/dashboard/flashcard/:slug" element={<FlashcardViewerPage />} />
 
                 {/* Payment Routes */}
                 <Route path="/payment-success/:planId" element={<PaymentSuccess />} />

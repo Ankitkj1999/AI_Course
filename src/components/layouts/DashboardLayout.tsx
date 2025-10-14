@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Home, User, DollarSign, LogOut, Sparkles, Menu, Settings2Icon, Brain, List, Plus } from 'lucide-react';
+import { Home, User, DollarSign, LogOut, Sparkles, Menu, Settings2Icon, Brain, List, Plus, CreditCard, Layers } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -155,6 +155,24 @@ const DashboardLayout = () => {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
 
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="My Flashcards" isActive={isActive('/dashboard/flashcards')}>
+                      <Link to="/dashboard/flashcards" className={cn(isActive('/dashboard/flashcards') && "text-primary")}>
+                        <CreditCard />
+                        <span>My Flashcards</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Create Flashcards" isActive={isActive('/dashboard/create-flashcard')}>
+                      <Link to="/dashboard/create-flashcard" className={cn(isActive('/dashboard/create-flashcard') && "text-primary")}>
+                        <Layers />
+                        <span>Create Flashcards</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+
                   {admin ?
                     <SidebarMenuItem>
                       <SidebarMenuButton asChild tooltip="Admin Panel" isActive={isActive('/admin')}>
@@ -191,6 +209,16 @@ const DashboardLayout = () => {
                     <Link to="/dashboard/create-quiz">
                       <Brain className="mr-2 h-4 w-4" />
                       Create Quiz
+                    </Link>
+                  </Button>
+                  <Button
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-teal-500 hover:to-emerald-500 shadow-md transition-all"
+                    size="sm"
+                    asChild
+                  >
+                    <Link to="/dashboard/create-flashcard">
+                      <CreditCard className="mr-2 h-4 w-4" />
+                      Create Flashcards
                     </Link>
                   </Button>
                 </div>

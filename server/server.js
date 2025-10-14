@@ -197,6 +197,29 @@ const quizSchema = new mongoose.Schema({
     updatedAt: { type: Date, default: Date.now }
 });
 
+const flashcardSchema = new mongoose.Schema({
+    userId: { type: String, required: true, index: true },
+    keyword: { type: String, required: true },
+    title: { type: String, required: true },
+    slug: { type: String, unique: true, index: true },
+    content: { type: String, required: true }, // Flashcards in markdown format
+    cards: [{
+        front: { type: String, required: true },
+        back: { type: String, required: true },
+        difficulty: { type: String, enum: ['easy', 'medium', 'hard'], default: 'medium' },
+        tags: [String]
+    }],
+    tokens: {
+        prompt: { type: Number, default: 0 },
+        completion: { type: Number, default: 0 },
+        total: { type: Number, default: 0 }
+    },
+    viewCount: { type: Number, default: 0 },
+    lastVisitedAt: { type: Date, default: Date.now },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+});
+
 //MODEL
 const User = mongoose.model('User', userSchema);
 const Course = mongoose.model('Course', courseSchema);
@@ -208,6 +231,7 @@ const ExamSchema = mongoose.model('Exams', examSchema);
 const LangSchema = mongoose.model('Lang', langSchema);
 const BlogSchema = mongoose.model('Blog', blogSchema);
 const Quiz = mongoose.model('Quiz', quizSchema);
+const Flashcard = mongoose.model('Flashcard', flashcardSchema);
 
 //REQUEST
 
@@ -2955,6 +2979,245 @@ app.delete('/api/quiz/:slug', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to delete quiz'
+        });
+    }
+});
+
+//CREATE FLASHCARD
+app.post('/api/flashcard/create', async (req, res) => {
+    try {
+        const { userId, keyword, title } = req.body;
+
+        if (!userId || !keyword || !title) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required fields: userId, keyword, title'
+            });
+        }
+
+        // Generate flashcard content using AI
+        const safetySettings = [
+            {
+                category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+            {
+                category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+            {
+                category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+            {
+                category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+        ];
+
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
+
+        const prompt = `Create a comprehensive set of flashcards for the topic: "${keyword}". 
+        
+        Generate 15-20 flashcards that cover the key concepts, definitions, and important facts about this topic.
+        
+        Format your response as a JSON array where each flashcard has:
+        - "front": The question or term (keep it concise)
+        - "back": The answer or definition (detailed but clear)
+        - "difficulty": "easy", "medium", or "hard"
+        - "tags": Array of relevant tags for categorization
+        
+        Make sure the flashcards are educational, accurate, and cover different aspects of the topic.
+        
+        Example format:
+        [
+          {
+            "front": "What is photosynthesis?",
+            "back": "The process by which plants use sunlight, water, and carbon dioxide to produce glucose and oxygen.",
+            "difficulty": "medium",
+            "tags": ["biology", "plants", "energy"]
+          }
+        ]
+        
+        Return only the JSON array, no additional text.`;
+
+        const result = await model.generateContent(prompt);
+        const response = result.response;
+        const generatedText = response.text();
+
+        // Parse the generated flashcards
+        let cards = [];
+        try {
+            // Clean the response to extract JSON
+            const jsonMatch = generatedText.match(/\[[\s\S]*\]/);
+            if (jsonMatch) {
+                cards = JSON.parse(jsonMatch[0]);
+            } else {
+                throw new Error('No valid JSON found in response');
+            }
+        } catch (parseError) {
+            logger.error(`Flashcard parsing error: ${parseError.message}`);
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to parse generated flashcards'
+            });
+        }
+
+        // Generate unique slug
+        const slug = await generateUniqueSlug(title, Flashcard);
+
+        // Create flashcard set
+        const newFlashcard = new Flashcard({
+            userId,
+            keyword,
+            title,
+            slug,
+            content: generatedText,
+            cards,
+            tokens: {
+                prompt: result.response.usageMetadata?.promptTokenCount || 0,
+                completion: result.response.usageMetadata?.candidatesTokenCount || 0,
+                total: result.response.usageMetadata?.totalTokenCount || 0
+            }
+        });
+
+        await newFlashcard.save();
+
+        logger.info(`Flashcard set created: ${newFlashcard._id} with slug: ${slug}`);
+        res.json({
+            success: true,
+            message: 'Flashcard set created successfully',
+            flashcardId: newFlashcard._id,
+            slug: slug,
+            cards: cards
+        });
+
+    } catch (error) {
+        logger.error(`Flashcard creation error: ${error.message}`, { error: error.stack });
+        res.status(500).json({
+            success: false,
+            message: 'Failed to create flashcard set'
+        });
+    }
+});
+
+//GET USER FLASHCARDS
+app.get('/api/flashcards', async (req, res) => {
+    try {
+        const { userId, page = 1, limit = 10 } = req.query;
+
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                message: 'userId is required'
+            });
+        }
+
+        const skip = (page - 1) * limit;
+        const flashcards = await Flashcard.find({ userId })
+            .select('title keyword slug createdAt cards viewCount')
+            .sort({ createdAt: -1 })
+            .skip(parseInt(skip))
+            .limit(parseInt(limit));
+
+        const total = await Flashcard.countDocuments({ userId });
+
+        // Add card count to each flashcard
+        const flashcardsWithCount = flashcards.map(flashcard => ({
+            ...flashcard.toObject(),
+            cardCount: flashcard.cards.length
+        }));
+
+        res.json({
+            success: true,
+            flashcards: flashcardsWithCount,
+            pagination: {
+                currentPage: parseInt(page),
+                totalPages: Math.ceil(total / limit),
+                totalItems: total,
+                hasNext: page * limit < total,
+                hasPrev: page > 1
+            }
+        });
+
+    } catch (error) {
+        logger.error(`Get flashcards error: ${error.message}`, { error: error.stack });
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch flashcards'
+        });
+    }
+});
+
+//GET FLASHCARD BY SLUG
+app.get('/api/flashcard/:slug', async (req, res) => {
+    try {
+        const { slug } = req.params;
+        const flashcard = await Flashcard.findOne({ slug });
+
+        if (!flashcard) {
+            return res.status(404).json({
+                success: false,
+                message: 'Flashcard set not found'
+            });
+        }
+
+        // Update view count and last visited
+        flashcard.viewCount += 1;
+        flashcard.lastVisitedAt = new Date();
+        await flashcard.save();
+
+        logger.info(`Flashcard accessed by slug: ${slug}`);
+        res.json({
+            success: true,
+            flashcard: flashcard
+        });
+
+    } catch (error) {
+        logger.error(`Get flashcard by slug error: ${error.message}`, { error: error.stack, slug: req.params.slug });
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch flashcard set'
+        });
+    }
+});
+
+//DELETE FLASHCARD
+app.delete('/api/flashcard/:slug', async (req, res) => {
+    try {
+        const { slug } = req.params;
+        const { userId } = req.body;
+
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                message: 'userId is required'
+            });
+        }
+
+        const flashcard = await Flashcard.findOne({ slug, userId });
+
+        if (!flashcard) {
+            return res.status(404).json({
+                success: false,
+                message: 'Flashcard set not found or unauthorized'
+            });
+        }
+
+        await Flashcard.deleteOne({ _id: flashcard._id });
+
+        logger.info(`Flashcard deleted: ${flashcard._id} (${slug})`);
+
+        res.json({
+            success: true,
+            message: 'Flashcard set deleted successfully'
+        });
+
+    } catch (error) {
+        logger.error(`Delete flashcard error: ${error.message}`, { error: error.stack, slug: req.params.slug });
+        res.status(500).json({
+            success: false,
+            message: 'Failed to delete flashcard set'
         });
     }
 });
