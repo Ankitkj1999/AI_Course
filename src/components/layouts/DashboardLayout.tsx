@@ -17,10 +17,11 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Home, User, DollarSign, LogOut, Sparkles, Menu, Settings2Icon, Brain, List, Plus, CreditCard, Layers, BookOpen, FileText } from 'lucide-react';
+import { Home, User, DollarSign, LogOut, Sparkles, Menu, Settings2Icon, Brain, List, Plus, CreditCard, Layers, BookOpen, FileText, Moon, Sun } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useTheme } from '@/contexts/ThemeContext';
 import { appName, serverURL, websiteURL } from '@/constants';
 import Logo from '../../res/logo.svg';
 import { DownloadIcon } from '@radix-ui/react-icons';
@@ -32,6 +33,7 @@ const DashboardLayout = () => {
   const location = useLocation();
   const [installPrompt, setInstallPrompt] = useState(null);
   const { toast } = useToast();
+  const { theme, toggleTheme } = useTheme();
   // Helper to check active route
   const isActive = (path: string) => location.pathname === path;
   const [admin, setAdmin] = useState(false);
@@ -98,32 +100,15 @@ const DashboardLayout = () => {
           </SidebarHeader>
 
           <SidebarContent>
+            {/* Main Navigation */}
             <SidebarGroup>
               <SidebarGroupContent>
                 <SidebarMenu>
                   <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip="Home" isActive={isActive('/dashboard')}>
+                    <SidebarMenuButton asChild tooltip="Dashboard Home" isActive={isActive('/dashboard')}>
                       <Link to="/dashboard" className={cn(isActive('/dashboard') && "text-primary")}>
                         <Home />
-                        <span>Home</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip="Profile" isActive={isActive('/dashboard/profile')}>
-                      <Link to="/dashboard/profile" className={cn(isActive('/dashboard/profile') && "text-primary")}>
-                        <User />
-                        <span>Profile</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip="Pricing" isActive={isActive('/dashboard/pricing')}>
-                      <Link to="/dashboard/pricing" className={cn(isActive('/dashboard/pricing') && "text-primary")}>
-                        <DollarSign />
-                        <span>Pricing</span>
+                        <span>Dashboard</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -136,21 +121,24 @@ const DashboardLayout = () => {
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
 
+            {/* Learning Content */}
+            <SidebarGroup>
+              <div className="px-3 py-2">
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Learning Content
+                </h4>
+              </div>
+              <SidebarGroupContent>
+                <SidebarMenu>
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild tooltip="My Quizzes" isActive={isActive('/dashboard/quizzes')}>
                       <Link to="/dashboard/quizzes" className={cn(isActive('/dashboard/quizzes') && "text-primary")}>
-                        <List />
-                        <span>My Quizzes</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip="Create Quiz" isActive={isActive('/dashboard/create-quiz')}>
-                      <Link to="/dashboard/create-quiz" className={cn(isActive('/dashboard/create-quiz') && "text-primary")}>
                         <Brain />
-                        <span>Create Quiz</span>
+                        <span>My Quizzes</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -165,15 +153,6 @@ const DashboardLayout = () => {
                   </SidebarMenuItem>
 
                   <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip="Create Flashcards" isActive={isActive('/dashboard/create-flashcard')}>
-                      <Link to="/dashboard/create-flashcard" className={cn(isActive('/dashboard/create-flashcard') && "text-primary")}>
-                        <Layers />
-                        <span>Create Flashcards</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-
-                  <SidebarMenuItem>
                     <SidebarMenuButton asChild tooltip="My Guides" isActive={isActive('/dashboard/guides')}>
                       <Link to="/dashboard/guides" className={cn(isActive('/dashboard/guides') && "text-primary")}>
                         <BookOpen />
@@ -181,44 +160,19 @@ const DashboardLayout = () => {
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip="Create Guide" isActive={isActive('/dashboard/create-guide')}>
-                      <Link to="/dashboard/create-guide" className={cn(isActive('/dashboard/create-guide') && "text-primary")}>
-                        <FileText />
-                        <span>Create Guide</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-
-                  {admin ?
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild tooltip="Admin Panel" isActive={isActive('/admin')}>
-                        <Link to="/admin" className={cn(isActive('/admin') && "text-primary")}>
-                          <Settings2Icon />
-                          <span>Admin Panel</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    :
-                    <></>}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
 
+            {/* Quick Create Actions */}
             <SidebarGroup>
+              <div className="px-3 py-2">
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Quick Create
+                </h4>
+              </div>
               <SidebarGroupContent>
                 <div className="px-2 space-y-2">
-                  <Button
-                    className="w-full bg-gradient-to-r from-primary to-indigo-500 hover:from-indigo-500 hover:to-primary shadow-md transition-all"
-                    size="sm"
-                    asChild
-                  >
-                    <Link to="/dashboard/generate-course">
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      Generate Course
-                    </Link>
-                  </Button>
                   <Button
                     className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-pink-500 hover:to-purple-500 shadow-md transition-all"
                     size="sm"
@@ -235,7 +189,7 @@ const DashboardLayout = () => {
                     asChild
                   >
                     <Link to="/dashboard/create-flashcard">
-                      <CreditCard className="mr-2 h-4 w-4" />
+                      <Layers className="mr-2 h-4 w-4" />
                       Create Flashcards
                     </Link>
                   </Button>
@@ -245,66 +199,105 @@ const DashboardLayout = () => {
                     asChild
                   >
                     <Link to="/dashboard/create-guide">
-                      <BookOpen className="mr-2 h-4 w-4" />
+                      <FileText className="mr-2 h-4 w-4" />
                       Create Guide
                     </Link>
                   </Button>
                 </div>
               </SidebarGroupContent>
             </SidebarGroup>
+
+            {/* Account & Settings */}
+            <SidebarGroup>
+              <div className="px-3 py-2">
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Account
+                </h4>
+              </div>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Profile Settings" isActive={isActive('/dashboard/profile')}>
+                      <Link to="/dashboard/profile" className={cn(isActive('/dashboard/profile') && "text-primary")}>
+                        <User />
+                        <span>Profile</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Pricing Plans" isActive={isActive('/dashboard/pricing')}>
+                      <Link to="/dashboard/pricing" className={cn(isActive('/dashboard/pricing') && "text-primary")}>
+                        <DollarSign />
+                        <span>Pricing</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+
+                  {admin && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild tooltip="Admin Panel" isActive={isActive('/admin')}>
+                        <Link to="/admin" className={cn(isActive('/admin') && "text-primary")}>
+                          <Settings2Icon />
+                          <span>Admin Panel</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
           </SidebarContent>
 
-          <SidebarFooter className="border-t border-border/40">
-            <SidebarMenu>
+          <SidebarFooter className="border-t border-border/40 p-4">
+            <div className="space-y-2">
+              {/* Install App Button */}
               {installPrompt && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Theme">
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        onClick={handleInstallClick}
-                        variant="ghost"
-                        size="icon"
-                      >
-                        <DownloadIcon className='h-5 w-5' />
-                        <span className='sr-only'>Desktop App</span>
-                      </Button>
-                      <span>Desktop App</span>
-                    </div>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )
-              }
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Theme">
-                  <div className="flex items-center space-x-2">
-                    <ThemeToggle />
-                    <span>Toggle Theme</span>
-                  </div>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Logout">
-                  <Link onClick={Logout} className="text-muted-foreground hover:text-destructive transition-colors">
-                    <LogOut />
-                    <span>Logout</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
+                <Button
+                  onClick={handleInstallClick}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                >
+                  <DownloadIcon className="mr-2 h-4 w-4" />
+                  Install Desktop App
+                </Button>
+              )}
+
+              {/* Theme Toggle Button */}
+              <ThemeToggle
+                variant="outline"
+                showLabel={true}
+                className="w-full hover:bg-accent/50 transition-colors"
+              />
+
+              {/* Logout Button */}
+              <Button
+                onClick={Logout}
+                variant="outline"
+                size="sm"
+                className="w-full justify-start text-muted-foreground hover:text-destructive hover:border-destructive/50 transition-colors"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </Button>
+            </div>
           </SidebarFooter>
           <SidebarRail />
         </Sidebar>
 
         <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
           {isMobile && (
-            <div className="flex items-center mb-6 bg-background/80 backdrop-blur-sm rounded-lg p-2 shadow-sm">
-              <SidebarTrigger className="mr-2">
+            <div className="flex items-center mb-6 bg-background/80 backdrop-blur-sm rounded-lg p-3 shadow-sm">
+              <SidebarTrigger className="mr-3">
                 <Menu className="h-6 w-6" />
               </SidebarTrigger>
-              <h1 className="text-xl font-semibold bg-gradient-to-r from-primary to-indigo-500 text-gradient">{appName}</h1>
-              <div className="ml-auto">
-                <ThemeToggle />
-              </div>
+              <h1 className="text-xl font-semibold bg-gradient-to-r from-primary to-indigo-500 text-gradient flex-1">{appName}</h1>
+              <ThemeToggle
+                variant="ghost"
+                size="sm"
+                className="ml-2 hover:bg-accent/50"
+              />
             </div>
           )}
           <Outlet />
