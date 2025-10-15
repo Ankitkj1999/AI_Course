@@ -9,7 +9,7 @@ import {
   ChartLegend,
   ChartLegendContent
 } from '@/components/ui/chart';
-import { Users, Play, RotateCcw, DollarSign } from 'lucide-react';
+import { Users, Play, RotateCcw, DollarSign, TrendingUp, BookOpen, CreditCard, Activity } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { serverURL } from '@/constants';
@@ -60,23 +60,32 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Admin Panel</h1>
+      {/* Header Section */}
+      <div className="flex flex-col space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+          Admin Dashboard
+        </h1>
+        <p className="text-muted-foreground">
+          Overview of your platform's performance and key metrics
+        </p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {isLoading ? (
           // Loading skeleton for stats cards
           <>
             {[1, 2, 3, 4].map((i) => (
-              <Card key={i} className="border-border/50">
-                <CardHeader className="pb-2">
-                  <Skeleton className="h-5 w-24" />
+              <Card key={i} className="border-border/50 hover:shadow-lg transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-5 w-24" />
+                    <Skeleton className="h-8 w-8 rounded-lg" />
+                  </div>
                 </CardHeader>
-                <CardContent className="flex items-center justify-between">
-                  <Skeleton className="h-8 w-8 rounded-full" />
-                  <Skeleton className="h-8 w-16" />
+                <CardContent>
+                  <Skeleton className="h-8 w-16 mb-2" />
+                  <Skeleton className="h-4 w-20" />
                 </CardContent>
               </Card>
             ))}
@@ -84,58 +93,93 @@ const AdminDashboard = () => {
         ) : (
           // Actual cards content
           <>
-            <Card className="border-border/50">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Users</CardTitle>
+            <Card className="border-border/50 hover:shadow-lg transition-all duration-200 hover:border-primary/20">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Users</CardTitle>
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                    <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="flex items-center justify-between">
-                <Users className="h-8 w-8" />
-                <span className="text-3xl font-bold">{data.users}</span>
+              <CardContent>
+                <div className="text-3xl font-bold text-foreground">{data.users?.toLocaleString()}</div>
+                <div className="flex items-center mt-2 text-sm text-muted-foreground">
+                  <TrendingUp className="h-4 w-4 mr-1 text-green-500" />
+                  <span>Active platform users</span>
+                </div>
               </CardContent>
             </Card>
 
-            <Card className="border-border/50">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Courses</CardTitle>
+            <Card className="border-border/50 hover:shadow-lg transition-all duration-200 hover:border-primary/20">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Courses</CardTitle>
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+                    <BookOpen className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="flex items-center justify-between">
-                <Play className="h-8 w-8" />
-                <span className="text-3xl font-bold">{data.courses}</span>
+              <CardContent>
+                <div className="text-3xl font-bold text-foreground">{data.courses?.toLocaleString()}</div>
+                <div className="flex items-center mt-2 text-sm text-muted-foreground">
+                  <Activity className="h-4 w-4 mr-1 text-purple-500" />
+                  <span>Learning content created</span>
+                </div>
               </CardContent>
             </Card>
 
-            <Card className="border-border/50">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Recurring Revenue</CardTitle>
+            <Card className="border-border/50 hover:shadow-lg transition-all duration-200 hover:border-primary/20">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Revenue</CardTitle>
+                  <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                    <RotateCcw className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="flex items-center justify-between">
-                <RotateCcw className="h-8 w-8" />
-                <span className="text-3xl font-bold">${data.sum}</span>
+              <CardContent>
+                <div className="text-3xl font-bold text-foreground">${data.sum?.toLocaleString()}</div>
+                <div className="flex items-center mt-2 text-sm text-muted-foreground">
+                  <TrendingUp className="h-4 w-4 mr-1 text-green-500" />
+                  <span>Recurring subscriptions</span>
+                </div>
               </CardContent>
             </Card>
 
-            <Card className="border-border/50">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Total Revenue</CardTitle>
+            <Card className="border-border/50 hover:shadow-lg transition-all duration-200 hover:border-primary/20">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
+                  <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
+                    <DollarSign className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="flex items-center justify-between">
-                <DollarSign className="h-8 w-8" />
-                <span className="text-3xl font-bold">${data.total}</span>
+              <CardContent>
+                <div className="text-3xl font-bold text-foreground">${data.total?.toLocaleString()}</div>
+                <div className="flex items-center mt-2 text-sm text-muted-foreground">
+                  <CreditCard className="h-4 w-4 mr-1 text-orange-500" />
+                  <span>All-time earnings</span>
+                </div>
               </CardContent>
             </Card>
           </>
         )}
       </div>
 
-      {/* Charts */}
+      {/* Analytics Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {isLoading ? (
           // Loading skeleton for charts
           <>
             {[1, 2].map((i) => (
-              <Card key={i} className="border-border/50">
-                <CardHeader>
-                  <Skeleton className="h-6 w-32" />
+              <Card key={i} className="border-border/50 hover:shadow-lg transition-shadow">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-6 w-32" />
+                    <Skeleton className="h-4 w-20" />
+                  </div>
                 </CardHeader>
                 <CardContent className="h-80">
                   <div className="flex items-center justify-center h-full">
@@ -144,13 +188,13 @@ const AdminDashboard = () => {
                       <Skeleton className="w-20 h-20 rounded-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
                     </div>
                   </div>
-                  <div className="flex justify-center mt-4 space-x-6">
+                  <div className="flex justify-center mt-6 space-x-6">
                     <div className="flex items-center">
-                      <Skeleton className="h-3 w-3 mr-2" />
+                      <Skeleton className="h-3 w-3 mr-2 rounded-full" />
                       <Skeleton className="h-4 w-16" />
                     </div>
                     <div className="flex items-center">
-                      <Skeleton className="h-3 w-3 mr-2" />
+                      <Skeleton className="h-3 w-3 mr-2 rounded-full" />
                       <Skeleton className="h-4 w-16" />
                     </div>
                   </div>
@@ -160,9 +204,15 @@ const AdminDashboard = () => {
           </>
         ) : (
           <>
-            <Card className="border-border/50">
-              <CardHeader>
-                <CardTitle>Users</CardTitle>
+            <Card className="border-border/50 hover:shadow-lg transition-all duration-200">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xl font-semibold">User Distribution</CardTitle>
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <Users className="h-4 w-4 mr-1" />
+                    <span>{data.users} total</span>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="h-80">
                 <ChartContainer config={userChartConfig}>
@@ -171,14 +221,19 @@ const AdminDashboard = () => {
                       data={usersPieData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={1}
+                      innerRadius={70}
+                      outerRadius={110}
+                      paddingAngle={2}
                       dataKey="value"
                       nameKey="name"
                     >
                       {usersPieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} stroke="var(--border)" />
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={index === 0 ? '#3b82f6' : '#10b981'}
+                          stroke="var(--background)"
+                          strokeWidth={2}
+                        />
                       ))}
                     </Pie>
                     <ChartTooltip
@@ -186,22 +241,34 @@ const AdminDashboard = () => {
                     />
                   </PieChart>
                 </ChartContainer>
-                <div className="flex justify-center mt-4 space-x-6">
+                <div className="flex justify-center mt-6 space-x-8">
                   <div className="flex items-center">
-                    <div className="h-3 w-3 bg-gray-700 mr-2" />
-                    <span>Paid - {usersPieData[1].value}</span>
+                    <div className="h-3 w-3 bg-blue-500 rounded-full mr-3" />
+                    <div className="text-center">
+                      <div className="font-semibold text-foreground">{usersPieData[0].value}</div>
+                      <div className="text-sm text-muted-foreground">Free Users</div>
+                    </div>
                   </div>
                   <div className="flex items-center">
-                    <div className="h-3 w-3 bg-gray-100 border border-border mr-2" />
-                    <span>Free - {usersPieData[0].value}</span>
+                    <div className="h-3 w-3 bg-green-500 rounded-full mr-3" />
+                    <div className="text-center">
+                      <div className="font-semibold text-foreground">{usersPieData[1].value}</div>
+                      <div className="text-sm text-muted-foreground">Paid Users</div>
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-border/50">
-              <CardHeader>
-                <CardTitle>Courses</CardTitle>
+            <Card className="border-border/50 hover:shadow-lg transition-all duration-200">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xl font-semibold">Course Types</CardTitle>
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <BookOpen className="h-4 w-4 mr-1" />
+                    <span>{data.courses} total</span>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="h-80">
                 <ChartContainer config={courseChartConfig}>
@@ -210,14 +277,19 @@ const AdminDashboard = () => {
                       data={coursesPieData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={1}
+                      innerRadius={70}
+                      outerRadius={110}
+                      paddingAngle={2}
                       dataKey="value"
                       nameKey="name"
                     >
                       {coursesPieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} stroke="var(--border)" />
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={index === 0 ? '#8b5cf6' : '#f59e0b'}
+                          stroke="var(--background)"
+                          strokeWidth={2}
+                        />
                       ))}
                     </Pie>
                     <ChartTooltip
@@ -225,14 +297,20 @@ const AdminDashboard = () => {
                     />
                   </PieChart>
                 </ChartContainer>
-                <div className="flex justify-center mt-4 space-x-6">
+                <div className="flex justify-center mt-6 space-x-8">
                   <div className="flex items-center">
-                    <div className="h-3 w-3 bg-gray-700 mr-2" />
-                    <span>Text - {coursesPieData[0].value}</span>
+                    <div className="h-3 w-3 bg-purple-500 rounded-full mr-3" />
+                    <div className="text-center">
+                      <div className="font-semibold text-foreground">{coursesPieData[0].value}</div>
+                      <div className="text-sm text-muted-foreground">Text Courses</div>
+                    </div>
                   </div>
                   <div className="flex items-center">
-                    <div className="h-3 w-3 bg-gray-100 border border-border mr-2" />
-                    <span>Video - {coursesPieData[1].value}</span>
+                    <div className="h-3 w-3 bg-amber-500 rounded-full mr-3" />
+                    <div className="text-center">
+                      <div className="font-semibold text-foreground">{coursesPieData[1].value}</div>
+                      <div className="text-sm text-muted-foreground">Video Courses</div>
+                    </div>
                   </div>
                 </div>
               </CardContent>
