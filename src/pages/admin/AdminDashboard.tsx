@@ -59,7 +59,7 @@ const AdminDashboard = () => {
   }, []);
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-6 sm:space-y-8 animate-fade-in">
       {/* Header Section */}
       <div className="flex flex-col space-y-2">
         <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
@@ -71,7 +71,7 @@ const AdminDashboard = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {isLoading ? (
           // Loading skeleton for stats cards
           <>
@@ -169,7 +169,7 @@ const AdminDashboard = () => {
       </div>
 
       {/* Analytics Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10 lg:gap-6">
         {isLoading ? (
           // Loading skeleton for charts
           <>
@@ -181,14 +181,14 @@ const AdminDashboard = () => {
                     <Skeleton className="h-4 w-20" />
                   </div>
                 </CardHeader>
-                <CardContent className="h-80">
+                <CardContent className="h-64 sm:h-72 md:h-80">
                   <div className="flex items-center justify-center h-full">
-                    <div className="relative w-40 h-40">
-                      <Skeleton className="w-40 h-40 rounded-full" />
-                      <Skeleton className="w-20 h-20 rounded-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+                    <div className="relative w-32 h-32 sm:w-40 sm:h-40">
+                      <Skeleton className="w-32 h-32 sm:w-40 sm:h-40 rounded-full" />
+                      <Skeleton className="w-16 h-16 sm:w-20 sm:h-20 rounded-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
                     </div>
                   </div>
-                  <div className="flex justify-center mt-6 space-x-6">
+                  <div className="flex flex-col sm:flex-row justify-center items-center mt-4 sm:mt-6 space-y-4 sm:space-y-0 sm:space-x-6">
                     <div className="flex items-center">
                       <Skeleton className="h-3 w-3 mr-2 rounded-full" />
                       <Skeleton className="h-4 w-16" />
@@ -204,54 +204,57 @@ const AdminDashboard = () => {
           </>
         ) : (
           <>
-            <Card className="border-border/50 hover:shadow-lg transition-all duration-200">
-              <CardHeader className="pb-4">
+            <Card className="border-border/50 hover:shadow-lg transition-all duration-200 p-1 sm:p-0">
+              <CardHeader className="pb-4 px-4 sm:px-6">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-xl font-semibold">User Distribution</CardTitle>
+                  <CardTitle className="text-lg sm:text-xl font-semibold">User Distribution</CardTitle>
                   <div className="flex items-center text-sm text-muted-foreground">
                     <Users className="h-4 w-4 mr-1" />
-                    <span>{data.users} total</span>
+                    <span className="hidden sm:inline">{data.users} total</span>
+                    <span className="sm:hidden">{data.users}</span>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="h-80">
-                <ChartContainer config={userChartConfig}>
-                  <PieChart>
-                    <Pie
-                      data={usersPieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={70}
-                      outerRadius={110}
-                      paddingAngle={2}
-                      dataKey="value"
-                      nameKey="name"
-                    >
-                      {usersPieData.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={index === 0 ? '#3b82f6' : '#10b981'}
-                          stroke="var(--background)"
-                          strokeWidth={2}
-                        />
-                      ))}
-                    </Pie>
-                    <ChartTooltip
-                      content={<ChartTooltipContent />}
-                    />
-                  </PieChart>
+              <CardContent className="h-64 sm:h-72 md:h-80">
+                <ChartContainer config={userChartConfig} className="h-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={usersPieData}
+                        cx="50%"
+                        cy="45%"
+                        innerRadius="35%"
+                        outerRadius="65%"
+                        paddingAngle={2}
+                        dataKey="value"
+                        nameKey="name"
+                      >
+                        {usersPieData.map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={index === 0 ? '#3b82f6' : '#10b981'}
+                            stroke="var(--background)"
+                            strokeWidth={2}
+                          />
+                        ))}
+                      </Pie>
+                      <ChartTooltip
+                        content={<ChartTooltipContent />}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </ChartContainer>
-                <div className="flex justify-center mt-6 space-x-8">
+                <div className="flex flex-col sm:flex-row justify-center items-center mt-4 sm:mt-6 space-y-4 sm:space-y-0 sm:space-x-8">
                   <div className="flex items-center">
                     <div className="h-3 w-3 bg-blue-500 rounded-full mr-3" />
-                    <div className="text-center">
+                    <div className="text-center sm:text-left">
                       <div className="font-semibold text-foreground">{usersPieData[0].value}</div>
                       <div className="text-sm text-muted-foreground">Free Users</div>
                     </div>
                   </div>
                   <div className="flex items-center">
                     <div className="h-3 w-3 bg-green-500 rounded-full mr-3" />
-                    <div className="text-center">
+                    <div className="text-center sm:text-left">
                       <div className="font-semibold text-foreground">{usersPieData[1].value}</div>
                       <div className="text-sm text-muted-foreground">Paid Users</div>
                     </div>
@@ -270,44 +273,46 @@ const AdminDashboard = () => {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="h-80">
-                <ChartContainer config={courseChartConfig}>
-                  <PieChart>
-                    <Pie
-                      data={coursesPieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={70}
-                      outerRadius={110}
-                      paddingAngle={2}
-                      dataKey="value"
-                      nameKey="name"
-                    >
-                      {coursesPieData.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={index === 0 ? '#8b5cf6' : '#f59e0b'}
-                          stroke="var(--background)"
-                          strokeWidth={2}
-                        />
-                      ))}
-                    </Pie>
-                    <ChartTooltip
-                      content={<ChartTooltipContent />}
-                    />
-                  </PieChart>
+              <CardContent className="h-64 sm:h-72 md:h-80">
+                <ChartContainer config={courseChartConfig} className="h-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={coursesPieData}
+                        cx="50%"
+                        cy="45%"
+                        innerRadius="35%"
+                        outerRadius="65%"
+                        paddingAngle={2}
+                        dataKey="value"
+                        nameKey="name"
+                      >
+                        {coursesPieData.map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={index === 0 ? '#8b5cf6' : '#f59e0b'}
+                            stroke="var(--background)"
+                            strokeWidth={2}
+                          />
+                        ))}
+                      </Pie>
+                      <ChartTooltip
+                        content={<ChartTooltipContent />}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </ChartContainer>
-                <div className="flex justify-center mt-6 space-x-8">
+                <div className="flex flex-col sm:flex-row justify-center items-center mt-4 sm:mt-6 space-y-4 sm:space-y-0 sm:space-x-8">
                   <div className="flex items-center">
                     <div className="h-3 w-3 bg-purple-500 rounded-full mr-3" />
-                    <div className="text-center">
+                    <div className="text-center sm:text-left">
                       <div className="font-semibold text-foreground">{coursesPieData[0].value}</div>
                       <div className="text-sm text-muted-foreground">Text Courses</div>
                     </div>
                   </div>
                   <div className="flex items-center">
                     <div className="h-3 w-3 bg-amber-500 rounded-full mr-3" />
-                    <div className="text-center">
+                    <div className="text-center sm:text-left">
                       <div className="font-semibold text-foreground">{coursesPieData[1].value}</div>
                       <div className="text-sm text-muted-foreground">Video Courses</div>
                     </div>
