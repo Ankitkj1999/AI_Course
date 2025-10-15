@@ -263,13 +263,14 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="border-border/50 hover:shadow-lg transition-all duration-200">
-              <CardHeader className="pb-4">
+            <Card className="border-border/50 hover:shadow-lg transition-all duration-200 p-1 sm:p-0">
+              <CardHeader className="pb-4 px-4 sm:px-6">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-xl font-semibold">Course Types</CardTitle>
+                  <CardTitle className="text-lg sm:text-xl font-semibold">Course Types</CardTitle>
                   <div className="flex items-center text-sm text-muted-foreground">
                     <BookOpen className="h-4 w-4 mr-1" />
-                    <span>{data.courses} total</span>
+                    <span className="hidden sm:inline">{data.courses} total</span>
+                    <span className="sm:hidden">{data.courses}</span>
                   </div>
                 </div>
               </CardHeader>
