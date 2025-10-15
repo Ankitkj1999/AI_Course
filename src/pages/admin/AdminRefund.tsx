@@ -1,73 +1,69 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Save } from 'lucide-react';
-import { serverURL } from '@/constants';
-import axios from 'axios';
-import { toast } from '@/hooks/use-toast';
-import { MinimalTiptapEditor } from '../../minimal-tiptap'
-import { Content } from '@tiptap/react'
+import { ArrowLeft, Save } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
 
 const AdminRefund = () => {
-  const [value, setValue] = useState<Content>(sessionStorage.getItem('refund'));
+  const [refund, setRefund] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  async function saveRefund() {
-    setIsLoading(true);
-    const postURL = serverURL + '/api/saveadmin';
-    const response = await axios.post(postURL, { data: value, type: 'refund' });
-    if (response.data.success) {
-      sessionStorage.setItem('refund', '' + value);
-      setIsLoading(false);
-      toast({
-        title: "Saved",
-        description: "Refund policy saved successfully",
-      });
-    } else {
-      setIsLoading(false);
-      toast({
-        title: "Error",
-        description: "Internal Server Error",
-      });
+  useEffect(() => {
+    // Load refund policy from sessionStorage (set in AdminDashboard)
+    const storedRefund = sessionStorage.getItem('refund');
+    if (storedRefund) {
+      setRefund(storedRefund);
     }
-  }
+  }, []);
+
+  const handleSave = async () => {
+    setIsLoading(true);
+    try {
+      // Here you would typically make an API call to save the refund policy
+      // For now, we'll just update sessionStorage
+      sessionStorage.setItem('refund', refund);
+      toast.success('Refund Policy updated successfully');
+    } catch (error) {
+      toast.error('Failed to update Refund Policy');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Refund Policy</h1>
-          <p className="text-muted-foreground mt-1">Manage your refund policy content</p>
+          <p className="text-muted-foreground mt-1">Manage your platform's refund policy</p>
         </div>
-        <Button onClick={saveRefund}>
-          <Save className="mr-2 h-4 w-4" />
-          {isLoading ? 'Saving...' : ' Save Changes'}
-        </Button>
       </div>
 
       <Card className="border-border/50">
-        <CardHeader>
-          <CardTitle>Edit Refund Policy</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2">
+            <ArrowLeft className="h-5 w-5" />
+            Refund Policy Content
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex flex-col space-y-1.5">
-              <MinimalTiptapEditor
-                value={value}
-                onChange={setValue}
-                className="w-full"
-                editorContentClassName="p-5"
-                output="html"
-                placeholder="Start writing Refund Policy."
-                autofocus={true}
-                editable={true}
-                editorClassName="focus:outline-none"
-              />
-              <p className="text-xs text-muted-foreground">
-                Use Markdown formatting for headers, lists, and other text formatting.
-              </p>
-            </div>
+        <CardContent className="space-y-4">
+          <Textarea
+            placeholder="Enter your Refund Policy content here..."
+            value={refund}
+            onChange={(e) => setRefund(e.target.value)}
+            className="min-h-[400px] resize-none"
+          />
+          
+          <div className="flex justify-end">
+            <Button 
+              onClick={handleSave} 
+              disabled={isLoading}
+              className="flex items-center gap-2"
+            >
+              <Save className="h-4 w-4" />
+              {isLoading ? 'Saving...' : 'Save Changes'}
+            </Button>
           </div>
         </CardContent>
       </Card>

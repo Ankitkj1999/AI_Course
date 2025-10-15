@@ -1,42 +1,55 @@
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { UserPlus, Search, MoreVertical, Edit, Trash } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { serverURL } from '@/constants';
-import axios from 'axios';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Pagination, PaginationInfo } from '@/components/ui/pagination';
+import { useAdminPagination } from '@/hooks/useAdminPagination';
+
+interface User {
+  _id: string;
+  mName: string;
+  email: string;
+  type: string;
+}
 
 const AdminUsers = () => {
-  const [data, setData] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const {
+    data: users,
+    pagination,
+    loading,
+    error,
+    searchQuery,
+    setSearchQuery,
+    currentPage,
+    setCurrentPage
+  } = useAdminPagination<User>({
+    endpoint: 'getusers',
+    initialLimit: 10
+  });
 
-  // Filtered data using memoization for better performance
-  const filteredData = useMemo(() => {
-    const query = searchQuery.toLowerCase().trim();
-    return data.filter((user) => {
-      const nameMatch = user.mName?.toLowerCase().includes(query);
-      const emailMatch = user.email?.toLowerCase().includes(query);
-      const typeDisplay = user.type !== 'free' ? 'paid' : 'free';
-      const typeMatch = typeDisplay.includes(query);
-      return nameMatch || emailMatch || typeMatch;
-    });
-  }, [data, searchQuery]);
-
-  useEffect(() => {
-    async function dashboardData() {
-      const postURL = serverURL + `/api/getusers`;
-      const response = await axios.get(postURL);
-      setData(response.data);
-      setIsLoading(false);
-    }
-    dashboardData();
-  }, []);
+  if (error) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Users</h1>
+            <p className="text-muted-foreground mt-1">Manage your user accounts</p>
+          </div>
+        </div>
+        <Card className="border-border/50">
+          <CardContent className="py-8">
+            <div className="text-center text-red-500">
+              Error loading users: {error}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -72,56 +85,25 @@ const AdminUsers = () => {
                 <TableHead>Type</TableHead>
               </TableRow>
             </TableHeader>
-            {isLoading ?
+            {loading ? (
               <TableBody>
-                <TableRow>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                </TableRow>
+                {[...Array(5)].map((_, index) => (
+                  <TableRow key={index}>
+                    <TableCell>
+                      <Skeleton className="h-5 w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-32" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-16" />
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
-              :
+            ) : (
               <TableBody>
-                {filteredData.map((user) => (
+                {users.map((user) => (
                   <TableRow key={user._id}>
                     <TableCell className="font-medium">{user.mName}</TableCell>
                     <TableCell>{user.email}</TableCell>
@@ -133,19 +115,35 @@ const AdminUsers = () => {
                   </TableRow>
                 ))}
 
-                {filteredData.length === 0 && (
+                {users.length === 0 && !loading && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
+                    <TableCell colSpan={3} className="text-center py-8">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <Search className="h-8 w-8 mb-2" />
-                        <p>No users match your search criteria</p>
+                        <p>No users found</p>
                       </div>
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
-            }
+            )}
           </Table>
+
+          {pagination && pagination.totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+              <PaginationInfo
+                currentPage={pagination.currentPage}
+                totalPages={pagination.totalPages}
+                totalItems={pagination.totalItems}
+                itemsPerPage={pagination.itemsPerPage}
+              />
+              <Pagination
+                currentPage={currentPage}
+                totalPages={pagination.totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

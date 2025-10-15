@@ -55,7 +55,7 @@ import AdminTerms from "./pages/admin/AdminTerms";
 import AdminPrivacy from "./pages/admin/AdminPrivacy";
 import AdminCancellation from "./pages/admin/AdminCancellation";
 import AdminRefund from "./pages/admin/AdminRefund";
-import AdminSubscriptionBilling from "./pages/admin/AdminSubscriptionBilling";
+import AdminBilling from "./pages/admin/AdminBilling";
 import AdminCreateBlog from "./pages/admin/AdminCreateBlog";
 import SubscriptionBillingPolicy from "./pages/SubscriptionBillingPolicy";
 import RefundPolicy from "./pages/RefundPolicy";
@@ -157,7 +157,7 @@ const App = () => (
                   <Route path="privacy" element={<AdminPrivacy />} />
                   <Route path="cancellation" element={<AdminCancellation />} />
                   <Route path="refund" element={<AdminRefund />} />
-                  <Route path="subscription-billing" element={<AdminSubscriptionBilling />} />
+                  <Route path="subscription-billing" element={<AdminBilling />} />
                   <Route path="create-blog" element={<AdminCreateBlog />} />
                   <Route path="blogs" element={<AdminBlogs />} />
                 </Route>

@@ -1,31 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Shield, Save } from 'lucide-react';
+import { CreditCard, Save } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 
-const AdminPrivacy = () => {
-  const [privacy, setPrivacy] = useState('');
+const AdminBilling = () => {
+  const [billing, setBilling] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    // Load privacy policy from sessionStorage (set in AdminDashboard)
-    const storedPrivacy = sessionStorage.getItem('privacy');
-    if (storedPrivacy) {
-      setPrivacy(storedPrivacy);
+    // Load billing policy from sessionStorage (set in AdminDashboard)
+    const storedBilling = sessionStorage.getItem('billing');
+    if (storedBilling) {
+      setBilling(storedBilling);
     }
   }, []);
 
   const handleSave = async () => {
     setIsLoading(true);
     try {
-      // Here you would typically make an API call to save the privacy policy
+      // Here you would typically make an API call to save the billing policy
       // For now, we'll just update sessionStorage
-      sessionStorage.setItem('privacy', privacy);
-      toast.success('Privacy Policy updated successfully');
+      sessionStorage.setItem('billing', billing);
+      toast.success('Billing Policy updated successfully');
     } catch (error) {
-      toast.error('Failed to update Privacy Policy');
+      toast.error('Failed to update Billing Policy');
     } finally {
       setIsLoading(false);
     }
@@ -35,23 +35,23 @@ const AdminPrivacy = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Privacy Policy</h1>
-          <p className="text-muted-foreground mt-1">Manage your platform's privacy policy</p>
+          <h1 className="text-3xl font-bold tracking-tight">Billing Policy</h1>
+          <p className="text-muted-foreground mt-1">Manage your platform's billing and subscription policy</p>
         </div>
       </div>
 
       <Card className="border-border/50">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Privacy Policy Content
+            <CreditCard className="h-5 w-5" />
+            Billing Policy Content
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <Textarea
-            placeholder="Enter your Privacy Policy content here..."
-            value={privacy}
-            onChange={(e) => setPrivacy(e.target.value)}
+            placeholder="Enter your Billing Policy content here..."
+            value={billing}
+            onChange={(e) => setBilling(e.target.value)}
             className="min-h-[400px] resize-none"
           />
           
@@ -71,4 +71,4 @@ const AdminPrivacy = () => {
   );
 };
 
-export default AdminPrivacy;
+export default AdminBilling;

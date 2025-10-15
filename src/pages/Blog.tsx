@@ -40,33 +40,41 @@ const Blog = () => {
 
   useEffect(() => {
     async function dashboardData() {
-      const postURL = serverURL + `/api/getblogs`;
-      const response = await axios.get(postURL);
-      // Process images immediately
-      const processedData = response.data.map((post: BlogPost) => ({
-        ...post,
-        imageUrl: getImage(post.image)
-      }));
+      try {
+        const postURL = serverURL + `/api/blogs/public`;
+        const response = await axios.get(postURL);
 
-      setData(processedData);
-      setIsLoading(false);
+        // Use the direct response data (no pagination for public endpoint)
+        const blogsData = response.data;
 
-      // Find featured blog
-      const featuredBlog = processedData.find((post) => post.featured);
-      if (featuredBlog) {
-        setFeatured(featuredBlog);
-      } else {
-        setFeatured(processedData[0]); // Set latest blog as featured if none are featured
+        // Process images immediately
+        const processedData = blogsData.map((post: BlogPost) => ({
+          ...post,
+          imageUrl: getImage(post.image)
+        }));
+
+        setData(processedData);
+        setIsLoading(false);
+
+        // Find featured blog
+        const featuredBlog = processedData.find((post) => post.featured);
+        if (featuredBlog) {
+          setFeatured(featuredBlog);
+        } else if (processedData.length > 0) {
+          setFeatured(processedData[0]); // Set latest blog as featured if none are featured
+        }
+
+        // Find all popular blogs
+        const popularBlogs = processedData.filter((post) => post.popular);
+        if (popularBlogs.length > 0) {
+          setPopular(popularBlogs);
+        } else if (processedData.length > 0) {
+          setPopular([processedData[0]]); // Set latest blog as popular if none are popular
+        }
+      } catch (error) {
+        console.error('Error fetching blogs:', error);
+        setIsLoading(false);
       }
-
-      // Find all popular blogs
-      const popularBlogs = processedData.filter((post) => post.popular);
-      if (popularBlogs.length > 0) {
-        setPopular(popularBlogs);
-      } else {
-        setPopular([processedData[0]]); // Set latest blog as popular if none are popular
-      }
-
     }
     dashboardData();
   }, []);
@@ -74,10 +82,21 @@ const Blog = () => {
   // Update the getImage function
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function getImage(image: { data: any; contentType: any; }) {
-    // Handle Buffer data structure from MongoDB
-    const byteArray = image.data.data || image.data;
-    const base64String = byteArrayToBase64(byteArray);
-    return `data:${image.contentType};base64,${base64String}`;
+    try {
+      // Handle Buffer data structure from MongoDB
+      const byteArray = image.data.data || image.data;
+
+      // Check if image data exists and is not empty
+      if (!byteArray || byteArray.length === 0) {
+        return '/placeholder.svg'; // Return placeholder if no image data
+      }
+
+      const base64String = byteArrayToBase64(byteArray);
+      return `data:${image.contentType};base64,${base64String}`;
+    } catch (error) {
+      console.error('Error processing image:', error);
+      return '/placeholder.svg'; // Return placeholder on error
+    }
   }
 
   // Update byte array conversion
@@ -169,39 +188,47 @@ const Blog = () => {
                   </div>
                 </div>
               </Card>
-              :
-              <Card className="overflow-hidden bg-card">
-                <div className="md:grid md:grid-cols-2">
-                  <div className="bg-muted aspect-video md:aspect-auto flex items-center justify-center">
-                    <img
-                      src={featured.imageUrl}
-                      alt="Featured post"
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <div className="p-6 md:p-8 flex flex-col">
-                    <div className="mb-2">
-                      <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                        Featured
-                      </span>
+              : featured ? (
+                <Card className="overflow-hidden bg-card">
+                  <div className="md:grid md:grid-cols-2">
+                    <div className="bg-muted aspect-video md:aspect-auto flex items-center justify-center">
+                      <img
+                        src={featured.imageUrl}
+                        alt="Featured post"
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/placeholder.svg';
+                        }}
+                      />
                     </div>
-                    <h2 className="text-2xl md:text-3xl font-bold mb-3">{featured.title}</h2>
-                    <p className="text-muted-foreground mb-4 flex-grow">
-                      {featured.excerpt}
-                    </p>
-                    <div className="flex flex-wrap items-center text-sm text-muted-foreground gap-3 mb-6">
-                      <div className="flex items-center">
-                        <Calendar className="h-4 w-4 mr-1" />
-                        {formatDate(featured.date)}
+                    <div className="p-6 md:p-8 flex flex-col">
+                      <div className="mb-2">
+                        <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                          Featured
+                        </span>
                       </div>
+                      <h2 className="text-2xl md:text-3xl font-bold mb-3">{featured.title}</h2>
+                      <p className="text-muted-foreground mb-4 flex-grow">
+                        {featured.excerpt}
+                      </p>
+                      <div className="flex flex-wrap items-center text-sm text-muted-foreground gap-3 mb-6">
+                        <div className="flex items-center">
+                          <Calendar className="h-4 w-4 mr-1" />
+                          {formatDate(featured.date)}
+                        </div>
+                      </div>
+                      <Button onClick={() => readMore(featured._id, featured.category, featured.date, featured.excerpt, featured.imageUrl, featured.title, featured.tags, featured.content)} className="self-start">
+                        Read Article
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button onClick={() => readMore(featured._id, featured.category, featured.date, featured.excerpt, featured.imageUrl, featured.title, featured.tags, featured.content)} className="self-start">
-                      Read Article
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
                   </div>
+                </Card>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">No featured posts available</p>
                 </div>
-              </Card>
+              )
             }
           </div>
 
@@ -234,8 +261,7 @@ const Blog = () => {
                       </Card>
                     ))
                   )
-                  :
-                  (
+                  : data.length > 0 ? (
                     data.map((post) => (
                       <Card key={post._id} className="flex flex-col h-full">
                         <div className="relative aspect-video bg-muted">
@@ -271,6 +297,10 @@ const Blog = () => {
                         </CardFooter>
                       </Card>
                     ))
+                  ) : (
+                    <div className="col-span-2 text-center py-12">
+                      <p className="text-muted-foreground">No blog posts available</p>
+                    </div>
                   )
                 }
               </div>
@@ -293,7 +323,7 @@ const Blog = () => {
                     ))}
                   </div>
                 </div>
-              ) : (
+              ) : popular.length > 0 ? (
                 <div>
                   <h3 className="text-xl font-bold mb-4">Popular Posts</h3>
                   <div className="space-y-4">
@@ -304,10 +334,13 @@ const Blog = () => {
                             src={post.imageUrl}
                             alt={post.title}
                             className="h-full w-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/placeholder.svg';
+                            }}
                           />
                         </div>
                         <div>
-                          <h4 onClick={() => readMore(post._id, post.category, post.date, post.excerpt, post.imageUrl, post.title, post.tags, post.content)} className="font-medium text-sm line-clamp-2 cursor-pointer">
+                          <h4 onClick={() => readMore(post._id, post.category, post.date, post.excerpt, post.imageUrl, post.title, post.tags, post.content)} className="font-medium text-sm line-clamp-2 cursor-pointer hover:text-primary">
                             {post.title}
                           </h4>
                           <p className="text-xs text-muted-foreground mt-1">{formatDate(post.date)}</p>
@@ -315,6 +348,11 @@ const Blog = () => {
                       </div>
                     ))}
                   </div>
+                </div>
+              ) : (
+                <div>
+                  <h3 className="text-xl font-bold mb-4">Popular Posts</h3>
+                  <p className="text-sm text-muted-foreground">No popular posts available</p>
                 </div>
               )}
 

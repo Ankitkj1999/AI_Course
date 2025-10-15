@@ -1,79 +1,83 @@
-
-import React, { useEffect, useMemo, useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Search, MoreVertical, Eye, MailOpen, Reply, Trash } from 'lucide-react';
+import { Search, MessageSquare, Calendar, Phone, Mail } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { serverURL } from '@/constants';
-import axios from 'axios';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Pagination, PaginationInfo } from '@/components/ui/pagination';
+import { useAdminPagination } from '@/hooks/useAdminPagination';
 
-// Sample contacts data
-const contacts = [
-  { id: 1, name: 'John Doe', email: 'john@example.com', subject: 'Course Access Issue', status: 'unread', date: '2023-06-12' },
-  { id: 2, name: 'Jane Smith', email: 'jane@example.com', subject: 'Payment Question', status: 'read', date: '2023-06-11' },
-  { id: 3, name: 'Michael Brown', email: 'michael@example.com', subject: 'Refund Request', status: 'replied', date: '2023-06-10' },
-  { id: 4, name: 'Emily Johnson', email: 'emily@example.com', subject: 'Technical Support', status: 'unread', date: '2023-06-09' },
-  { id: 5, name: 'David Wilson', email: 'david@example.com', subject: 'Account Verification', status: 'read', date: '2023-06-08' },
-];
+interface Contact {
+  _id: string;
+  fname: string;
+  lname: string;
+  email: string;
+  phone: number;
+  msg: string;
+  date: string;
+}
 
 const AdminContacts = () => {
+  const {
+    data: contacts,
+    pagination,
+    loading,
+    error,
+    searchQuery,
+    setSearchQuery,
+    currentPage,
+    setCurrentPage
+  } = useAdminPagination<Contact>({
+    endpoint: 'getcontact',
+    initialLimit: 10
+  });
 
-  const [data, setData] = useState([]);
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Filtered data using memoization for better performance
-  const filteredData = useMemo(() => {
-    const query = searchQuery.toLowerCase().trim();
-    return data.filter((user) => {
-      const nameMatch = user.fname?.toLowerCase().includes(query);
-      const subMatch = user.lname?.toLowerCase().includes(query);
-      const emailMatch = user.email?.toLowerCase().includes(query);
-      const msgMatch = user.msg?.toLowerCase().includes(query);
-      return nameMatch || emailMatch || msgMatch || subMatch;
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     });
-  }, [data, searchQuery]);
-
-  useEffect(() => {
-    async function dashboardData() {
-      const postURL = serverURL + `/api/getcontact`;
-      const response = await axios.get(postURL);
-      setData(response.data)
-      setIsLoading(false);
-    }
-    dashboardData();
-  }, []);
-
-  const formatDate = (date: string) => {
-    const d = new Date(date);
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
-    const year = d.getFullYear();
-    return `${day}/${month}/${year}`;
   };
 
-  function sendReply(email: string, subject: string) {
-    window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
+  if (error) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Contact Messages</h1>
+            <p className="text-muted-foreground mt-1">Manage customer inquiries and feedback</p>
+          </div>
+        </div>
+        <Card className="border-border/50">
+          <CardContent className="py-8">
+            <div className="text-center text-red-500">
+              Error loading contacts: {error}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Contacts</h1>
-          <p className="text-muted-foreground mt-1">Manage user inquiries and messages</p>
+          <h1 className="text-3xl font-bold tracking-tight">Contact Messages</h1>
+          <p className="text-muted-foreground mt-1">Manage customer inquiries and feedback</p>
         </div>
       </div>
 
       <Card className="border-border/50">
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <CardTitle>All Messages</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              All Contact Messages
+            </CardTitle>
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -91,137 +95,94 @@ const AdminContacts = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Subject</TableHead>
+                <TableHead>Contact Info</TableHead>
                 <TableHead>Message</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>Received</TableHead>
               </TableRow>
             </TableHeader>
-            {isLoading ?
+            {loading ? (
               <TableBody>
-                <TableRow>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                </TableRow>
+                {[...Array(5)].map((_, index) => (
+                  <TableRow key={index}>
+                    <TableCell>
+                      <Skeleton className="h-5 w-32" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-40" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-48" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-24" />
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
-              :
+            ) : (
               <TableBody>
-                {filteredData.map((contact) => (
+                {contacts.map((contact) => (
                   <TableRow key={contact._id}>
-                    <TableCell className="font-medium">{contact.fname}</TableCell>
-                    <TableCell>{contact.email}</TableCell>
-                    <TableCell>{contact.lname}</TableCell>
-                    <TableCell>{contact.msg}</TableCell>
-                    <TableCell>{formatDate(contact.date)}</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                            <span className="sr-only">Actions</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => sendReply(contact.email, contact.lname)}>
-                            <Reply className="mr-2 h-4 w-4" />
-                            Reply
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                    <TableCell className="font-medium">
+                      {contact.fname} {contact.lname}
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Mail className="h-3 w-3 text-muted-foreground" />
+                          {contact.email}
+                        </div>
+                        {contact.phone && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Phone className="h-3 w-3 text-muted-foreground" />
+                            {contact.phone}
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-xs">
+                      <div className="truncate" title={contact.msg}>
+                        {contact.msg}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">{formatDate(contact.date)}</span>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
 
-                {filteredData.length === 0 && (
+                {contacts.length === 0 && !loading && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
+                    <TableCell colSpan={4} className="text-center py-8">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
-                        <Search className="h-8 w-8 mb-2" />
-                        <p>No contacts match your search criteria</p>
+                        <MessageSquare className="h-8 w-8 mb-2" />
+                        <p>No contact messages found</p>
                       </div>
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
-            }
+            )}
           </Table>
+
+          {pagination && pagination.totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+              <PaginationInfo
+                currentPage={pagination.currentPage}
+                totalPages={pagination.totalPages}
+                totalItems={pagination.totalItems}
+                itemsPerPage={pagination.itemsPerPage}
+              />
+              <Pagination
+                currentPage={currentPage}
+                totalPages={pagination.totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

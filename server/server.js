@@ -1808,41 +1808,195 @@ app.post('/api/dashboard', async (req, res) => {
 //GET USERS
 app.get('/api/getusers', async (req, res) => {
     try {
-        const users = await User.find({});
-        res.json(users);
+        const { page = 1, limit = 10, search = '' } = req.query;
+        const skip = (page - 1) * limit;
+
+        // Build search query
+        const searchQuery = search ? {
+            $or: [
+                { mName: { $regex: search, $options: 'i' } },
+                { email: { $regex: search, $options: 'i' } },
+                { type: { $regex: search, $options: 'i' } }
+            ]
+        } : {};
+
+        const users = await User.find(searchQuery)
+            .skip(parseInt(skip))
+            .limit(parseInt(limit))
+            .sort({ _id: -1 });
+
+        const total = await User.countDocuments(searchQuery);
+        const totalPages = Math.ceil(total / limit);
+
+        res.json({
+            users,
+            pagination: {
+                currentPage: parseInt(page),
+                totalPages,
+                totalItems: total,
+                itemsPerPage: parseInt(limit),
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1
+            }
+        });
     } catch (error) {
         console.log('Error', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
 
-//GET COURES
+//GET COURSES
 app.get('/api/getcourses', async (req, res) => {
     try {
-        const courses = await Course.find({});
-        res.json(courses);
+        const { page = 1, limit = 10, search = '' } = req.query;
+        const skip = (page - 1) * limit;
+
+        // Build search query
+        const searchQuery = search ? {
+            $or: [
+                { mainTopic: { $regex: search, $options: 'i' } },
+                { user: { $regex: search, $options: 'i' } },
+                { type: { $regex: search, $options: 'i' } }
+            ]
+        } : {};
+
+        const courses = await Course.find(searchQuery)
+            .skip(parseInt(skip))
+            .limit(parseInt(limit))
+            .sort({ date: -1 });
+
+        const total = await Course.countDocuments(searchQuery);
+        const totalPages = Math.ceil(total / limit);
+
+        res.json({
+            courses,
+            pagination: {
+                currentPage: parseInt(page),
+                totalPages,
+                totalItems: total,
+                itemsPerPage: parseInt(limit),
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1
+            }
+        });
     } catch (error) {
         console.log('Error', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
 
 //GET PAID USERS
 app.get('/api/getpaid', async (req, res) => {
     try {
-        const paidUsers = await User.find({ type: { $ne: 'free' } });
-        res.json(paidUsers);
+        const { page = 1, limit = 10, search = '' } = req.query;
+        const skip = (page - 1) * limit;
+
+        // Build search query for paid users
+        const searchQuery = {
+            type: { $ne: 'free' },
+            ...(search && {
+                $or: [
+                    { mName: { $regex: search, $options: 'i' } },
+                    { email: { $regex: search, $options: 'i' } },
+                    { type: { $regex: search, $options: 'i' } }
+                ]
+            })
+        };
+
+        const paidUsers = await User.find(searchQuery)
+            .skip(parseInt(skip))
+            .limit(parseInt(limit))
+            .sort({ _id: -1 });
+
+        const total = await User.countDocuments(searchQuery);
+        const totalPages = Math.ceil(total / limit);
+
+        res.json({
+            users: paidUsers,
+            pagination: {
+                currentPage: parseInt(page),
+                totalPages,
+                totalItems: total,
+                itemsPerPage: parseInt(limit),
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1
+            }
+        });
     } catch (error) {
         console.log('Error', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
 
 //GET ADMINS
 app.get('/api/getadmins', async (req, res) => {
     try {
-        const users = await User.find({ email: { $nin: await getEmailsOfAdmins() } });
-        const admins = await Admin.find({});
-        res.json({ users: users, admins: admins });
+        const { page = 1, limit = 10, search = '' } = req.query;
+        const skip = (page - 1) * limit;
+
+        const adminEmails = await getEmailsOfAdmins();
+        
+        // Build search query for non-admin users
+        const userSearchQuery = {
+            email: { $nin: adminEmails },
+            ...(search && {
+                $or: [
+                    { mName: { $regex: search, $options: 'i' } },
+                    { email: { $regex: search, $options: 'i' } },
+                    { type: { $regex: search, $options: 'i' } }
+                ]
+            })
+        };
+
+        // Build search query for admins
+        const adminSearchQuery = search ? {
+            $or: [
+                { mName: { $regex: search, $options: 'i' } },
+                { email: { $regex: search, $options: 'i' } },
+                { type: { $regex: search, $options: 'i' } }
+            ]
+        } : {};
+
+        const users = await User.find(userSearchQuery)
+            .skip(parseInt(skip))
+            .limit(parseInt(limit))
+            .sort({ _id: -1 });
+
+        const admins = await Admin.find(adminSearchQuery)
+            .skip(parseInt(skip))
+            .limit(parseInt(limit))
+            .sort({ _id: -1 });
+
+        const totalUsers = await User.countDocuments(userSearchQuery);
+        const totalAdmins = await Admin.countDocuments(adminSearchQuery);
+        const totalUsersPages = Math.ceil(totalUsers / limit);
+        const totalAdminsPages = Math.ceil(totalAdmins / limit);
+
+        res.json({
+            users,
+            admins,
+            pagination: {
+                users: {
+                    currentPage: parseInt(page),
+                    totalPages: totalUsersPages,
+                    totalItems: totalUsers,
+                    itemsPerPage: parseInt(limit),
+                    hasNextPage: page < totalUsersPages,
+                    hasPrevPage: page > 1
+                },
+                admins: {
+                    currentPage: parseInt(page),
+                    totalPages: totalAdminsPages,
+                    totalItems: totalAdmins,
+                    itemsPerPage: parseInt(limit),
+                    hasNextPage: page < totalAdminsPages,
+                    hasPrevPage: page > 1
+                }
+            }
+        });
     } catch (error) {
         console.log('Error', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
 
@@ -1892,10 +2046,41 @@ app.post('/api/removeadmin', async (req, res) => {
 //GET CONTACTS
 app.get('/api/getcontact', async (req, res) => {
     try {
-        const contacts = await Contact.find({});
-        res.json(contacts);
+        const { page = 1, limit = 10, search = '' } = req.query;
+        const skip = (page - 1) * limit;
+
+        // Build search query
+        const searchQuery = search ? {
+            $or: [
+                { fname: { $regex: search, $options: 'i' } },
+                { lname: { $regex: search, $options: 'i' } },
+                { email: { $regex: search, $options: 'i' } },
+                { msg: { $regex: search, $options: 'i' } }
+            ]
+        } : {};
+
+        const contacts = await Contact.find(searchQuery)
+            .skip(parseInt(skip))
+            .limit(parseInt(limit))
+            .sort({ date: -1 });
+
+        const total = await Contact.countDocuments(searchQuery);
+        const totalPages = Math.ceil(total / limit);
+
+        res.json({
+            contacts,
+            pagination: {
+                currentPage: parseInt(page),
+                totalPages,
+                totalItems: total,
+                itemsPerPage: parseInt(limit),
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1
+            }
+        });
     } catch (error) {
         console.log('Error', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
 
@@ -2723,14 +2908,57 @@ app.post('/api/updateblogs', async (req, res) => {
     }
 });
 
-//GET Blog
+//GET BLOGS (Admin - with pagination)
 app.get('/api/getblogs', async (req, res) => {
     try {
-        const blogs = await BlogSchema.find({});
+        const { page = 1, limit = 10, search = '' } = req.query;
+        const skip = (page - 1) * limit;
+
+        // Build search query
+        const searchQuery = search ? {
+            $or: [
+                { title: { $regex: search, $options: 'i' } },
+                { excerpt: { $regex: search, $options: 'i' } },
+                { category: { $regex: search, $options: 'i' } },
+                { tags: { $regex: search, $options: 'i' } }
+            ]
+        } : {};
+
+        const blogs = await BlogSchema.find(searchQuery)
+            .skip(parseInt(skip))
+            .limit(parseInt(limit))
+            .sort({ date: -1 });
+
+        const total = await BlogSchema.countDocuments(searchQuery);
+        const totalPages = Math.ceil(total / limit);
+
+        res.json({
+            blogs,
+            pagination: {
+                currentPage: parseInt(page),
+                totalPages,
+                totalItems: total,
+                itemsPerPage: parseInt(limit),
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1
+            }
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
+});
+
+//GET ALL BLOGS (Public - no pagination)
+app.get('/api/blogs/public', async (req, res) => {
+    try {
+        const blogs = await BlogSchema.find({})
+            .sort({ date: -1 });
+
         res.json(blogs);
     } catch (error) {
         console.log(error);
-        return res.json({ success: false, message: 'Internal Server Error' });
+        res.status(500).json({ success: false, message: 'Internal Server Error' });
     }
 });
 
