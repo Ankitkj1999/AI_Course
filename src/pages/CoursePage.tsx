@@ -12,7 +12,7 @@ import { Content } from '@tiptap/react'
 import { MinimalTiptapEditor } from '../minimal-tiptap'
 import YouTube from 'react-youtube';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, Home, Share, Download, MessageCircle, ClipboardCheck, Menu, Award } from 'lucide-react';
+import { ChevronDown, Home, Share, Download, MessageCircle, ClipboardCheck, Menu, Award, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer';
@@ -317,6 +317,94 @@ const CoursePage = () => {
       setIsCompleted(true);
     }
   }
+  
+  // Find current lesson position
+  const findCurrentLessonPosition = () => {
+    let currentTopicIndex = -1;
+    let currentSubtopicIndex = -1;
+    
+    jsonData[mainTopic.toLowerCase()].forEach((topic, topicIndex) => {
+      topic.subtopics.forEach((subtopic, subtopicIndex) => {
+        if (subtopic.title === selected) {
+          currentTopicIndex = topicIndex;
+          currentSubtopicIndex = subtopicIndex;
+        }
+      });
+    });
+    
+    return { currentTopicIndex, currentSubtopicIndex };
+  };
+  
+  // Check if there's a previous lesson
+  const hasPreviousLesson = () => {
+    const { currentTopicIndex, currentSubtopicIndex } = findCurrentLessonPosition();
+    
+    // If we're at the first subtopic of the first topic, there's no previous lesson
+    if (currentTopicIndex === 0 && currentSubtopicIndex === 0) {
+      return false;
+    }
+    
+    return true;
+  };
+  
+  // Check if there's a next lesson
+  const hasNextLesson = () => {
+    const { currentTopicIndex, currentSubtopicIndex } = findCurrentLessonPosition();
+    const topics = jsonData[mainTopic.toLowerCase()];
+    
+    // If we're at the last subtopic of the last topic, there's no next lesson
+    if (currentTopicIndex === topics.length - 1) {
+      const lastTopic = topics[currentTopicIndex];
+      if (currentSubtopicIndex === lastTopic.subtopics.length - 1) {
+        return false;
+      }
+    }
+    
+    return true;
+  };
+  
+  // Handle navigation between lessons
+  const handleNavigateLesson = (direction) => {
+    const { currentTopicIndex, currentSubtopicIndex } = findCurrentLessonPosition();
+    const topics = jsonData[mainTopic.toLowerCase()];
+    
+    if (direction === 'next' && hasNextLesson()) {
+      const currentTopic = topics[currentTopicIndex];
+      
+      // If there are more subtopics in the current topic
+      if (currentSubtopicIndex < currentTopic.subtopics.length - 1) {
+        const nextSubtopic = currentTopic.subtopics[currentSubtopicIndex + 1];
+        handleSelect(currentTopic.title, nextSubtopic.title);
+      } 
+      // Otherwise, move to the first subtopic of the next topic
+      else if (currentTopicIndex < topics.length - 1) {
+        const nextTopic = topics[currentTopicIndex + 1];
+        const firstSubtopic = nextTopic.subtopics[0];
+        handleSelect(nextTopic.title, firstSubtopic.title);
+      }
+    } 
+    else if (direction === 'prev' && hasPreviousLesson()) {
+      const currentTopic = topics[currentTopicIndex];
+      
+      // If we're not at the first subtopic of the current topic
+      if (currentSubtopicIndex > 0) {
+        const prevSubtopic = currentTopic.subtopics[currentSubtopicIndex - 1];
+        handleSelect(currentTopic.title, prevSubtopic.title);
+      } 
+      // Otherwise, move to the last subtopic of the previous topic
+      else if (currentTopicIndex > 0) {
+        const prevTopic = topics[currentTopicIndex - 1];
+        const lastSubtopic = prevTopic.subtopics[prevTopic.subtopics.length - 1];
+        handleSelect(prevTopic.title, lastSubtopic.title);
+      }
+    }
+    
+    // Ensure the page scrolls to the top when navigating
+    if (mainContentRef.current) {
+      mainContentRef.current.scrollTop = 0;
+    }
+    window.scrollTo(0, 0);
+  };
 
   const handleSelect = (topics, sub) => {
     if (!isLoading) {
@@ -1011,6 +1099,25 @@ const CoursePage = () => {
                       </div>
                     }
                     <StyledText text={theory} contentType={contentType} />
+                  </div>
+                  
+                  {/* Navigation buttons */}
+                  <div className="flex justify-between mt-16 mb-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => handleNavigateLesson('prev')}
+                      disabled={!hasPreviousLesson()}
+                      className="rounded-full flex items-center gap-2"
+                    >
+                      <ChevronLeft className="h-4 w-4" /> Previous Lesson
+                    </Button>
+                    <Button 
+                      onClick={() => handleNavigateLesson('next')}
+                      disabled={!hasNextLesson()}
+                      className="rounded-full flex items-center gap-2"
+                    >
+                      Next Lesson <ChevronRight className="h-4 w-4" />
+                    </Button>
                   </div>
                 </>
               }
