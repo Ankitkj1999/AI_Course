@@ -30,48 +30,11 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { appLogo, companyName, serverURL, websiteURL } from '@/constants';
 import axios from 'axios';
 import ShareOnSocial from 'react-share-on-social';
+import { prepareContentForRendering } from '@/utils/contentHandler';
 import StyledText from '@/components/styledText';
 import html2pdf from 'html2pdf.js';
 
 const CoursePage = () => {
-
-  // Helper function to detect content type
-  const detectContentType = (content) => {
-    if (!content) return 'html';
-    
-    // Check for HTML tags (more comprehensive)
-    const htmlTagPattern = /<\/?[a-z][\s\S]*>/i;
-    const hasHtmlTags = htmlTagPattern.test(content);
-    
-    // Check for markdown patterns
-    const markdownPatterns = [
-      /^#{1,6}\s+/m,           // Headers (# ## ###)
-      /\*\*.*?\*\*/,           // Bold text
-      /\*.*?\*/,               // Italic text
-      /```[\s\S]*?```/,        // Code blocks
-      /`.*?`/,                 // Inline code
-      /^\s*[-*+]\s+/m,         // Lists
-      /^\s*\d+\.\s+/m,         // Numbered lists
-    ];
-    
-    const hasMarkdownPatterns = markdownPatterns.some(pattern => pattern.test(content));
-    
-    // If it has HTML tags and no clear markdown patterns, it's HTML
-    if (hasHtmlTags && !hasMarkdownPatterns) {
-      console.log('Detected HTML content (has HTML tags, no markdown patterns)');
-      return 'html';
-    }
-    
-    // If it has markdown patterns, it's markdown
-    if (hasMarkdownPatterns) {
-      console.log('Detected markdown content (has markdown patterns)');
-      return 'markdown';
-    }
-    
-    // Default to HTML for backward compatibility
-    console.log('Defaulting to HTML (no clear patterns detected)');
-    return 'html';
-  };
 
   //ADDED FROM v4.0
   const { state } = useLocation();
@@ -98,7 +61,8 @@ const CoursePage = () => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const mainContentRef = useRef<HTMLDivElement>(null);
-  const [value, setValue] = useState<Content>('')
+  const [value, setValue] = useState<Content>('');
+  const [activeAccordionItem, setActiveAccordionItem] = useState('');
 
   async function getNotes() {
     try {
@@ -169,70 +133,73 @@ const CoursePage = () => {
     width: '100%',
   };
   useEffect(() => {
-    loadMessages()
-    getNotes()
+    loadMessages();
+    getNotes();
+    
     // Ensure the page starts at the top when loaded
     if (mainContentRef.current) {
       mainContentRef.current.scrollTop = 0;
     }
-
-    // Ensure window also scrolls to top
     window.scrollTo(0, 0);
+  
     const CountDoneTopics = () => {
       let doneCount = 0;
       let totalTopics = 0;
-
+  
       jsonData[mainTopic.toLowerCase()].forEach((topic) => {
-
         topic.subtopics.forEach((subtopic) => {
-
           if (subtopic.done) {
             doneCount++;
           }
           totalTopics++;
         });
       });
+      
       totalTopics = totalTopics + 1;
       if (pass) {
         doneCount = doneCount + 1;
       }
+      
       const completionPercentage = Math.round((doneCount / totalTopics) * 100);
       setPercentage(completionPercentage);
-      if (completionPercentage >= '100') {
+      if (completionPercentage >= 100) {
         setIsCompleted(true);
       }
-    }
-
+    };
+  
     if (!mainTopic) {
       navigate("/create");
     } else {
-      if (percentage >= '100') {
+      if (percentage >= 100) {
         setIsCompleted(true);
       }
-
+  
       const mainTopicData = jsonData[mainTopic.toLowerCase()][0];
       const firstSubtopic = mainTopicData.subtopics[0];
-      firstSubtopic.done = true
-      setSelected(firstSubtopic.title)
-      setTheory(firstSubtopic.theory);
+      firstSubtopic.done = true;
       
-      // Detect content type using helper function
-      const detectedContentType = firstSubtopic.contentType || detectContentType(firstSubtopic.theory);
-      console.log('First subtopic content type:', detectedContentType, 'Content preview:', firstSubtopic.theory?.substring(0, 100));
-      setContentType(detectedContentType);
-
+      setSelected(firstSubtopic.title);
+      setActiveAccordionItem(mainTopicData.title);
+      
+      // Properly prepare content
+      const prepared = prepareContentForRendering(
+        firstSubtopic.theory,
+        firstSubtopic.contentType
+      );
+      
+      setTheory(prepared.content);
+      setContentType(prepared.type);
+  
       if (type === 'video & text course') {
         setMedia(firstSubtopic.youtube);
       } else {
-        setMedia(firstSubtopic.image)
-
+        setMedia(firstSubtopic.image);
       }
+      
       setIsLoading(false);
       sessionStorage.setItem('jsonData', JSON.stringify(jsonData));
       CountDoneTopics();
-
     }
-
   }, []);
 
   const loadMessages = async () => {
@@ -407,38 +374,38 @@ const CoursePage = () => {
   };
 
   const handleSelect = (topics, sub) => {
+    setActiveAccordionItem(topics);
     if (!isLoading) {
       const mTopic = jsonData[mainTopic.toLowerCase()].find(topic => topic.title === topics);
       const mSubTopic = mTopic?.subtopics.find(subtopic => subtopic.title === sub);
-
+  
       if (mSubTopic.theory === '' || mSubTopic.theory === undefined || mSubTopic.theory === null) {
         if (type === 'video & text course') {
-
           const query = `${mSubTopic.title} ${mainTopic} in english`;
           setIsLoading(true);
           sendVideo(query, topics, sub, mSubTopic.title);
-
         } else {
-
           const prompt = `Strictly in ${lang}, Explain me about this subtopic of ${mainTopic} with examples :- ${mSubTopic.title}. Please Strictly Don't Give Additional Resources And Images.`;
           const promptImage = `Example of ${mSubTopic.title} in ${mainTopic}`;
           setIsLoading(true);
           sendPrompt(prompt, promptImage, topics, sub);
-
         }
       } else {
-        setSelected(mSubTopic.title)
-        setTheory(mSubTopic.theory)
+        setSelected(mSubTopic.title);
         
-        // Detect content type using helper function
-        const detectedContentType = mSubTopic.contentType || detectContentType(mSubTopic.theory);
-        console.log('Subtopic content type:', detectedContentType, 'Content preview:', mSubTopic.theory?.substring(0, 100));
-        setContentType(detectedContentType);
+        // Prepare content properly before setting
+        const prepared = prepareContentForRendering(
+          mSubTopic.theory, 
+          mSubTopic.contentType
+        );
+        
+        setTheory(prepared.content);
+        setContentType(prepared.type);
         
         if (type === 'video & text course') {
           setMedia(mSubTopic.youtube);
         } else {
-          setMedia(mSubTopic.image)
+          setMedia(mSubTopic.image);
         }
       }
     }
@@ -507,46 +474,55 @@ const CoursePage = () => {
   }
 
   async function sendData(image, theory, topics, sub, contentType = 'html') {
-
     const mTopic = jsonData[mainTopic.toLowerCase()].find(topic => topic.title === topics);
     const mSubTopic = mTopic?.subtopics.find(subtopic => subtopic.title === sub);
-    mSubTopic.theory = theory;
-    mSubTopic.contentType = contentType; // Store content type for proper rendering
+    
+    // Prepare the content before storing
+    const prepared = prepareContentForRendering(theory, contentType);
+    
+    mSubTopic.theory = prepared.content;
+    mSubTopic.contentType = prepared.type;
     mSubTopic.image = image;
-    setSelected(mSubTopic.title)
-
+    
+    setSelected(mSubTopic.title);
     setIsLoading(false);
-    setTheory(theory)
-    setContentType(contentType); // Set content type for proper rendering
+    setTheory(prepared.content);
+    setContentType(prepared.type);
+    
     if (type === 'video & text course') {
       setMedia(mSubTopic.youtube);
     } else {
-      setMedia(image)
+      setMedia(image);
     }
+    
     mSubTopic.done = true;
     updateCourse();
   }
 
   async function sendDataVideo(image, theory, topics, sub, contentType = 'html') {
-
     const mTopic = jsonData[mainTopic.toLowerCase()].find(topic => topic.title === topics);
     const mSubTopic = mTopic?.subtopics.find(subtopic => subtopic.title === sub);
-    mSubTopic.theory = theory;
-    mSubTopic.contentType = contentType; // Store content type for proper rendering
+    
+    // Prepare the content before storing
+    const prepared = prepareContentForRendering(theory, contentType);
+    
+    mSubTopic.theory = prepared.content;
+    mSubTopic.contentType = prepared.type;
     mSubTopic.youtube = image;
-    setSelected(mSubTopic.title)
-
+    
+    setSelected(mSubTopic.title);
     setIsLoading(false);
-    setTheory(theory)
-    setContentType(contentType); // Set content type for proper rendering
+    setTheory(prepared.content);
+    setContentType(prepared.type);
+    
     if (type === 'video & text course') {
       setMedia(image);
     } else {
-      setMedia(mSubTopic.image)
+      setMedia(mSubTopic.image);
     }
+    
     mSubTopic.done = true;
     updateCourse();
-
   }
 
   async function updateCourse() {
@@ -810,12 +786,17 @@ const CoursePage = () => {
     }
   }
 
-  const renderTopicsAndSubtopics = (topics) => {
-    return (
-      <>
-        {topics.map((topic) => (
-          <Accordion key={topic.title} type="single" collapsible className="mb-2">
-            <AccordionItem value={topic.title} className="border-none">
+    const renderTopicsAndSubtopics = (topics) => {
+      return (
+        <Accordion
+          type="single"
+          collapsible
+          className="w-full"
+          value={activeAccordionItem}
+          onValueChange={setActiveAccordionItem}
+        >
+          {topics.map((topic) => (
+            <AccordionItem key={topic.title} value={topic.title} className="border-none">
               <AccordionTrigger className="py-2 px-3 text-left hover:bg-accent/50 rounded-md">
                 {topic.title}
               </AccordionTrigger>
@@ -826,7 +807,7 @@ const CoursePage = () => {
                     key={subtopic.title}
                     className={cn(
                       "flex items-center px-4 py-2 rounded-md hover:bg-accent/50 transition-colors cursor-pointer",
-                      subtopic.title === "class-objects" && "bg-accent/50 font-medium text-primary"
+                      subtopic.title === selected && "bg-accent/50 font-medium text-primary"
                     )}
                   >
                     {subtopic.done && (
@@ -837,114 +818,118 @@ const CoursePage = () => {
                 ))}
               </AccordionContent>
             </AccordionItem>
-          </Accordion>
-        ))}
-      </>
-    );
-  }
-
-  function certificateCheck() {
-    if (isComplete) {
-      finish();
-    } else {
-      toast({
-        title: "Completion Certificate",
-        description: "Complete course to get certificate",
-      });
+          ))}
+        </Accordion>
+      );
     }
-  }
-
-  async function finish() {
-    if (sessionStorage.getItem('first') === 'true') {
-      if (!end) {
-        const today = new Date();
-        const formattedDate = today.toLocaleDateString('en-GB');
-        navigate('/course/'+courseId+'/certificate', { state: { courseTitle: mainTopic, end: formattedDate } });
+  
+    function certificateCheck() {
+      if (isComplete) {
+        finish();
       } else {
-        navigate('/course/'+courseId+'/certificate', { state: { courseTitle: mainTopic, end: end } });
+        toast({
+          title: "Completion Certificate",
+          description: "Complete course to get certificate",
+        });
       }
-
-    } else {
-      const dataToSend = {
-        courseId: courseId
-      };
-      try {
-        const postURL = serverURL + '/api/finish';
-        const response = await axios.post(postURL, dataToSend);
-        if (response.data.success) {
+    }
+  
+    async function finish() {
+      if (sessionStorage.getItem('first') === 'true') {
+        if (!end) {
           const today = new Date();
           const formattedDate = today.toLocaleDateString('en-GB');
-          sessionStorage.setItem('first', 'true');
-          sendEmail(formattedDate);
+          navigate('/course/'+courseId+'/certificate', { state: { courseTitle: mainTopic, end: formattedDate } });
+        } else {
+          navigate('/course/'+courseId+'/certificate', { state: { courseTitle: mainTopic, end: end } });
         }
-      } catch (error) {
-        console.error(error);
+  
+      } else {
+        const dataToSend = {
+          courseId: courseId
+        };
+        try {
+          const postURL = serverURL + '/api/finish';
+          const response = await axios.post(postURL, dataToSend);
+          if (response.data.success) {
+            const today = new Date();
+            const formattedDate = today.toLocaleDateString('en-GB');
+            sessionStorage.setItem('first', 'true');
+            sendEmail(formattedDate);
+          }
+        } catch (error) {
+          console.error(error);
+        }
       }
     }
-  }
-
-  async function sendEmail(formattedDate) {
-    const userName = sessionStorage.getItem('mName');
-    const email = sessionStorage.getItem('email');
-    const html = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-                <meta http-equiv="Content-Type" content="text/html charset=UTF-8" />
-                <html lang="en">
-                
-                  <head></head>
-                 <div id="__react-email-preview" style="display:none;overflow:hidden;line-height:1px;opacity:0;max-height:0;max-width:0;">Certificate<div> ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿</div>
-                 </div>
-                
-                  <body style="padding:20px; margin-left:auto;margin-right:auto;margin-top:auto;margin-bottom:auto;background-color:#f6f9fc;font-family:ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, &quot;Helvetica Neue&quot;, Arial, &quot;Noto Sans&quot;, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;, &quot;Segoe UI Symbol&quot;, &quot;Noto Color Emoji&quot;">
-                    <table align="center" role="presentation" cellSpacing="0" cellPadding="0" border="0" height="80%" width="100%" style="max-width:37.5em;max-height:80%; margin-left:auto;margin-right:auto;margin-top:80px;margin-bottom:80px;width:465px;border-radius:0.25rem;border-width:1px;background-color:#fff;padding:20px">
-                      <tr style="width:100%">
-                        <td>
-                          <table align="center" border="0" cellPadding="0" cellSpacing="0" role="presentation" width="100%" style="margin-top:32px">
-                            <tbody>
-                              <tr>
-                                <td><img alt="Vercel" src="${appLogo}" width="40" height="37" style="display:block;outline:none;border:none;text-decoration:none;margin-left:auto;margin-right:auto;margin-top:0px;margin-bottom:0px" /></td>
-                              </tr>
-                            </tbody>
-                          </table>
-                          <h1 style="margin-left:0px;margin-right:0px;margin-top:30px;margin-bottom:30px;padding:0px;text-align:center;font-size:24px;font-weight:400;color:rgb(0,0,0)">Completion Certificate </h1>
-                          <p style="font-size:14px;line-height:24px;margin:16px 0;color:rgb(0,0,0)">Hello <strong>${userName}</strong>,</p>
-                          <p style="font-size:14px;line-height:24px;margin:16px 0;color:rgb(0,0,0)">We are pleased to inform you that you have successfully completed the ${mainTopic} and are now eligible for your course completion certificate. Congratulations on your hard work and dedication throughout the course!</p>
-                          <table align="center" border="0" cellPadding="0" cellSpacing="0" role="presentation" width="100%" style="margin-bottom:32px;margin-top:32px;text-align:center">
-                            <tbody>
-                              <tr>
-                                <td><a href="${websiteURL}" target="_blank" style="p-x:20px;p-y:12px;line-height:100%;text-decoration:none;display:inline-block;max-width:100%;padding:12px 20px;border-radius:0.25rem;background-color: #007BFF;text-align:center;font-size:12px;font-weight:600;color:rgb(255,255,255);text-decoration-line:none"><span></span><span style="p-x:20px;p-y:12px;max-width:100%;display:inline-block;line-height:120%;text-decoration:none;text-transform:none;mso-padding-alt:0px;mso-text-raise:9px"><span>Get Certificate</span></a></td>
-                              </tr>
-                            </tbody>
-                          </table>
-                          <p style="font-size:14px;line-height:24px;margin:16px 0;color:rgb(0,0,0)">Best,<p target="_blank" style="color:rgb(0,0,0);text-decoration:none;text-decoration-line:none">The <strong>${companyName}</strong> Team</p></p>
-                          </td>
-                      </tr>
-                    </table>
-                  </body>
-                
-                </html>`;
-
-    try {
-      const postURL = serverURL + '/api/sendcertificate';
-      await axios.post(postURL, { html, email }).then(res => {
-        navigate('/course/'+courseId+'/certificate', { state: { courseTitle: mainTopic, end: formattedDate } });
-      }).catch(error => {
+  
+    async function sendEmail(formattedDate) {
+      const userName = sessionStorage.getItem('mName');
+      const email = sessionStorage.getItem('email');
+      const html = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+                  <meta http-equiv="Content-Type" content="text/html charset=UTF-8" />
+                  <html lang="en">
+                  
+                    <head></head>
+                   <div id="__react-email-preview" style="display:none;overflow:hidden;line-height:1px;opacity:0;max-height:0;max-width:0;">Certificate<div>&nbsp;</div>
+                   </div>
+                  
+                    <body style="padding:20px; margin-left:auto;margin-right:auto;margin-top:auto;margin-bottom:auto;background-color:#f6f9fc;font-family:ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, &quot;Helvetica Neue&quot;, Arial, &quot;Noto Sans&quot;, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;, &quot;Segoe UI Symbol&quot;, &quot;Noto Color Emoji&quot;">
+                      <table align="center" role="presentation" cellSpacing="0" cellPadding="0" border="0" height="80%" width="100%" style="max-width:37.5em;max-height:80%; margin-left:auto;margin-right:auto;margin-top:80px;margin-bottom:80px;width:465px;border-radius:0.25rem;border-width:1px;background-color:#fff;padding:20px">
+                        <tr style="width:100%">
+                          <td>
+                            <table align="center" border="0" cellPadding="0" cellSpacing="0" role="presentation" width="100%" style="margin-top:32px">
+                              <tbody>
+                                <tr>
+                                  <td><img alt="Vercel" src="${appLogo}" width="40" height="37" style="display:block;outline:none;border:none;text-decoration:none;margin-left:auto;margin-right:auto;margin-top:0px;margin-bottom:0px" /></td>
+                                </tr>
+                              </tbody>
+                            </table>
+                            <h1 style="margin-left:0px;margin-right:0px;margin-top:30px;margin-bottom:30px;padding:0px;text-align:center;font-size:24px;font-weight:400;color:rgb(0,0,0)">Completion Certificate </h1>
+                            <p style="font-size:14px;line-height:24px;margin:16px 0;color:rgb(0,0,0)">Hello <strong>${userName}</strong>,</p>
+                            <p style="font-size:14px;line-height:24px;margin:16px 0;color:rgb(0,0,0)">We are pleased to inform you that you have successfully completed the ${mainTopic} and are now eligible for your course completion certificate. Congratulations on your hard work and dedication throughout the course!</p>
+                            <table align="center" border="0" cellPadding="0" cellSpacing="0" role="presentation" width="100%" style="margin-bottom:32px;margin-top:32px;text-align:center">
+                              <tbody>
+                                <tr>
+                                  <td><a href="${websiteURL}" target="_blank" style="p-x:20px;p-y:12px;line-height:100%;text-decoration:none;display:inline-block;max-width:100%;padding:12px 20px;border-radius:0.25rem;background-color: #007BFF;text-align:center;font-size:12px;font-weight:600;color:rgb(255,255,255);text-decoration-line:none"><span></span><span style="p-x:20px;p-y:12px;max-width:100%;display:inline-block;line-height:120%;text-decoration:none;text-transform:none;mso-padding-alt:0px;mso-text-raise:9px"><span>Get Certificate</span></a></td>
+                                </tr>
+                              </tbody>
+                            </table>
+                            <p style="font-size:14px;line-height:24px;margin:16px 0;color:rgb(0,0,0)">Best,<p target="_blank" style="color:rgb(0,0,0);text-decoration:none;text-decoration-line:none">The <strong>${companyName}</strong> Team</p></p>
+                            </td>
+                        </tr>
+                      </table>
+                    </body>
+                  
+                  </html>`;
+  
+      try {
+        const postURL = serverURL + '/api/sendcertificate';
+        await axios.post(postURL, { html, email }).then(res => {
+          navigate('/course/'+courseId+'/certificate', { state: { courseTitle: mainTopic, end: formattedDate } });
+        }).catch(error => {
+          console.error(error);
+          navigate('/course/'+courseId+'/certificate', { state: { courseTitle: mainTopic, end: formattedDate } });
+        });
+  
+      } catch (error) {
         console.error(error);
         navigate('/course/'+courseId+'/certificate', { state: { courseTitle: mainTopic, end: formattedDate } });
-      });
-
-    } catch (error) {
-      console.error(error);
-      navigate('/course/'+courseId+'/certificate', { state: { courseTitle: mainTopic, end: formattedDate } });
+      }
+  
     }
-
-  }
-
-  const renderTopicsAndSubtopicsMobile = (topics) => {
-    return (
-      <>
-        {topics.map((topic) => (
-          <Accordion key={topic.title} type="single" collapsible className="mb-2">
-            <AccordionItem value={topic.title} className="border-none">
+  
+    const renderTopicsAndSubtopicsMobile = (topics) => {
+      return (
+        <Accordion
+          type="single"
+          collapsible
+          className="w-full"
+          value={activeAccordionItem}
+          onValueChange={setActiveAccordionItem}
+        >
+          {topics.map((topic) => (
+            <AccordionItem key={topic.title} value={topic.title} className="border-none">
               <AccordionTrigger className="py-2 text-left px-3 hover:bg-accent/50 rounded-md">
                 {topic.title}
               </AccordionTrigger>
@@ -955,7 +940,7 @@ const CoursePage = () => {
                     key={subtopic.title}
                     className={cn(
                       "flex items-center px-4 py-2 rounded-md hover:bg-accent/50 transition-colors cursor-pointer",
-                      subtopic.title === "class-objects" && "bg-accent/50 font-medium text-primary"
+                      subtopic.title === selected && "bg-accent/50 font-medium text-primary"
                     )}
                   >
                     {subtopic.done && (
@@ -966,12 +951,10 @@ const CoursePage = () => {
                 ))}
               </AccordionContent>
             </AccordionItem>
-          </Accordion>
-        ))}
-      </>
-    );
-  }
-
+          ))}
+        </Accordion>
+      );
+    }
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden">
       <header className="border-b border-border/40 py-2 px-4 flex justify-between items-center sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
@@ -1098,7 +1081,11 @@ const CoursePage = () => {
                         <img className='w-full h-auto rounded-md' src={media} alt="Media" />
                       </div>
                     }
-                    <StyledText text={theory} contentType={contentType} />
+                    <StyledText 
+                      text={theory} 
+                      contentType={contentType} 
+                      className="mt-6"
+                    />
                   </div>
                   
                   {/* Navigation buttons */}
