@@ -12,13 +12,14 @@ import { Content } from '@tiptap/react'
 import { MinimalTiptapEditor } from '../minimal-tiptap'
 import YouTube from 'react-youtube';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, Home, Share, Download, MessageCircle, ClipboardCheck, Menu, Award, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronDown, Home, Share, Download, MessageCircle, ClipboardCheck, Menu, Award, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
@@ -1050,68 +1051,120 @@ const CoursePage = () => {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
-        <div className={cn(
-          "bg-sidebar border-r border-border/40 transition-all duration-300 overflow-hidden hidden md:block",
-          isMenuOpen ? "w-64" : "w-0"
-        )}>
-          <ScrollArea className="h-full">
-            <div className="p-4">
-              {jsonData && renderTopicsAndSubtopicsMobile(jsonData[mainTopic.toLowerCase()])}
-              <p onClick={redirectExam} className='py-2 text-left px-3 hover:bg-accent/50 rounded-md cursor-pointer'>{pass === true ? <span className="mr-2 text-primary">✓</span> : <></>}{mainTopic} Quiz</p>
+      <ResizablePanelGroup direction="horizontal" className="flex-1 overflow-hidden">
+        <ResizablePanel defaultSize={isChatOpen && !isMobile ? 70 : 100} minSize={50}>
+          <div className="flex h-full">
+            <div className={cn(
+              "bg-sidebar border-r border-border/40 transition-all duration-300 overflow-hidden hidden md:block",
+              isMenuOpen ? "w-64" : "w-0"
+            )}>
+              <ScrollArea className="h-full">
+                <div className="p-4">
+                  {jsonData && renderTopicsAndSubtopicsMobile(jsonData[mainTopic.toLowerCase()])}
+                  <p onClick={redirectExam} className='py-2 text-left px-3 hover:bg-accent/50 rounded-md cursor-pointer'>{pass === true ? <span className="mr-2 text-primary">✓</span> : <></>}{mainTopic} Quiz</p>
+                </div>
+              </ScrollArea>
             </div>
-          </ScrollArea>
-        </div>
 
-        <div className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full" viewportRef={mainContentRef}>
-            <main className="p-4 max-w-5xl mx-auto">
-              {isLoading ?
-                <CourseContentSkeleton />
-                :
-                <>
-                  <h1 className="text-3xl font-bold mb-6">{selected}</h1>
-                  <div className="space-y-4">
-                    {type === 'video & text course' ?
-                      <div>
-                        <YouTube key={media} className='mb-5' videoId={media} opts={isMobile ? optsMobile : opts} />
+            <div className="flex-1 overflow-hidden">
+              <ScrollArea className="h-full" viewportRef={mainContentRef}>
+                <main className="p-4 max-w-5xl mx-auto">
+                  {isLoading ?
+                    <CourseContentSkeleton />
+                    :
+                    <>
+                      <h1 className="text-3xl font-bold mb-6">{selected}</h1>
+                      <div className="space-y-4">
+                        {type === 'video & text course' ?
+                          <div>
+                            <YouTube key={media} className='mb-5' videoId={media} opts={isMobile ? optsMobile : opts} />
+                          </div>
+                          :
+                          <div>
+                            <img className='w-full h-auto rounded-md' src={media} alt="Media" />
+                          </div>
+                        }
+                        <StyledText 
+                          text={theory} 
+                          contentType={contentType} 
+                          className="mt-6"
+                        />
                       </div>
-                      :
-                      <div>
-                        <img className='w-full h-auto rounded-md' src={media} alt="Media" />
+                      
+                      {/* Navigation buttons */}
+                      <div className="flex justify-between mt-16 mb-32 md:mb-4">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => handleNavigateLesson('prev')}
+                          disabled={!hasPreviousLesson()}
+                          className="rounded-full flex items-center gap-2"
+                        >
+                          <ChevronLeft className="h-4 w-4" /> Previous Lesson
+                        </Button>
+                        <Button 
+                          onClick={() => handleNavigateLesson('next')}
+                          disabled={!hasNextLesson()}
+                          className="rounded-full flex items-center gap-2"
+                        >
+                          Next Lesson <ChevronRight className="h-4 w-4" />
+                        </Button>
                       </div>
-                    }
-                    <StyledText 
-                      text={theory} 
-                      contentType={contentType} 
-                      className="mt-6"
-                    />
+                    </>
+                  }
+                </main>
+              </ScrollArea>
+            </div>
+          </div>
+        </ResizablePanel>
+
+        {isChatOpen && !isMobile && (
+          <>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={30} minSize={20}>
+              <div className="flex flex-col h-full p-4">
+                <div className="flex justify-between items-center border-b pb-2 mb-2">
+                  <h2 className="text-lg font-semibold">Course Assistant</h2>
+                  <Button variant="ghost" size="icon" onClick={() => setIsChatOpen(false)}>
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
+                <ScrollArea className="flex-1 pr-4 mb-4">
+                  <div className="space-y-4 pt-2">
+                    {messages.map((message, index) => (
+                      <div
+                        key={index}
+                        className={cn(
+                          "flex max-w-[80%] flex-col gap-2 rounded-lg px-3 py-2 text-sm",
+                          message.sender === "user"
+                            ? "ml-auto bg-primary text-primary-foreground"
+                            : "bg-muted"
+                        )}
+                      >
+                        <StyledText text={message.text} />
+                      </div>
+                    ))}
                   </div>
-                  
-                  {/* Navigation buttons */}
-                  <div className="flex justify-between mt-16 mb-32 md:mb-4">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => handleNavigateLesson('prev')}
-                      disabled={!hasPreviousLesson()}
-                      className="rounded-full flex items-center gap-2"
-                    >
-                      <ChevronLeft className="h-4 w-4" /> Previous Lesson
-                    </Button>
-                    <Button 
-                      onClick={() => handleNavigateLesson('next')}
-                      disabled={!hasNextLesson()}
-                      className="rounded-full flex items-center gap-2"
-                    >
-                      Next Lesson <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </>
-              }
-            </main>
-          </ScrollArea>
-        </div>
-      </div>
+                </ScrollArea>
+
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="Type your message..."
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        sendMessage();
+                      }
+                    }}
+                    className="flex-1"
+                  />
+                  <Button onClick={sendMessage}>Send</Button>
+                </div>
+              </div>
+            </ResizablePanel>
+          </>
+        )}
+      </ResizablePanelGroup>
 
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border p-2 flex justify-around items-center">
         <Button variant="ghost" size="sm">
@@ -1158,7 +1211,7 @@ const CoursePage = () => {
         </Button>
       </div>
 
-      {isMobile ? (
+      {isMobile && (
         <Sheet open={isChatOpen} onOpenChange={setIsChatOpen}>
           <SheetContent side="bottom" className="h-[90vh] sm:max-w-full p-0">
             <div className="flex flex-col h-full p-4">
@@ -1200,46 +1253,6 @@ const CoursePage = () => {
             </div>
           </SheetContent>
         </Sheet>
-      ) : (
-        <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogTitle>Course Assistant</DialogTitle>
-            <div className="flex flex-col h-[60vh]">
-              <ScrollArea className="flex-1 pr-4 mb-4">
-                <div className="space-y-4 pt-2">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={cn(
-                        "flex max-w-[80%] flex-col gap-2 rounded-lg px-3 py-2 text-sm",
-                        message.sender === "user"
-                          ? "ml-auto bg-primary text-primary-foreground"
-                          : "bg-muted"
-                      )}
-                    >
-                      <StyledText text={message.text} />
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-
-              <div className="flex items-center gap-2">
-                <Input
-                  placeholder="Type your message..."
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      sendMessage();
-                    }
-                  }}
-                  className="flex-1"
-                />
-                <Button onClick={sendMessage}>Send</Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
       )}
 
       {isMobile ? (
