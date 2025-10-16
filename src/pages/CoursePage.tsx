@@ -1082,7 +1082,7 @@ const CoursePage = () => {
 
         <div className="flex-1 overflow-hidden">
           <ScrollArea className="h-full" viewportRef={mainContentRef}>
-            <main className="p-6 max-w-5xl mx-auto">
+            <main className="p-4 max-w-5xl mx-auto">
               {isLoading ?
                 <CourseContentSkeleton />
                 :
@@ -1091,18 +1091,18 @@ const CoursePage = () => {
                   <div className="space-y-4">
                     {type === 'video & text course' ?
                       <div>
-                        <YouTube key={media} className='mb-5' videoId={media} opts={opts} />
+                        <YouTube key={media} className='mb-5' videoId={media} opts={isMobile ? optsMobile : opts} />
                       </div>
                       :
                       <div>
-                        <img className='overflow-hidden h-96 max-md:h-64' src={media} alt="Media" />
+                        <img className='w-full h-auto rounded-md' src={media} alt="Media" />
                       </div>
                     }
                     <StyledText text={theory} contentType={contentType} />
                   </div>
                   
                   {/* Navigation buttons */}
-                  <div className="flex justify-between mt-16 mb-4">
+                  <div className="flex justify-between mt-16 mb-32 md:mb-4">
                     <Button 
                       variant="outline" 
                       onClick={() => handleNavigateLesson('prev')}
@@ -1224,7 +1224,7 @@ const CoursePage = () => {
                     <div
                       key={message.id}
                       className={cn(
-                        "flex w-2/4 max-w-[80%] flex-col gap-2 rounded-lg px-3 py-2 text-sm",
+                        "flex max-w-[80%] flex-col gap-2 rounded-lg px-3 py-2 text-sm",
                         message.sender === "user"
                           ? "ml-auto bg-primary text-primary-foreground"
                           : "bg-muted"
