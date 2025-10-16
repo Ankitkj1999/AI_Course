@@ -12,7 +12,7 @@ import { Content } from '@tiptap/react'
 import { MinimalTiptapEditor } from '../minimal-tiptap'
 import YouTube from 'react-youtube';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, Home, Share, Download, MessageCircle, ClipboardCheck, Menu, Award, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronDown, Home, Share, Download, MessageCircle, ClipboardCheck, Menu, Award, ChevronLeft, ChevronRight, X, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer';
@@ -56,7 +56,7 @@ const CoursePage = () => {
   const defaultPrompt = `I have a doubt about this topic :- ${mainTopic}. Please clarify my doubt in very short :- `;
 
   const [isMenuOpen, setIsMenuOpen] = useState(true);
-  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(true);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
@@ -64,6 +64,36 @@ const CoursePage = () => {
   const mainContentRef = useRef<HTMLDivElement>(null);
   const [value, setValue] = useState<Content>('');
   const [activeAccordionItem, setActiveAccordionItem] = useState('');
+
+  const getTotalLessons = () => {
+    if (!jsonData || !mainTopic) return 0;
+    return jsonData[mainTopic.toLowerCase()].reduce((total, topic) => total + topic.subtopics.length, 0);
+  };
+
+  const getCurrentLessonNumber = () => {
+    if (!jsonData || !mainTopic || !selected) return 0;
+    let lessonNumber = 0;
+    let found = false;
+    for (const topic of jsonData[mainTopic.toLowerCase()]) {
+      for (const subtopic of topic.subtopics) {
+        lessonNumber++;
+        if (subtopic.title === selected) {
+          found = true;
+          break;
+        }
+      }
+      if (found) break;
+    }
+    return lessonNumber;
+  };
+
+  const formatTitle = (title = '') => {
+    if (!title) return '';
+    return title
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
 
   async function getNotes() {
     try {
@@ -134,6 +164,9 @@ const CoursePage = () => {
     width: '100%',
   };
   useEffect(() => {
+    if (isMobile) {
+      setIsChatOpen(false);
+    }
     loadMessages();
     getNotes();
     
@@ -177,7 +210,6 @@ const CoursePage = () => {
   
       const mainTopicData = jsonData[mainTopic.toLowerCase()][0];
       const firstSubtopic = mainTopicData.subtopics[0];
-      firstSubtopic.done = true;
       
       setSelected(firstSubtopic.title);
       setActiveAccordionItem(mainTopicData.title);
@@ -201,7 +233,33 @@ const CoursePage = () => {
       sessionStorage.setItem('jsonData', JSON.stringify(jsonData));
       CountDoneTopics();
     }
-  }, []);
+  }, [isMobile]);
+
+  const toggleDoneState = (done) => {
+    const { currentTopicIndex, currentSubtopicIndex } = findCurrentLessonPosition();
+    if (currentTopicIndex !== -1 && currentSubtopicIndex !== -1) {
+      jsonData[mainTopic.toLowerCase()][currentTopicIndex].subtopics[currentSubtopicIndex].done = done;
+      updateCourse();
+    }
+  };
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (mainContentRef.current) {
+        const { scrollTop, scrollHeight, clientHeight } = mainContentRef.current;
+        if (scrollTop + clientHeight >= scrollHeight - 5) { // 5px buffer
+          toggleDoneState(true);
+        }
+      }
+    };
+
+    const mainContentElement = mainContentRef.current;
+    mainContentElement?.addEventListener('scroll', handleScroll);
+
+    return () => {
+      mainContentElement?.removeEventListener('scroll', handleScroll);
+    };
+  }, [selected]);
 
   const loadMessages = async () => {
     try {
@@ -496,7 +554,6 @@ const CoursePage = () => {
       setMedia(image);
     }
     
-    mSubTopic.done = true;
     updateCourse();
   }
 
@@ -522,7 +579,6 @@ const CoursePage = () => {
       setMedia(mSubTopic.image);
     }
     
-    mSubTopic.done = true;
     updateCourse();
   }
 
@@ -983,33 +1039,15 @@ const CoursePage = () => {
             </DrawerContent>
           </Drawer>
 
-          <div className="flex items-center gap-2">
-            <div className="relative w-8 h-8">
-              <svg className="w-8 h-8" viewBox="0 0 36 36">
-                <circle cx="18" cy="18" r="16" fill="none" className="stroke-muted-foreground/20" strokeWidth="2" />
-                <circle
-                  cx="18"
-                  cy="18"
-                  r="16"
-                  fill="none"
-                  className="stroke-primary"
-                  strokeWidth="2"
-                  strokeDasharray="100"
-                  strokeDashoffset={100 - percentage}
-                  transform="rotate(-90 18 18)"
-                />
-                <text
-                  x="18"
-                  y="18"
-                  dominantBaseline="middle"
-                  textAnchor="middle"
-                  className="fill-foreground text-[10px] font-medium"
-                >
-                  {percentage}%
-                </text>
-              </svg>
+          <div className="flex flex-col">
+            <h1 className="text-lg font-bold">{formatTitle(mainTopic)}</h1>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>{jsonData[mainTopic.toLowerCase()].length} modules</span>
+              <span>•</span>
+              <span>{getTotalLessons()} lessons</span>
+              <span>•</span>
+              <span className="text-green-600 font-semibold">{percentage}% complete</span>
             </div>
-            <h1 className="text-xl font-bold">{mainTopic}</h1>
           </div>
         </div>
 
@@ -1047,6 +1085,22 @@ const CoursePage = () => {
               </Button>
             </ShareOnSocial>
           </ToggleGroup>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsChatOpen(true)}
+            className="hidden md:flex"
+          >
+            <MessageCircle className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsNotesOpen(true)}
+            className="hidden md:flex"
+          >
+            <ClipboardCheck className="h-5 w-5" />
+          </Button>
           <ThemeToggle />
         </div>
       </header>
@@ -1068,12 +1122,28 @@ const CoursePage = () => {
 
             <div className="flex-1 overflow-hidden">
               <ScrollArea className="h-full" viewportRef={mainContentRef}>
-                <main className="p-4 max-w-5xl mx-auto">
+                <main className="p-6 max-w-5xl mx-auto">
                   {isLoading ?
                     <CourseContentSkeleton />
                     :
                     <>
-                      <h1 className="text-3xl font-bold mb-6">{selected}</h1>
+                      <div className="flex justify-between items-start mb-6">
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">
+                            Lesson {getCurrentLessonNumber()} of {getTotalLessons()}
+                          </p>
+                          <h1 className="text-3xl font-bold">{selected}</h1>
+                        </div>
+                        <div>
+                          {jsonData[mainTopic.toLowerCase()]
+                            .flatMap(topic => topic.subtopics)
+                            .find(subtopic => subtopic.title === selected)?.done ? (
+                            <Button variant="outline" size="sm" onClick={() => toggleDoneState(false)}>Mark as Undone</Button>
+                          ) : (
+                            <Button variant="outline" size="sm" onClick={() => toggleDoneState(true)}>Mark as Done</Button>
+                          )}
+                        </div>
+                      </div>
                       <div className="space-y-4">
                         {type === 'video & text course' ?
                           <div>
@@ -1120,7 +1190,7 @@ const CoursePage = () => {
         {isChatOpen && !isMobile && (
           <>
             <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={30} minSize={20}>
+            <ResizablePanel defaultSize={25} minSize={15}>
               <div className="flex flex-col h-full p-4">
                 <div className="flex justify-between items-center border-b pb-2 mb-2">
                   <h2 className="text-lg font-semibold">Course Assistant</h2>
@@ -1167,49 +1237,52 @@ const CoursePage = () => {
       </ResizablePanelGroup>
 
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border p-2 flex justify-around items-center">
-        <Button variant="ghost" size="sm">
+        <Button variant="ghost" size="sm" asChild>
           <Link to='/dashboard'>
             <Home className="h-5 w-5" />
           </Link>
         </Button>
-        <Button onClick={certificateCheck} variant="ghost" size="sm" asChild>
-          <span>
-            <Award className="h-5 w-5" />
-          </span>
-        </Button>
-        <Button onClick={htmlDownload} disabled={exporting} variant="ghost" size="sm">
-          <Download className="h-5 w-5" />
-        </Button>
-        <ShareOnSocial
-          textToShare={sessionStorage.getItem('mName') + " shared you course on " + mainTopic}
-          link={websiteURL + '/shareable?id=' + courseId}
-          linkTitle={sessionStorage.getItem('mName') + " shared you course on " + mainTopic}
-          linkMetaDesc={sessionStorage.getItem('mName') + " shared you course on " + mainTopic}
-          linkFavicon={appLogo}
-          noReferer
-        >
-          <Button variant="ghost" size="sm">
-            <Share className="h-5 w-5" />
-          </Button>
-        </ShareOnSocial>
-      </div>
-
-      <div className="fixed bottom-16 right-6 flex flex-col gap-3 md:bottom-6">
-        <Button
-          size="icon"
-          className="rounded-full bg-primary shadow-lg hover:shadow-xl"
-          onClick={() => setIsChatOpen(true)}
-        >
+        <Button variant="ghost" size="sm" onClick={() => setIsChatOpen(true)}>
           <MessageCircle className="h-5 w-5" />
         </Button>
-        <Button
-          size="icon"
-          className="rounded-full bg-primary shadow-lg hover:shadow-xl"
-          onClick={() => setIsNotesOpen(true)}
-        >
+        <Button variant="ghost" size="sm" onClick={() => setIsNotesOpen(true)}>
           <ClipboardCheck className="h-5 w-5" />
         </Button>
+
+        <Drawer>
+          <DrawerTrigger asChild>
+            <Button variant="ghost" size="sm">
+              <MoreHorizontal className="h-5 w-5" />
+            </Button>
+          </DrawerTrigger>
+          <DrawerContent className="max-h-[80vh]">
+            <div className="p-4">
+              <div className="flex flex-col gap-2">
+                <Button onClick={certificateCheck} variant="ghost" className="w-full justify-start">
+                  <Award className="h-4 w-4 mr-2" /> Certificate
+                </Button>
+                <Button onClick={htmlDownload} disabled={exporting} variant="ghost" className="w-full justify-start">
+                  <Download className="h-4 w-4 mr-2" /> {exporting ? 'Exporting...' : 'Export'}
+                </Button>
+                <ShareOnSocial
+                  textToShare={sessionStorage.getItem('mName') + " shared you course on " + mainTopic}
+                  link={websiteURL + '/shareable?id=' + courseId}
+                  linkTitle={sessionStorage.getItem('mName') + " shared you course on " + mainTopic}
+                  linkMetaDesc={sessionStorage.getItem('mName') + " shared you course on " + mainTopic}
+                  linkFavicon={appLogo}
+                  noReferer
+                >
+                  <Button variant="ghost" className="w-full justify-start">
+                    <Share className="h-4 w-4 mr-2" /> Share
+                  </Button>
+                </ShareOnSocial>
+              </div>
+            </div>
+          </DrawerContent>
+        </Drawer>
       </div>
+
+
 
       {isMobile && (
         <Sheet open={isChatOpen} onOpenChange={setIsChatOpen}>
