@@ -243,24 +243,6 @@ const CoursePage = () => {
     }
   };
 
-  useEffect(() => {
-    const handleScroll = () => {
-      if (mainContentRef.current) {
-        const { scrollTop, scrollHeight, clientHeight } = mainContentRef.current;
-        if (scrollTop + clientHeight >= scrollHeight - 5) { // 5px buffer
-          toggleDoneState(true);
-        }
-      }
-    };
-
-    const mainContentElement = mainContentRef.current;
-    mainContentElement?.addEventListener('scroll', handleScroll);
-
-    return () => {
-      mainContentElement?.removeEventListener('scroll', handleScroll);
-    };
-  }, [selected]);
-
   const loadMessages = async () => {
     try {
       const jsonValue = sessionStorage.getItem(mainTopic);
@@ -395,6 +377,7 @@ const CoursePage = () => {
     const topics = jsonData[mainTopic.toLowerCase()];
     
     if (direction === 'next' && hasNextLesson()) {
+      toggleDoneState(true);
       const currentTopic = topics[currentTopicIndex];
       
       // If there are more subtopics in the current topic
