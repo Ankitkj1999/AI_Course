@@ -95,6 +95,12 @@ const CoursePage = () => {
       .join(' ');
   };
 
+  const calculateTopicProgress = (topic) => {
+    if (!topic?.subtopics?.length) return 0;
+    const doneCount = topic.subtopics.filter(st => st.done).length;
+    return (doneCount / topic.subtopics.length) * 100;
+  };
+
   async function getNotes() {
     try {
       const postURL = serverURL + '/api/getnotes';
@@ -827,6 +833,7 @@ const CoursePage = () => {
   }
 
     const renderTopicsAndSubtopics = (topics) => {
+      let subtopicCounter = 0;
       return (
         <Accordion
           type="single"
@@ -835,30 +842,49 @@ const CoursePage = () => {
           value={activeAccordionItem}
           onValueChange={setActiveAccordionItem}
         >
-          {topics.map((topic) => (
-            <AccordionItem key={topic.title} value={topic.title} className="border-none">
-              <AccordionTrigger className="py-2 px-3 text-left hover:bg-accent/50 rounded-md">
-                {topic.title}
-              </AccordionTrigger>
-              <AccordionContent className="pl-2">
-                {topic.subtopics.map((subtopic) => (
-                  <div
-                    onClick={() => handleSelect(topic.title, subtopic.title)}
-                    key={subtopic.title}
-                    className={cn(
-                      "flex items-center px-4 py-2 rounded-md hover:bg-accent/50 transition-colors cursor-pointer",
-                      subtopic.title === selected && "bg-accent/50 font-medium text-primary"
-                    )}
-                  >
-                    {subtopic.done && (
-                      <span className="mr-2 text-primary">✓</span>
-                    )}
-                    <span className="text-sm">{subtopic.title}</span>
+          {topics.map((topic) => {
+            const progress = calculateTopicProgress(topic);
+            const circumference = 2 * Math.PI * 13;
+            const offset = circumference * (1 - progress / 100);
+
+            return (
+              <AccordionItem key={topic.title} value={topic.title} className="border-none">
+                <AccordionTrigger className="py-2 px-3 text-left hover:bg-accent/50 rounded-md">
+                  <div className="flex items-center gap-3">
+                    <div className="relative size-7 shrink-0">
+                      <svg className="absolute h-full w-full -rotate-90">
+                        <circle cx="14" cy="14" r="13" stroke="currentColor" strokeWidth="1.75" fill="none" className="text-gray-200 dark:text-gray-700" />
+                        <circle cx="14" cy="14" r="13" stroke="currentColor" strokeWidth="1.75" fill="none" className="text-primary" style={{ strokeDasharray: circumference, strokeDashoffset: offset, transition: 'stroke-dashoffset 0.3s' }} />
+                      </svg>
+                    </div>
+                    <span className="font-medium">{topic.title}</span>
                   </div>
-                ))}
-              </AccordionContent>
-            </AccordionItem>
-          ))}
+                </AccordionTrigger>
+                <AccordionContent className="pl-4">
+                  {topic.subtopics.map((subtopic) => {
+                    subtopicCounter++;
+                    return (
+                      <div
+                        onClick={() => handleSelect(topic.title, subtopic.title)}
+                        key={subtopic.title}
+                        className={cn(
+                          "flex items-center gap-3 px-4 py-2 rounded-md hover:bg-accent/50 transition-colors cursor-pointer",
+                          subtopic.title === selected && "bg-accent/50"
+                        )}
+                      >
+                        {subtopic.done ? (
+                          <svg className="relative size-6 shrink-0 text-green-500" stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"></path></svg>
+                        ) : (
+                          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 text-sm font-medium text-gray-800 dark:text-gray-200">{subtopicCounter}</span>
+                        )}
+                        <span className={cn("text-sm", subtopic.title === selected && "font-medium text-primary")}>{subtopic.title}</span>
+                      </div>
+                    );
+                  })}
+                </AccordionContent>
+              </AccordionItem>
+            );
+          })}
         </Accordion>
       );
     }
@@ -960,6 +986,7 @@ const CoursePage = () => {
     }
   
     const renderTopicsAndSubtopicsMobile = (topics) => {
+      let subtopicCounter = 0;
       return (
         <Accordion
           type="single"
@@ -968,30 +995,49 @@ const CoursePage = () => {
           value={activeAccordionItem}
           onValueChange={setActiveAccordionItem}
         >
-          {topics.map((topic) => (
-            <AccordionItem key={topic.title} value={topic.title} className="border-none">
-              <AccordionTrigger className="py-2 text-left px-3 hover:bg-accent/50 rounded-md">
-                {topic.title}
-              </AccordionTrigger>
-              <AccordionContent className="pl-2">
-                {topic.subtopics.map((subtopic) => (
-                  <div
-                    onClick={() => handleSelect(topic.title, subtopic.title)}
-                    key={subtopic.title}
-                    className={cn(
-                      "flex items-center px-4 py-2 rounded-md hover:bg-accent/50 transition-colors cursor-pointer",
-                      subtopic.title === selected && "bg-accent/50 font-medium text-primary"
-                    )}
-                  >
-                    {subtopic.done && (
-                      <span className="mr-2 text-primary">✓</span>
-                    )}
-                    <span className="text-sm">{subtopic.title}</span>
+          {topics.map((topic) => {
+            const progress = calculateTopicProgress(topic);
+            const circumference = 2 * Math.PI * 13;
+            const offset = circumference * (1 - progress / 100);
+
+            return (
+              <AccordionItem key={topic.title} value={topic.title} className="border-none">
+                <AccordionTrigger className="py-2 px-3 text-left hover:bg-accent/50 rounded-md">
+                  <div className="flex items-center gap-3">
+                    <div className="relative size-7 shrink-0">
+                      <svg className="absolute h-full w-full -rotate-90">
+                        <circle cx="14" cy="14" r="13" stroke="currentColor" strokeWidth="1.75" fill="none" className="text-gray-200 dark:text-gray-700" />
+                        <circle cx="14" cy="14" r="13" stroke="currentColor" strokeWidth="1.75" fill="none" className="text-primary" style={{ strokeDasharray: circumference, strokeDashoffset: offset, transition: 'stroke-dashoffset 0.3s' }} />
+                      </svg>
+                    </div>
+                    <span className="font-medium">{topic.title}</span>
                   </div>
-                ))}
-              </AccordionContent>
-            </AccordionItem>
-          ))}
+                </AccordionTrigger>
+                <AccordionContent className="pl-4">
+                  {topic.subtopics.map((subtopic) => {
+                    subtopicCounter++;
+                    return (
+                      <div
+                        onClick={() => handleSelect(topic.title, subtopic.title)}
+                        key={subtopic.title}
+                        className={cn(
+                          "flex items-center gap-3 px-4 py-2 rounded-md hover:bg-accent/50 transition-colors cursor-pointer",
+                          subtopic.title === selected && "bg-accent/50"
+                        )}
+                      >
+                        {subtopic.done ? (
+                          <svg className="relative size-6 shrink-0 text-green-500" stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"></path></svg>
+                        ) : (
+                          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 text-sm font-medium text-gray-800 dark:text-gray-200">{subtopicCounter}</span>
+                        )}
+                        <span className={cn("text-sm", subtopic.title === selected && "font-medium text-primary")}>{subtopic.title}</span>
+                      </div>
+                    );
+                  })}
+                </AccordionContent>
+              </AccordionItem>
+            );
+          })}
         </Accordion>
       );
     }
