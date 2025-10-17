@@ -846,9 +846,14 @@ const CoursePage = () => {
             const progress = calculateTopicProgress(topic);
             const circumference = 2 * Math.PI * 11; // Adjusted for new radius
             const offset = circumference * (1 - progress / 100);
+            const isActiveTopic = activeAccordionItem === topic.title;
 
             return (
-              <AccordionItem key={topic.title} value={topic.title} className="border-none">
+              <AccordionItem 
+                key={topic.title} 
+                value={topic.title} 
+                className={cn("border-b", isActiveTopic && "bg-accent/50 rounded-md")}
+              >
                 <AccordionTrigger className="py-2 px-3 text-left hover:bg-accent/50 rounded-md">
                   <div className="flex items-center gap-3">
                     <div className="relative size-6 shrink-0">
@@ -863,16 +868,17 @@ const CoursePage = () => {
                     <span className="font-medium">{topic.title}</span>
                   </div>
                 </AccordionTrigger>
-                <AccordionContent className="pl-4">
+                <AccordionContent className="pl-4 pb-2">
                   {topic.subtopics.map((subtopic) => {
                     subtopicCounter++;
+                    const isSelected = subtopic.title === selected;
                     return (
                       <div
                         onClick={() => handleSelect(topic.title, subtopic.title)}
                         key={subtopic.title}
                         className={cn(
-                          "flex items-center gap-3 px-4 py-2 rounded-md hover:bg-accent/50 transition-colors cursor-pointer",
-                          subtopic.title === selected && "bg-accent/50"
+                          "flex items-center gap-3 px-4 py-2 rounded-md hover:bg-accent/80 transition-colors cursor-pointer",
+                          isSelected && "bg-primary/10 text-primary font-semibold"
                         )}
                       >
                         {subtopic.done ? (
@@ -880,7 +886,7 @@ const CoursePage = () => {
                         ) : (
                           <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 text-sm font-medium text-gray-800 dark:text-gray-200">{subtopicCounter}</span>
                         )}
-                        <span className={cn("text-sm", subtopic.title === selected && "font-medium text-primary")}>{subtopic.title}</span>
+                        <span className="text-sm">{subtopic.title}</span>
                       </div>
                     );
                   })}
@@ -1002,9 +1008,14 @@ const CoursePage = () => {
             const progress = calculateTopicProgress(topic);
             const circumference = 2 * Math.PI * 11; // Adjusted for new radius
             const offset = circumference * (1 - progress / 100);
+            const isActiveTopic = activeAccordionItem === topic.title;
 
             return (
-              <AccordionItem key={topic.title} value={topic.title} className="border-none">
+              <AccordionItem 
+                key={topic.title} 
+                value={topic.title} 
+                className={cn("border-b", isActiveTopic && "bg-accent/50 rounded-md")}
+              >
                 <AccordionTrigger className="py-2 px-3 text-left hover:bg-accent/50 rounded-md">
                   <div className="flex items-center gap-3">
                     <div className="relative size-6 shrink-0">
@@ -1019,16 +1030,17 @@ const CoursePage = () => {
                     <span className="font-medium">{topic.title}</span>
                   </div>
                 </AccordionTrigger>
-                <AccordionContent className="pl-4">
+                <AccordionContent className="pl-4 pb-2">
                   {topic.subtopics.map((subtopic) => {
                     subtopicCounter++;
+                    const isSelected = subtopic.title === selected;
                     return (
                       <div
                         onClick={() => handleSelect(topic.title, subtopic.title)}
                         key={subtopic.title}
                         className={cn(
-                          "flex items-center gap-3 px-4 py-2 rounded-md hover:bg-accent/50 transition-colors cursor-pointer",
-                          subtopic.title === selected && "bg-accent/50"
+                          "flex items-center gap-3 px-4 py-2 rounded-md hover:bg-accent/80 transition-colors cursor-pointer",
+                          isSelected && "bg-primary/10 text-primary font-semibold"
                         )}
                       >
                         {subtopic.done ? (
@@ -1036,7 +1048,7 @@ const CoursePage = () => {
                         ) : (
                           <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 text-sm font-medium text-gray-800 dark:text-gray-200">{subtopicCounter}</span>
                         )}
-                        <span className={cn("text-sm", subtopic.title === selected && "font-medium text-primary")}>{subtopic.title}</span>
+                        <span className="text-sm">{subtopic.title}</span>
                       </div>
                     );
                   })}
