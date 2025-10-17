@@ -842,20 +842,23 @@ const CoursePage = () => {
           value={activeAccordionItem}
           onValueChange={setActiveAccordionItem}
         >
-          {topics.map((topic) => {
+          {topics.map((topic, topicIndex) => {
             const progress = calculateTopicProgress(topic);
-            const circumference = 2 * Math.PI * 13;
+            const circumference = 2 * Math.PI * 11; // Adjusted for new radius
             const offset = circumference * (1 - progress / 100);
 
             return (
               <AccordionItem key={topic.title} value={topic.title} className="border-none">
                 <AccordionTrigger className="py-2 px-3 text-left hover:bg-accent/50 rounded-md">
                   <div className="flex items-center gap-3">
-                    <div className="relative size-7 shrink-0">
+                    <div className="relative size-6 shrink-0">
                       <svg className="absolute h-full w-full -rotate-90">
-                        <circle cx="14" cy="14" r="13" stroke="currentColor" strokeWidth="1.75" fill="none" className="text-gray-200 dark:text-gray-700" />
-                        <circle cx="14" cy="14" r="13" stroke="currentColor" strokeWidth="1.75" fill="none" className="text-primary" style={{ strokeDasharray: circumference, strokeDashoffset: offset, transition: 'stroke-dashoffset 0.3s' }} />
+                        <circle cx="12" cy="12" r="11" stroke="currentColor" strokeWidth="1.5" fill="none" className="text-gray-200 dark:text-gray-700" />
+                        <circle cx="12" cy="12" r="11" stroke="currentColor" strokeWidth="1.5" fill="none" className="text-black dark:text-white" style={{ strokeDasharray: circumference, strokeDashoffset: offset, transition: 'stroke-dashoffset 0.3s' }} />
                       </svg>
+                      <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-gray-800 dark:text-gray-200">
+                        {topicIndex + 1}
+                      </span>
                     </div>
                     <span className="font-medium">{topic.title}</span>
                   </div>
@@ -995,20 +998,23 @@ const CoursePage = () => {
           value={activeAccordionItem}
           onValueChange={setActiveAccordionItem}
         >
-          {topics.map((topic) => {
+          {topics.map((topic, topicIndex) => {
             const progress = calculateTopicProgress(topic);
-            const circumference = 2 * Math.PI * 13;
+            const circumference = 2 * Math.PI * 11; // Adjusted for new radius
             const offset = circumference * (1 - progress / 100);
 
             return (
               <AccordionItem key={topic.title} value={topic.title} className="border-none">
                 <AccordionTrigger className="py-2 px-3 text-left hover:bg-accent/50 rounded-md">
                   <div className="flex items-center gap-3">
-                    <div className="relative size-7 shrink-0">
+                    <div className="relative size-6 shrink-0">
                       <svg className="absolute h-full w-full -rotate-90">
-                        <circle cx="14" cy="14" r="13" stroke="currentColor" strokeWidth="1.75" fill="none" className="text-gray-200 dark:text-gray-700" />
-                        <circle cx="14" cy="14" r="13" stroke="currentColor" strokeWidth="1.75" fill="none" className="text-primary" style={{ strokeDasharray: circumference, strokeDashoffset: offset, transition: 'stroke-dashoffset 0.3s' }} />
+                        <circle cx="12" cy="12" r="11" stroke="currentColor" strokeWidth="1.5" fill="none" className="text-gray-200 dark:text-gray-700" />
+                        <circle cx="12" cy="12" r="11" stroke="currentColor" strokeWidth="1.5" fill="none" className="text-black dark:text-white" style={{ strokeDasharray: circumference, strokeDashoffset: offset, transition: 'stroke-dashoffset 0.3s' }} />
                       </svg>
+                      <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-gray-800 dark:text-gray-200">
+                        {topicIndex + 1}
+                      </span>
                     </div>
                     <span className="font-medium">{topic.title}</span>
                   </div>
