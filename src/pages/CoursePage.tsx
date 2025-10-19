@@ -43,6 +43,8 @@ import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { appLogo, companyName, serverURL, websiteURL } from "@/constants";
@@ -807,16 +809,15 @@ const CoursePage = () => {
     const topicsHtml = topics
       .map(
         (topic) => `
-        <h3 style="font-size: 18pt; font-weight: bold; margin: 0; margin-top: 15px;">${
-          topic.title
-        }</h3>
+        <h3 style="font-size: 18pt; font-weight: bold; margin: 0; margin-top: 15px;">${topic.title
+          }</h3>
         ${topic.subtopics
-          .map(
-            (subtopic) => `
+            .map(
+              (subtopic) => `
             <p style="font-size: 16pt; margin-top: 10px;">${subtopic.title}</p>
         `
-          )
-          .join("")}
+            )
+            .join("")}
     `
       )
       .join("");
@@ -834,22 +835,19 @@ const CoursePage = () => {
                     ${subtopic.title}
                 </p>
                 <div style="font-size: 12pt; margin-top: 15px;">
-                    ${
-                      subtopic.done
-                        ? `
-                            ${
-                              type === "text & image course"
-                                ? imageUrl
-                                  ? `<img style="margin-top: 10px;" src="${imageUrl}" alt="${subtopic.title} image">`
-                                  : `<a style="color: #0000FF;" href="${subtopic.image}" target="_blank">View example image</a>`
-                                : `<a style="color: #0000FF;" href="https://www.youtube.com/watch?v=${subtopic.youtube}" target="_blank" rel="noopener noreferrer">Watch the YouTube video on ${subtopic.title}</a>`
-                            }
-                            <div style="margin-top: 10px;">${
-                              subtopic.theory
-                            }</div>
+                    ${subtopic.done
+              ? `
+                            ${type === "text & image course"
+                ? imageUrl
+                  ? `<img style="margin-top: 10px;" src="${imageUrl}" alt="${subtopic.title} image">`
+                  : `<a style="color: #0000FF;" href="${subtopic.image}" target="_blank">View example image</a>`
+                : `<a style="color: #0000FF;" href="https://www.youtube.com/watch?v=${subtopic.youtube}" target="_blank" rel="noopener noreferrer">Watch the YouTube video on ${subtopic.title}</a>`
+              }
+                            <div style="margin-top: 10px;">${subtopic.theory
+              }</div>
                         `
-                        : `<div style="margin-top: 10px;">Please visit ${subtopic.title} topic to export as PDF. Only topics that are completed will be added to the PDF.</div>`
-                    }
+              : `<div style="margin-top: 10px;">Please visit ${subtopic.title} topic to export as PDF. Only topics that are completed will be added to the PDF.</div>`
+            }
                 </div>
             </div>
         `;
@@ -1227,8 +1225,10 @@ const CoursePage = () => {
   };
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden">
-      <header className="border-b border-border/40 py-2 px-4 flex justify-between items-center sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
+      <header className="border-b border-border/40 py-3 px-4 flex justify-between items-center sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
+        {/* Left side - Course info and navigation */}
         <div className="flex items-center gap-4">
+          {/* Mobile menu trigger */}
           <Drawer>
             <DrawerTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden">
@@ -1261,101 +1261,169 @@ const CoursePage = () => {
             </DrawerContent>
           </Drawer>
 
-          <div className="flex flex-col">
-            <h1 className="text-lg font-bold">{formatTitle(mainTopic)}</h1>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span>{jsonData[mainTopic.toLowerCase()].length} modules</span>
+          <div className="flex flex-col min-w-0 flex-1 max-w-md">
+            <h1 className="text-lg font-bold truncate">{formatTitle(mainTopic)}</h1>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+              <span>Lesson {getCurrentLessonNumber()} of {getTotalLessons()}</span>
               <span>•</span>
-              <span>{getTotalLessons()} lessons</span>
+              <span>{jsonData[mainTopic.toLowerCase()].length} modules</span>
               <span>•</span>
               <span className="text-green-600 font-semibold">
                 {percentage}% complete
               </span>
             </div>
+            {/* Progress bar */}
+            <div className="w-full bg-secondary/60 rounded-full h-1.5">
+              <div
+                className="bg-gradient-to-r from-primary to-green-500 h-1.5 rounded-full transition-all duration-300"
+                style={{ width: `${percentage}%` }}
+              ></div>
+            </div>
           </div>
         </div>
 
+        {/* Right side - Actions */}
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="hidden md:flex"
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-          <ToggleGroup type="single" className="hidden sm:flex">
+          {/* Primary actions */}
+          <div className="flex items-center gap-1">
             <Button variant="ghost" size="sm" asChild>
               <Link to="/dashboard">
-                <Home className="h-4 w-4 mr-1" /> Home
+                <Home className="h-4 w-4" />
+                <span className="hidden sm:inline ml-1">Home</span>
               </Link>
             </Button>
-            <Button
-              onClick={certificateCheck}
-              variant="ghost"
-              size="sm"
-              asChild
-            >
-              <span className="cursor-pointer">
-                <Award className="h-4 w-4 mr-1" /> Certificate
-              </span>
-            </Button>
-            <Button
-              onClick={htmlDownload}
-              disabled={exporting}
-              variant="ghost"
-              size="sm"
-              asChild
-            >
-              <span className="cursor-pointer">
-                <Download className="h-4 w-4 mr-1" />
-                {exporting ? "Exporting..." : "Export"}
-              </span>
-            </Button>
-            <ShareOnSocial
-              textToShare={
-                sessionStorage.getItem("mName") +
-                " shared you course on " +
-                mainTopic
-              }
-              link={websiteURL + "/shareable?id=" + courseId}
-              linkTitle={
-                sessionStorage.getItem("mName") +
-                " shared you course on " +
-                mainTopic
-              }
-              linkMetaDesc={
-                sessionStorage.getItem("mName") +
-                " shared you course on " +
-                mainTopic
-              }
-              linkFavicon={appLogo}
-              noReferer
-            >
-              <Button variant="ghost" size="sm" asChild>
-                <span className="cursor-pointer">
-                  <Share className="h-4 w-4 mr-1" /> Share
-                </span>
+
+            {isComplete && (
+              <Button onClick={certificateCheck} variant="default" size="sm">
+                <Award className="h-4 w-4" />
+                <span className="hidden sm:inline ml-1">Certificate</span>
               </Button>
-            </ShareOnSocial>
-          </ToggleGroup>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsChatOpen(true)}
-            className="hidden md:flex"
-          >
-            <MessageCircle className="h-5 w-5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsNotesOpen(true)}
-            className="hidden md:flex"
-          >
-            <ClipboardCheck className="h-5 w-5" />
-          </Button>
-          <ThemeToggle />
+            )}
+          </div>
+
+          {/* Quick lesson navigation */}
+          <div className="hidden lg:flex items-center gap-1 border-r pr-2 mr-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleNavigateLesson("prev")}
+                    disabled={!hasPreviousLesson()}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Previous Lesson</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleNavigateLesson("next")}
+                    disabled={!hasNextLesson()}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Next Lesson</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+
+          {/* Secondary actions - grouped with tooltips on desktop */}
+          <div className="hidden md:flex items-center gap-1">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="sm" onClick={() => setIsChatOpen(!isChatOpen)}>
+                    <MessageCircle className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Chat Assistant</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="sm" onClick={() => setIsNotesOpen(true)}>
+                    <ClipboardCheck className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Course Notes</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+
+          {/* More actions dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={htmlDownload} disabled={exporting}>
+                <Download className="h-4 w-4 mr-2" />
+                {exporting ? "Exporting..." : "Export PDF"}
+              </DropdownMenuItem>
+              <ShareOnSocial
+                textToShare={
+                  sessionStorage.getItem("mName") +
+                  " shared you course on " +
+                  mainTopic
+                }
+                link={websiteURL + "/shareable?id=" + courseId}
+                linkTitle={
+                  sessionStorage.getItem("mName") +
+                  " shared you course on " +
+                  mainTopic
+                }
+                linkMetaDesc={
+                  sessionStorage.getItem("mName") +
+                  " shared you course on " +
+                  mainTopic
+                }
+                linkFavicon={appLogo}
+                noReferer
+              >
+                <DropdownMenuItem>
+                  <Share className="h-4 w-4 mr-2" />
+                  Share Course
+                </DropdownMenuItem>
+              </ShareOnSocial>
+              <DropdownMenuSeparator className="md:hidden" />
+              <DropdownMenuItem className="md:hidden" onClick={() => setIsChatOpen(true)}>
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Chat Assistant
+              </DropdownMenuItem>
+              <DropdownMenuItem className="md:hidden" onClick={() => setIsNotesOpen(true)}>
+                <ClipboardCheck className="h-4 w-4 mr-2" />
+                Course Notes
+              </DropdownMenuItem>
+              {!isComplete && (
+                <DropdownMenuItem className="md:hidden" onClick={certificateCheck}>
+                  <Award className="h-4 w-4 mr-2" />
+                  Certificate
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Utility actions */}
+          <div className="flex items-center gap-1 border-l pl-2 ml-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="hidden md:flex"
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
@@ -1545,43 +1613,70 @@ const CoursePage = () => {
         )}
       </ResizablePanelGroup>
 
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border p-2 flex justify-around items-center">
-        <Button variant="ghost" size="sm" asChild>
-          <Link to="/dashboard">
-            <Home className="h-5 w-5" />
-          </Link>
-        </Button>
-        <Button variant="ghost" size="sm" onClick={() => setIsChatOpen(true)}>
-          <MessageCircle className="h-5 w-5" />
-        </Button>
-        <Button variant="ghost" size="sm" onClick={() => setIsNotesOpen(true)}>
-          <ClipboardCheck className="h-5 w-5" />
-        </Button>
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border p-3 flex justify-between items-center">
+        {/* Left side - Navigation */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleNavigateLesson("prev")}
+            disabled={!hasPreviousLesson()}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleNavigateLesson("next")}
+            disabled={!hasNextLesson()}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
 
+        {/* Center - Primary actions */}
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/dashboard">
+              <Home className="h-4 w-4" />
+            </Link>
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setIsChatOpen(true)}>
+            <MessageCircle className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setIsNotesOpen(true)}>
+            <ClipboardCheck className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Right side - More actions */}
         <Drawer>
           <DrawerTrigger asChild>
             <Button variant="ghost" size="sm">
-              <MoreHorizontal className="h-5 w-5" />
+              <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DrawerTrigger>
           <DrawerContent className="max-h-[80vh]">
             <div className="p-4">
+              <h3 className="text-lg font-semibold mb-4">Course Actions</h3>
               <div className="flex flex-col gap-2">
-                <Button
-                  onClick={certificateCheck}
-                  variant="ghost"
-                  className="w-full justify-start"
-                >
-                  <Award className="h-4 w-4 mr-2" /> Certificate
-                </Button>
+                {isComplete && (
+                  <Button
+                    onClick={certificateCheck}
+                    variant="ghost"
+                    className="w-full justify-start"
+                  >
+                    <Award className="h-4 w-4 mr-2" /> Get Certificate
+                  </Button>
+                )}
                 <Button
                   onClick={htmlDownload}
                   disabled={exporting}
                   variant="ghost"
                   className="w-full justify-start"
                 >
-                  <Download className="h-4 w-4 mr-2" />{" "}
-                  {exporting ? "Exporting..." : "Export"}
+                  <Download className="h-4 w-4 mr-2" />
+                  {exporting ? "Exporting..." : "Export PDF"}
                 </Button>
                 <ShareOnSocial
                   textToShare={
@@ -1604,7 +1699,7 @@ const CoursePage = () => {
                   noReferer
                 >
                   <Button variant="ghost" className="w-full justify-start">
-                    <Share className="h-4 w-4 mr-2" /> Share
+                    <Share className="h-4 w-4 mr-2" /> Share Course
                   </Button>
                 </ShareOnSocial>
               </div>
