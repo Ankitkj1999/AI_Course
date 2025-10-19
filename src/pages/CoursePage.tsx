@@ -341,6 +341,7 @@ const CoursePage = () => {
     let doneCount = 0;
     let totalTopics = 0;
 
+    // Count completed lessons
     jsonData[mainTopic.toLowerCase()].forEach((topic) => {
       topic.subtopics.forEach((subtopic) => {
         if (subtopic.done) {
@@ -349,13 +350,18 @@ const CoursePage = () => {
         totalTopics++;
       });
     });
+
+    // Add quiz to total count
     totalTopics = totalTopics + 1;
+
+    // Add quiz to done count if passed
     if (pass) {
-      totalTopics = totalTopics - 1;
+      doneCount = doneCount + 1;
     }
+
     const completionPercentage = Math.round((doneCount / totalTopics) * 100);
     setPercentage(completionPercentage);
-    if (completionPercentage >= "100") {
+    if (completionPercentage >= 100) {
       setIsCompleted(true);
     }
   };

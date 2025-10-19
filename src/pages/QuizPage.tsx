@@ -44,9 +44,11 @@ const QuizPage = () => {
     }, []);
 
     const setQuizResult = () => {
-        const half = quizQuestions.length;
         const scor = getScore();
-        if (scor > half) {
+        const percentage = (scor / quizQuestions.length) * 100;
+        const passingGrade = 60; // 60% passing grade
+        
+        if (percentage >= passingGrade) {
             setPassed(true);
             updateResult(scor);
         } else {
