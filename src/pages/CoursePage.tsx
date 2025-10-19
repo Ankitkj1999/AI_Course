@@ -390,21 +390,36 @@ const CoursePage = () => {
     return true;
   };
 
-  // Check if there's a next lesson
+  // Check if there's a next lesson or quiz
   const hasNextLesson = () => {
     const { currentTopicIndex, currentSubtopicIndex } =
       findCurrentLessonPosition();
     const topics = jsonData[mainTopic.toLowerCase()];
 
-    // If we're at the last subtopic of the last topic, there's no next lesson
+    // If we're at the last subtopic of the last topic, check if quiz is available
     if (currentTopicIndex === topics.length - 1) {
       const lastTopic = topics[currentTopicIndex];
       if (currentSubtopicIndex === lastTopic.subtopics.length - 1) {
-        return false;
+        // Return true if quiz is available (not completed yet)
+        return !pass;
       }
     }
 
     return true;
+  };
+
+  // Check if we're on the last lesson (should show "Take Quiz" instead of "Next Lesson")
+  const isLastLesson = () => {
+    const { currentTopicIndex, currentSubtopicIndex } =
+      findCurrentLessonPosition();
+    const topics = jsonData[mainTopic.toLowerCase()];
+
+    if (currentTopicIndex === topics.length - 1) {
+      const lastTopic = topics[currentTopicIndex];
+      return currentSubtopicIndex === lastTopic.subtopics.length - 1;
+    }
+
+    return false;
   };
 
   // Handle navigation between lessons
@@ -416,6 +431,12 @@ const CoursePage = () => {
     if (direction === "next" && hasNextLesson()) {
       toggleDoneState(true);
       const currentTopic = topics[currentTopicIndex];
+
+      // If we're on the last lesson and quiz is available, go to quiz
+      if (isLastLesson() && !pass) {
+        redirectExam();
+        return;
+      }
 
       // If there are more subtopics in the current topic
       if (currentSubtopicIndex < currentTopic.subtopics.length - 1) {
@@ -1329,7 +1350,9 @@ const CoursePage = () => {
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Next Lesson</TooltipContent>
+                <TooltipContent>
+                  {isLastLesson() && !pass ? "Take Quiz" : "Next Lesson"}
+                </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>
@@ -1548,8 +1571,17 @@ const CoursePage = () => {
                           onClick={() => handleNavigateLesson("next")}
                           disabled={!hasNextLesson()}
                           className="rounded-full flex items-center gap-2"
+                          variant={isLastLesson() && !pass ? "default" : "outline"}
                         >
-                          Next Lesson <ChevronRight className="h-4 w-4" />
+                          {isLastLesson() && !pass ? (
+                            <>
+                              Take Final Quiz <Award className="h-4 w-4 ml-1" />
+                            </>
+                          ) : (
+                            <>
+                              Next Lesson <ChevronRight className="h-4 w-4" />
+                            </>
+                          )}
                         </Button>
                       </div>
                     </>
@@ -1625,12 +1657,16 @@ const CoursePage = () => {
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Button
-            variant="ghost"
+            variant={isLastLesson() && !pass ? "default" : "ghost"}
             size="sm"
             onClick={() => handleNavigateLesson("next")}
             disabled={!hasNextLesson()}
           >
-            <ChevronRight className="h-4 w-4" />
+            {isLastLesson() && !pass ? (
+              <Award className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
           </Button>
         </div>
 
