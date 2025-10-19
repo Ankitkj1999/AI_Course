@@ -24,6 +24,7 @@ const Dashboard = () => {
   const userId = sessionStorage.getItem('uid');
   const [courseProgress, setCourseProgress] = useState({});
   const [modules, setTotalModules] = useState({});
+  const [lessons, setTotalLessons] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -104,14 +105,18 @@ const Dashboard = () => {
       } else {
         const progressMap = { ...courseProgress }; // Spread existing state
         const modulesMap = { ...modules }; // Spread existing state
+        const lessonsMap = { ...lessons }; // Spread existing state
         for (const course of response.data) {
           const progress = await CountDoneTopics(course.content, course.mainTopic, course._id);
-          const totalModules = await CountTotalTopics(course.content, course.mainTopic, course._id);
+          const totalModules = await CountTotalModules(course.content, course.mainTopic);
+          const totalLessons = await CountTotalLessons(course.content, course.mainTopic);
           progressMap[course._id] = progress;
           modulesMap[course._id] = totalModules;
+          lessonsMap[course._id] = totalLessons;
         }
         setCourseProgress(progressMap);
         setTotalModules(modulesMap);
+        setTotalLessons(lessonsMap);
         await setCourses((prevCourses) => [...prevCourses, ...response.data]);
       }
     } catch (error) {
@@ -165,16 +170,23 @@ const Dashboard = () => {
     }
   }
 
-  const CountTotalTopics = async (json: string, mainTopic: string, courseId: string) => {
+  const CountTotalModules = async (json: string, mainTopic: string) => {
     try {
       const jsonData = JSON.parse(json);
-      let totalTopics = 0;
-      jsonData[mainTopic.toLowerCase()].forEach((topic: { subtopics: string[]; }) => {
-        topic.subtopics.forEach((subtopic) => {
-          totalTopics++;
-        });
-      });
-      return totalTopics;
+      return jsonData[mainTopic.toLowerCase()].length;
+    } catch (error) {
+      console.error(error);
+      return 0;
+    }
+  }
+
+  const CountTotalLessons = async (json: string, mainTopic: string) => {
+    try {
+      const jsonData = JSON.parse(json);
+      return jsonData[mainTopic.toLowerCase()].reduce(
+        (total, topic) => total + topic.subtopics.length,
+        0
+      );
     } catch (error) {
       console.error(error);
       return 0;
@@ -295,11 +307,13 @@ const Dashboard = () => {
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">{courseProgress[course._id] || 0}% complete</p>
                       </div>
-                      <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <div className="flex items-center">
                           <BookOpen className="mr-1 h-4 w-4" />
                           {modules[course._id] || 0} modules
                         </div>
+                        <span>•</span>
+                        <span>{lessons[course._id] || 0} lessons</span>
                       </div>
                     </CardContent>
                     <CardFooter>
@@ -307,12 +321,9 @@ const Dashboard = () => {
                         onClick={() => redirectCourse(course.content, course.mainTopic, course.type, course._id, course.completed, course.end)}
                         variant="ghost"
                         className="w-full group-hover:bg-primary/10 transition-colors justify-between"
-                        asChild
                       >
-                        <div>
-                          Continue Learning
-                          <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                        </div>
+                        Continue Learning
+                        <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
                       </Button>
                     </CardFooter>
                   </Card>
