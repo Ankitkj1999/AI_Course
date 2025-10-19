@@ -1079,6 +1079,7 @@ const CoursePage = () => {
           const today = new Date();
           const formattedDate = today.toLocaleDateString("en-GB");
           sessionStorage.setItem("first", "true");
+          sessionStorage.setItem("courseEndDate", formattedDate);
           sendEmail(formattedDate);
         }
       } catch (error) {
