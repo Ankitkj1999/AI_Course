@@ -1,10 +1,43 @@
 // Enhanced content detection and parsing utility
 
 /**
+ * Preprocess content to handle escaped characters from JSON storage
+ */
+export const preprocessEscapedContent = (content: string): string => {
+  if (!content || typeof content !== 'string') {
+    return content;
+  }
+
+  // Handle escaped newlines (\\n) - convert to actual newlines
+  let processed = content.replace(/\\n/g, '\n');
+  
+  // Handle escaped quotes
+  processed = processed.replace(/\\"/g, '"');
+  processed = processed.replace(/\'/g, "'");
+  
+  // Handle escaped backslashes (but be careful not not to break legitimate escapes)
+  processed = processed.replace(/\\\\/g, '\\');
+  
+  // Handle escaped tabs
+  processed = processed.replace(/\\t/g, '\t');
+  
+  // Handle escaped carriage returns
+  processed = processed.replace(/\\r/g, '\r');
+  
+  return processed;
+};
+
+/**
  * Safely parse JSON content that might be double-encoded or escaped
  */
 export const safeJsonParse = (content: string): unknown => {
   if (!content) return null;
+  
+  // Quick check: if content doesn't start with { or [, it's likely not JSON
+  const trimmed = content.trim();
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+    return null;
+  }
   
   try {
     // Try to parse once
@@ -22,7 +55,10 @@ export const safeJsonParse = (content: string): unknown => {
     
     return parsed;
   } catch (error) {
-    console.error('JSON parse error:', error);
+    // Only log errors for content that looks like it should be JSON
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      console.warn('Failed to parse JSON-like content:', error);
+    }
     return null;
   }
 };
@@ -83,30 +119,34 @@ export const detectContentType = (content: string): 'html' | 'markdown' | 'json'
 export const prepareContentForRendering = (content: string, contentType?: string): {
   type: 'html' | 'markdown' | 'json' | 'text';
   content: string;
-  parsedJson?: Record<string, unknown> | unknown[];
+  parsedJson: any;
 } => {
   if (!content) {
-    return { type: 'html', content: '' };
+    return { type: 'html', content: '', parsedJson: undefined };
   }
   
-  // Detect content type if not provided
-  const detectedType = contentType || detectContentType(content);
+  // First, preprocess the content to handle escaped characters
+  const preprocessedContent = preprocessEscapedContent(content);
+  
+  // Detect content type using preprocessed content for better accuracy
+  const detectedType = contentType || detectContentType(preprocessedContent);
   
   // Handle JSON content specially
   if (detectedType === 'json') {
-    const parsed = safeJsonParse(content);
+    const parsed = safeJsonParse(preprocessedContent);
     if (parsed) {
       return {
         type: 'json',
         content: JSON.stringify(parsed, null, 2),
-        parsedJson: parsed as Record<string, unknown> | unknown[]
+        parsedJson: parsed
       };
     }
   }
   
   return {
     type: detectedType as 'html' | 'markdown' | 'json' | 'text',
-    content: content
+    content: preprocessedContent,
+    parsedJson: undefined
   };
 };
 
@@ -141,8 +181,6 @@ export const sanitizeHtml = (html: string): string => {
  * Format code blocks for better readability
  */
 export const formatCodeBlocks = (content: string): string => {
-  // Ensure code blocks have proper spacing
-  return content.replace(/```(\w+)?\n/g, (match, lang) => {
-    return "\n```" + (lang || '') + "\n";
-  }).replace(/\n```/g, '\n```\n');
+  // This function is now a no-op, as the aggressive regex was causing issues.
+  return content;
 };

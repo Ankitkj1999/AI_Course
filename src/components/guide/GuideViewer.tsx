@@ -17,8 +17,8 @@ import { useToast } from '@/hooks/use-toast';
 import { guideService } from '@/services/guideService';
 import { Guide } from '@/types/guide';
 import ReactMarkdown from 'react-markdown';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { CodeBlock } from '@/components/code/CodeBlock';
+import { formatCodeBlocks } from '@/utils/contentHandler';
 
 const GuideViewer: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -28,6 +28,29 @@ const GuideViewer: React.FC = () => {
   const [guide, setGuide] = useState<Guide | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeSection, setActiveSection] = useState<string>('');
+
+  // Process markdown content to handle escaped characters and format code blocks
+  const processMarkdownContent = (content: string): string => {
+    if (!content) return '';
+    
+    // If content looks like escaped JSON, try to unescape it
+    try {
+      // Handle common escape sequences
+      let processed = content
+        .replace(/\\n/g, '\n')           // Convert \\n to actual newlines
+        .replace(/\\"/g, '"')           // Convert \" to "
+        .replace(/\\\\/g, '\\')         // Convert \\\\ to \\
+        .replace(/\\t/g, '\t');         // Convert \\t to tabs
+      
+      // Format code blocks for better parsing
+      processed = formatCodeBlocks(processed);
+      
+      return processed;
+    } catch (error) {
+      console.warn('Failed to process markdown content:', error);
+      return content;
+    }
+  };
 
   useEffect(() => {
     if (slug) {
@@ -231,26 +254,41 @@ const GuideViewer: React.FC = () => {
                 <div className="prose prose-lg dark:prose-invert max-w-none">
                   <ReactMarkdown
                     components={{
-                      code({ node, inline, className, children, ...props }) {
-                        const match = /language-(\w+)/.exec(className || '');
-                        return !inline && match ? (
-                          <SyntaxHighlighter
-                            style={tomorrow}
-                            language={match[1]}
-                            PreTag="div"
-                            {...props}
-                          >
-                            {String(children).replace(/\n$/, '')}
-                          </SyntaxHighlighter>
-                        ) : (
-                          <code className={className} {...props}>
-                            {children}
-                          </code>
+                      code({ node, className, children, ...props }: any) {
+                        // Check if this is inline code (no language class and single line)
+                        const isInline = !className && !String(children).includes('\n');
+                        
+                        // For inline code, render simple styled span
+                        if (isInline) {
+                          return (
+                            <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">
+                              {String(children)}
+                            </code>
+                          );
+                        }
+                        
+                        // Extract language from className (e.g., "language-javascript" -> "javascript")
+                        const extractLanguage = (className: string): string => {
+                          const match = /language-(\w+)/.exec(className || '');
+                          return match ? match[1] : 'plaintext';
+                        };
+                        
+                        const language = extractLanguage(className);
+                        const code = String(children).replace(/\n$/, ''); // Remove trailing newline
+                        
+                        return (
+                          <CodeBlock
+                            code={code}
+                            language={language as any}
+                          />
                         );
+                      },
+                      pre({ children }) {
+                        return <>{children}</>;
                       },
                     }}
                   >
-                    {guide.content}
+                    {processMarkdownContent(guide.content)}
                   </ReactMarkdown>
                 </div>
               </CardContent>

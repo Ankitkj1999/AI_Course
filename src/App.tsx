@@ -65,6 +65,7 @@ import BlogPost from "./pages/BlogPost";
 import AdminBlogs from "./pages/admin/AdminBlogs";
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { googleClientId } from "./constants";
+import TestPreprocessing from "./components/TestPreprocessing";
 
 const queryClient = new QueryClient();
 
@@ -144,6 +145,9 @@ const App = () => (
                 <Route path="/subscription-billing-policy" element={<SubscriptionBillingPolicy />} />
                 <Route path="/blog" element={<Blog />} />
                 <Route path="/blog/:id" element={<BlogPost />} />
+                
+                {/* Test Routes */}
+                <Route path="/test-preprocessing" element={<TestPreprocessing />} />
 
                 {/* Admin Routes */}
                 <Route path="/admin" element={<AdminLayout />}>

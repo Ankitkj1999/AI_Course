@@ -1,9 +1,9 @@
 // Enhanced StyledText Component
 import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
+import { CodeBlock } from './code';
+import { type BundledLanguage } from './code/CodeBlockContent';
 import { 
   prepareContentForRendering, 
   sanitizeHtml, 
@@ -16,7 +16,7 @@ interface StyledTextProps {
   className?: string;
 }
 
-const StyledText: React.FC<StyledTextProps> = ({ 
+const StyledText: React.FC<StyledTextProps> = ({
   text, 
   contentType: providedType,
   className = '' 
@@ -68,33 +68,29 @@ const StyledText: React.FC<StyledTextProps> = ({
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
-              code({ node, inline, className, children, ...props }) {
+              code({ node, className, children, ...props }: any) {
+                // Check if this is inline code (no language class and single line)
+                const inline = !className && !String(children).includes('\n');
                 const match = /language-(\w+)/.exec(className || '');
-                const language = match ? match[1] : '';
-                
-                return !inline && language ? (
-                  <SyntaxHighlighter
-                    style={vscDarkPlus}
-                    language={language}
-                    PreTag="div"
-                    className="rounded-lg"
-                    customStyle={{
-                      margin: '1rem 0',
-                      padding: '1rem',
-                      fontSize: '0.875rem',
-                      lineHeight: '1.5',
-                    }}
-                    {...props}
-                  >
-                    {String(children).replace(/\n$/, '')}
-                  </SyntaxHighlighter>
-                ) : (
-                  <code 
-                    className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono" 
-                    {...props}
-                  >
-                    {children}
-                  </code>
+                const language = match ? match[1] : 'plaintext';
+                const code = String(children).replace(/\n$/, '');
+
+                if (inline) {
+                  return (
+                    <code 
+                      className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono" 
+                      {...props}
+                    >
+                      {children}
+                    </code>
+                  );
+                }
+
+                return (
+                  <CodeBlock
+                    code={code}
+                    language={language as BundledLanguage}
+                  />
                 );
               },
               pre({ children }) {
@@ -161,20 +157,10 @@ const StyledText: React.FC<StyledTextProps> = ({
         <div className={`space-y-4 ${className}`}>
           <div className="bg-muted border border-border rounded-lg p-4">
             <h3 className="text-lg font-semibold mb-3">Structured Content</h3>
-            <SyntaxHighlighter
+            <CodeBlock
+              code={preparedContent.content}
               language="json"
-              style={vscDarkPlus}
-              customStyle={{
-                margin: 0,
-                padding: '1rem',
-                fontSize: '0.875rem',
-                lineHeight: '1.5',
-                maxHeight: '500px',
-                overflow: 'auto',
-              }}
-            >
-              {preparedContent.content}
-            </SyntaxHighlighter>
+            />
           </div>
           
           {/* Render parsed JSON in a user-friendly way if it has a specific structure */}
