@@ -403,7 +403,7 @@ const Dashboard = () => {
                   {courses.map((course) => (
                     <Card key={course._id} className="overflow-hidden hover:shadow-md transition-all duration-200 border-border/40 hover:border-primary/30 group bg-card/50 backdrop-blur-sm">
                       <div className="flex min-h-[140px]">
-                        <div className="w-48 relative overflow-hidden flex-shrink-0">
+                        <div className="w-32 sm:w-48 relative overflow-hidden flex-shrink-0">
                           <img
                             src={course.photo}
                             alt={course.mainTopic}
@@ -412,12 +412,12 @@ const Dashboard = () => {
                         </div>
                         <div className="flex-1 flex flex-col">
                           <CardHeader className="pb-2 pt-4">
-                            <div className="flex items-start justify-between">
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between">
                               <div className="flex-1">
                                 <CardTitle className="text-lg leading-tight capitalize line-clamp-1">{course.mainTopic}</CardTitle>
                                 <CardDescription className="text-xs capitalize mt-1">{course.type}</CardDescription>
                               </div>
-                              <div className="flex items-center gap-2 ml-4">
+                              <div className="flex items-center justify-between w-full sm:w-auto mt-2 sm:mt-0 sm:ml-4 sm:gap-2">
                                 <Badge variant={course.completed === true ? 'default' : 'secondary'} className="text-xs px-2 py-1">
                                   {course.completed === true ? 'Completed' : 'In Progress'}
                                 </Badge>
