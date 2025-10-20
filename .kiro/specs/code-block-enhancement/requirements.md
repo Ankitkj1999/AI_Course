@@ -30,6 +30,20 @@ This feature aims to improve the rendering and display of code blocks in the AiC
 4. WHEN code blocks are displayed THEN they SHALL be responsive and work well on both desktop and mobile devices
 5. WHEN multiple code blocks exist THEN they SHALL have consistent styling throughout the application
 
+### Requirement 8: Mobile Responsiveness Enhancement
+
+**User Story:** As a learner using mobile devices, I want code blocks to be properly formatted and easily readable on small screens so that I can learn effectively on any device.
+
+#### Acceptance Criteria
+
+1. WHEN viewing code blocks on mobile devices THEN they SHALL have appropriate font sizes that are readable without zooming
+2. WHEN code blocks contain long lines THEN they SHALL provide horizontal scrolling without breaking the page layout
+3. WHEN viewing code blocks on mobile THEN the copy button SHALL be touch-friendly with adequate tap target size
+4. WHEN code blocks are displayed on small screens THEN they SHALL maintain proper spacing and not overflow the viewport
+5. WHEN viewing multiple code blocks on mobile THEN the page SHALL remain scrollable and performant
+6. WHEN code blocks have long function names or content THEN they SHALL wrap appropriately or provide smooth horizontal scrolling
+7. WHEN using mobile devices THEN code block headers SHALL remain visible and functional during horizontal scrolling
+
 ### Requirement 3: Copy-to-Clipboard Functionality
 
 **User Story:** As a learner, I want to easily copy code snippets to my clipboard so that I can use them in my own projects or experiments.

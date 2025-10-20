@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { guideService } from '@/services/guideService';
 import { Guide } from '@/types/guide';
 import ReactMarkdown from 'react-markdown';
-import { CodeBlock } from '@/components/code/CodeBlock';
+import { CodeBlock } from '@/components/CodeBlock';
 import { formatCodeBlocks } from '@/utils/contentHandler';
 
 const GuideViewer: React.FC = () => {

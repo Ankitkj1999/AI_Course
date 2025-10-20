@@ -128,39 +128,64 @@ This implementation plan breaks down the code block enhancement feature into man
     - Validate performance on slower devices
     - _Requirements: 6.1, 6.3, 6.4, 6.5_
 
-- [ ] 8. Cross-Browser and Mobile Testing
-  - [ ] 8.1 Test copy functionality across browsers
+- [ ] 8. Mobile Responsiveness Enhancement
+  - [ ] 8.1 Improve code block mobile typography
+    - Adjust font sizes for better mobile readability
+    - Optimize line height and spacing for small screens
+    - Ensure code remains readable without horizontal zooming
+    - _Requirements: 8.1, 8.4_
+
+  - [ ] 8.2 Enhance mobile scrolling and layout
+    - Implement smooth horizontal scrolling for long code lines
+    - Prevent code blocks from breaking page layout on mobile
+    - Add proper touch scrolling behavior for code content
+    - _Requirements: 8.2, 8.4, 8.6_
+
+  - [ ] 8.3 Optimize mobile copy button interaction
+    - Increase touch target size for mobile devices
+    - Improve button positioning and accessibility on small screens
+    - Add haptic feedback for successful copy operations
+    - _Requirements: 8.3, 8.7_
+
+  - [ ] 8.4 Implement responsive code block containers
+    - Add proper viewport constraints for code blocks
+    - Implement responsive padding and margins
+    - Ensure consistent behavior across different mobile screen sizes
+    - _Requirements: 8.4, 8.5_
+
+- [ ] 9. Cross-Browser and Mobile Testing
+  - [ ] 9.1 Test copy functionality across browsers
     - Verify clipboard API support and fallbacks
     - Test on iOS Safari, Chrome, Firefox, Edge
     - Implement graceful degradation for unsupported browsers
     - _Requirements: 3.4, 3.5_
 
-  - [ ] 8.2 Validate responsive design on mobile devices
+  - [ ] 9.2 Validate responsive design on mobile devices
     - Test code block rendering on various screen sizes
     - Ensure touch-friendly copy button interactions
     - Validate horizontal scrolling for long code lines
-    - _Requirements: 2.4, 3.5_
+    - _Requirements: 2.4, 3.5, 8.1, 8.2, 8.3_
 
-  - [ ]* 8.3 Cross-browser compatibility testing
+  - [ ]* 9.3 Cross-browser compatibility testing
     - Test syntax highlighting consistency across browsers
     - Verify CSS compatibility and fallbacks
     - Test accessibility features with screen readers
     - _Requirements: 2.4, 3.5_
 
-- [ ] 9. Final Integration and Deployment
-  - [ ] 9.1 Final testing and bug fixes
+- [ ] 10. Final Integration and Deployment
+  - [ ] 10.1 Final testing and bug fixes
     - Conduct comprehensive testing of all features
     - Fix any discovered bugs or edge cases
     - Validate performance in production-like environment
     - _Requirements: 5.4, 6.1_
 
-  - [ ] 9.2 Documentation and code cleanup
+  - [ ] 10.2 Documentation and code cleanup
     - Add comprehensive code comments and documentation
     - Clean up any temporary or debug code
     - Update component documentation and examples
     - _Requirements: 4.3, 4.4_
 
-  - [ ] 9.3 Deploy and monitor
+  - [ ] 10.3 Deploy and monitor
     - Deploy changes to production environment
     - Monitor for any runtime errors or performance issues
     - Collect user feedback and usage analytics

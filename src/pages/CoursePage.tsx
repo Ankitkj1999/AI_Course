@@ -1462,7 +1462,7 @@ const CoursePage = () => {
         className="flex-1 overflow-hidden"
       >
         <ResizablePanel
-          defaultSize={isChatOpen && !isMobile ? 70 : 100}
+          defaultSize={isChatOpen && !isMobile ? 75 : 100}
           minSize={50}
         >
           <div className="flex h-full">
@@ -1500,7 +1500,7 @@ const CoursePage = () => {
               </ScrollArea>
             </div>
 
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden min-w-0">
               <ScrollArea className="h-full" viewportRef={mainContentRef}>
                 <main className="p-6 max-w-5xl mx-auto">
                   {isLoading ? (
