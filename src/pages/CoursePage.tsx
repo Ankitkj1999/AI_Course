@@ -1314,7 +1314,7 @@ const CoursePage = () => {
         <div className="flex items-center gap-2">
           {/* Primary actions */}
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" asChild>
+            <Button variant="ghost" size="sm" asChild className="hidden md:flex">
               <Link to="/dashboard">
                 <Home className="h-4 w-4" />
                 <span className="hidden sm:inline ml-1">Home</span>
@@ -1322,7 +1322,7 @@ const CoursePage = () => {
             </Button>
 
             {isComplete && (
-              <Button onClick={certificateCheck} variant="ghost" size="sm">
+              <Button onClick={certificateCheck} variant="ghost" size="sm" className="hidden md:flex">
                 <Award className="h-4 w-4" />
                 <span className="hidden sm:inline ml-1">Certificate</span>
               </Button>
@@ -1390,7 +1390,7 @@ const CoursePage = () => {
           {/* More actions dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" className="hidden md:flex">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
