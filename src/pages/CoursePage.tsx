@@ -70,7 +70,7 @@ const CoursePage = () => {
   const [newMessage, setNewMessage] = useState("");
   const [exporting, setExporting] = useState(false);
   const [saving, setSaving] = useState(false);
-  const defaultMessage = `<p>Hey there! I'm your AI teacher. If you have any questions about your ${mainTopic} course, whether it's about videos, images, or theory, just ask me. I'm here to clear your doubts.</p>`;
+  const defaultMessage = `Hey there! I'm your AI teacher. If you have any questions about your ${mainTopic} course, whether it's about videos, images, or theory, just ask me. I'm here to clear your doubts.`;
   const defaultPrompt = `I have a doubt about this topic :- ${mainTopic}. Please clarify my doubt in very short :- `;
 
   const [isMenuOpen, setIsMenuOpen] = useState(true);
@@ -1502,7 +1502,7 @@ const CoursePage = () => {
 
             <div className="flex-1 overflow-hidden min-w-0">
               <ScrollArea className="h-full" viewportRef={mainContentRef}>
-                <main className="p-6 max-w-5xl mx-auto">
+                <main className="p-6 max-w-5xl mx-auto w-full">
                   {isLoading ? (
                     <CourseContentSkeleton />
                   ) : (

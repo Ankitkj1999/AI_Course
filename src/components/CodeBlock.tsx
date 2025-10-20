@@ -49,7 +49,7 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
   }, [code, language]);
 
   return (
-    <div className="not-prose code-block-container my-6 rounded-lg border bg-gray-900 text-sm dark:border-gray-700">
+    <div className="not-prose code-block-container my-6 rounded-lg border bg-gray-900 text-sm dark:border-gray-700 grid min-w-0">
       {/* Header */}
       <div className="flex items-center justify-between rounded-t-lg bg-gray-800 px-4 py-2">
         <span className="font-mono text-xs font-semibold text-gray-300">
