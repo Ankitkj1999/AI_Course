@@ -1322,7 +1322,7 @@ const CoursePage = () => {
             </Button>
 
             {isComplete && (
-              <Button onClick={certificateCheck} variant="default" size="sm">
+              <Button onClick={certificateCheck} variant="ghost" size="sm">
                 <Award className="h-4 w-4" />
                 <span className="hidden sm:inline ml-1">Certificate</span>
               </Button>
