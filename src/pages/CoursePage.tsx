@@ -1256,39 +1256,6 @@ const CoursePage = () => {
       <header className="border-b border-border/40 py-3 px-4 flex justify-between items-center sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
         {/* Left side - Course info and navigation */}
         <div className="flex items-center gap-4">
-          {/* Mobile menu trigger */}
-          <Drawer>
-            <DrawerTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </DrawerTrigger>
-            <DrawerContent className="max-h-[80vh]">
-              <div className="p-4">
-                <h2 className="text-xl font-bold mb-4">Course Content</h2>
-                <ScrollArea className="h-[60vh]">
-                  <div className="pr-4">
-                    {jsonData &&
-                      renderTopicsAndSubtopics(
-                        jsonData[mainTopic.toLowerCase()]
-                      )}
-                    <p
-                      onClick={redirectExam}
-                      className="py-2 text-left px-3 hover:bg-accent/50 rounded-md cursor-pointer normal-case"
-                    >
-                      {pass === true ? (
-                        <span className="mr-2 text-primary">✓</span>
-                      ) : (
-                        <></>
-                      )}
-                      {mainTopic} Quiz
-                    </p>
-                  </div>
-                </ScrollArea>
-              </div>
-            </DrawerContent>
-          </Drawer>
-
           <div className="flex flex-col min-w-0 flex-1 max-w-md">
             <h1 className="text-lg font-bold truncate">{formatTitle(mainTopic)}</h1>
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
@@ -1452,7 +1419,9 @@ const CoursePage = () => {
             >
               <Menu className="h-4 w-4" />
             </Button>
-            <ThemeToggle />
+            <div className="hidden md:block">
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       </header>
@@ -1655,6 +1624,37 @@ const CoursePage = () => {
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border p-3 flex justify-between items-center">
         {/* Left side - Navigation */}
         <div className="flex items-center gap-2">
+          <Drawer>
+            <DrawerTrigger asChild>
+              <Button variant="ghost" size="sm">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </DrawerTrigger>
+            <DrawerContent className="max-h-[80vh]">
+              <div className="p-4">
+                <h2 className="text-xl font-bold mb-4">Course Content</h2>
+                <ScrollArea className="h-[60vh]">
+                  <div className="pr-4">
+                    {jsonData &&
+                      renderTopicsAndSubtopics(
+                        jsonData[mainTopic.toLowerCase()]
+                      )}
+                    <p
+                      onClick={redirectExam}
+                      className="py-2 text-left px-3 hover:bg-accent/50 rounded-md cursor-pointer normal-case"
+                    >
+                      {pass === true ? (
+                        <span className="mr-2 text-primary">✓</span>
+                      ) : (
+                        <></>
+                      )}
+                      {mainTopic} Quiz
+                    </p>
+                  </div>
+                </ScrollArea>
+              </div>
+            </DrawerContent>
+          </Drawer>
           <Button
             variant="ghost"
             size="sm"
@@ -1745,6 +1745,7 @@ const CoursePage = () => {
                     <Share className="h-4 w-4 mr-2" /> Share Course
                   </Button>
                 </ShareOnSocial>
+                <ThemeToggle showLabel variant="ghost" className="w-full" />
               </div>
             </div>
           </DrawerContent>
