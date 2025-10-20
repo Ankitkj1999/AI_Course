@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import { Separator } from "@/components/ui/separator";
+import { ThemeColorPicker } from '@/components/ThemeColorPicker';
+import { FontSizePicker } from '@/components/FontSizePicker';
 import { toast } from "@/hooks/use-toast";
 import { PenLine, Save, ShieldCheck, CreditCard, Loader } from "lucide-react";
 import { MonthCost, MonthType, serverURL, YearCost } from '@/constants';
@@ -378,6 +380,12 @@ const Profile = () => {
                   <h3 className="text-lg font-medium">Settings</h3>
 
                   <div className="space-y-4">
+                    <ThemeColorPicker />
+                    <Separator />
+                    
+                    <FontSizePicker />
+                    <Separator />
+
                     {installPrompt && (
                       <>
                         <div className="flex items-center justify-between">

@@ -1,3 +1,4 @@
+import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -27,6 +28,7 @@ import Blog from "./pages/Blog";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import PaymentPending from "./pages/PaymentPending";
 import PaymentFailed from "./pages/PaymentFailed";
+import { useThemeInitialization } from "./hooks/useThemeInitialization";
 
 // Quiz imports
 import DashboardQuizListPage from "./pages/dashboard/QuizList";
@@ -83,9 +85,12 @@ if ('serviceWorker' in navigator) {
 //TODO : Add failed payment link in server.js
 //TODO : compare main server with edited server file
 
-const App = () => (
-  <GoogleOAuthProvider clientId={googleClientId}>
-    <ThemeProvider>
+const App = () => {
+  useThemeInitialization();
+  
+  return (
+    <GoogleOAuthProvider clientId={googleClientId}>
+      <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <HelmetProvider>
           <TooltipProvider>
@@ -171,6 +176,7 @@ const App = () => (
       </QueryClientProvider>
     </ThemeProvider>
   </GoogleOAuthProvider>
-);
+  );
+};
 
 export default App;
