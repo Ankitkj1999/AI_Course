@@ -7,6 +7,9 @@
     "start": "node server.js",
     "dev": "node server.js"
   },
+  "overrides": {
+    "undici": "^6.22.0"
+  },
   "dependencies": {
     "@google/generative-ai": "^0.1.1",
     "axios": "^1.8.3",
@@ -21,6 +24,7 @@
     "portfinder": "^1.0.38",
     "showdown": "^2.1.0",
     "stripe": "^15.7.0",
+    "undici": "^6.22.0",
     "unsplash-js": "^7.0.19",
     "winston": "^3.18.3",
     "youtube-search-api": "^1.2.1",

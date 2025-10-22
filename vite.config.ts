@@ -70,7 +70,7 @@ export default defineConfig(({ mode }) => ({
           // API calls - Network First strategy (dynamic server URL)
           {
             urlPattern: ({ url }) => {
-              const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:5010';
+              const serverUrl = process.env.VITE_SERVER_URL || 'http://localhost:5010';
               return url.href.startsWith(`${serverUrl}/api/`);
             },
             handler: 'NetworkFirst',
@@ -80,13 +80,15 @@ export default defineConfig(({ mode }) => ({
                 maxEntries: 50,
                 maxAgeSeconds: 60 * 60 * 2 // 2 hours
               },
-              cacheKeyWillBeUsed: async ({ request }) => {
-                // Don't cache POST requests
-                if (request.method === 'POST') {
-                  return null;
+              plugins: [{
+                cacheKeyWillBeUsed: async ({ request }) => {
+                  // Don't cache POST requests
+                  if (request.method === 'POST') {
+                    return null;
+                  }
+                  return request.url;
                 }
-                return request.url;
-              }
+              }]
             }
           },
           // Course images - Cache First strategy

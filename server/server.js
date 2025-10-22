@@ -52,6 +52,8 @@ const corsOptions = {
         // Production allowed origins
         const allowedOrigins = [
             process.env.WEBSITE_URL,
+            `http://localhost:${process.env.PORT}`, // Allow same-origin requests
+            `https://localhost:${process.env.PORT}`, // Allow same-origin requests (HTTPS)
             // Add any additional production domains here
         ].filter(Boolean);
         
@@ -2960,6 +2962,20 @@ app.get('/api/blogs/public', async (req, res) => {
         console.log(error);
         res.status(500).json({ success: false, message: 'Internal Server Error' });
     }
+});
+
+//STATIC FILE SERVING
+// Serve static files from the dist directory
+app.use(express.static('dist'));
+
+// Catch-all handler: send back React's index.html file for client-side routing
+app.get('*', (req, res) => {
+    // Skip API routes
+    if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ error: 'API endpoint not found' });
+    }
+    
+    res.sendFile('index.html', { root: 'dist' });
 });
 
 //LISTEN

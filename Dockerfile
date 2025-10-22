@@ -1,5 +1,8 @@
 # Multi-stage build for production optimization
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
+
+# Install curl for health checks
+RUN apk add --no-cache curl
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -11,7 +14,7 @@ COPY server/package*.json ./server/
 
 # Install dependencies
 RUN npm ci --only=production && npm cache clean --force
-RUN cd server && npm ci --only=production && npm cache clean --force
+RUN cd server && npm install --only=production && npm cache clean --force
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -21,7 +24,7 @@ WORKDIR /app
 COPY package*.json ./
 COPY server/package*.json ./server/
 RUN npm ci
-RUN cd server && npm ci
+RUN cd server && npm install
 
 # Copy source code
 COPY . .
@@ -35,7 +38,7 @@ WORKDIR /app
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN adduser --system --uid 1001 appuser
 
 # Copy built application
 COPY --from=builder /app/dist ./dist
@@ -43,10 +46,10 @@ COPY --from=builder /app/server ./server
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/server/node_modules ./server/node_modules
 
-# Create logs directory
-RUN mkdir -p server/logs && chown -R nextjs:nodejs server/logs
+# Create logs directory and set permissions
+RUN mkdir -p logs server/logs && chown -R appuser:nodejs /app
 
-USER nextjs
+USER appuser
 
 # Expose port
 EXPOSE 5010
