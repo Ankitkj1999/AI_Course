@@ -68,8 +68,11 @@ An intelligent course generation platform that uses AI to create comprehensive e
 - **MongoDB** database
 - **Google AI API** key
 
-## 🛠️ Installation
+## 🛠️ Installation & Setup
 
+### 🚀 Quick Start (Recommended)
+
+#### Option 1: Local Development
 1. **Clone the repository**
    ```bash
    git clone https://github.com/yourusername/aicourse.git
@@ -86,7 +89,7 @@ An intelligent course generation platform that uses AI to create comprehensive e
    cp server/.env.example server/.env
    ```
    
-   Fill in your API keys and configuration in `server/.env`. See [SETUP.md](SETUP.md) for detailed instructions.
+   Fill in your API keys and configuration in `server/.env`. See [Environment Variables](#-environment-variables) section below.
 
 4. **Start the application**
    ```bash
@@ -96,6 +99,34 @@ An intelligent course generation platform that uses AI to create comprehensive e
 5. **Access the application**
    - Frontend: http://localhost:8080
    - Backend API: http://localhost:5010
+
+#### Option 2: Docker Deployment (Production Ready)
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/aicourse.git
+   cd aicourse
+   ```
+
+2. **Set up environment variables**
+   ```bash
+   cp server/.env.example server/.env
+   ```
+   
+   Fill in your API keys and configuration in `server/.env`.
+
+3. **Start with Docker**
+   ```bash
+   npm run docker:up
+   ```
+   
+   Or use Docker Compose directly:
+   ```bash
+   docker-compose up --build
+   ```
+
+4. **Access the application**
+   - Application: http://localhost:5010
+   - Health Check: http://localhost:5010/health
 
 ## 📁 Project Structure
 
@@ -120,12 +151,67 @@ aicourse/
 
 ## 🎯 Available Scripts
 
-- `npm run dev:full` - Start both frontend and backend
-- `npm run dev` - Start frontend only
+### Local Development
+- `npm run dev:full` - Start both frontend and backend concurrently
+- `npm run dev:clean` - Clean ports and start development (recommended)
+- `npm run dev` - Start frontend only (Vite dev server)
 - `npm run server` - Start backend only
-- `npm run build` - Build for production
+- `npm run server:dev` - Start backend in development mode
+- `npm run build` - Build frontend for production
 - `npm run lint` - Run ESLint
 - `npm run preview` - Preview production build
+
+### Docker Commands
+- `npm run docker:up` - Build and start containers (foreground)
+- `npm run docker:up:detached` - Build and start containers (background)
+- `npm run docker:down` - Stop and remove containers
+- `npm run docker:build` - Build Docker images only
+- `npm run docker:logs` - View container logs
+- `npm run docker:restart` - Restart containers
+- `npm run health` - Check application health status
+
+## 🐳 Docker Deployment
+
+### Prerequisites for Docker
+- **Docker** (v20.0 or higher)
+- **Docker Compose** (v2.0 or higher)
+
+### Docker Commands Reference
+
+```bash
+# Start the application (builds if needed)
+npm run docker:up
+
+# Start in background (detached mode)
+npm run docker:up:detached
+
+# Stop the application
+npm run docker:down
+
+# View logs
+npm run docker:logs
+
+# Restart containers
+npm run docker:restart
+
+# Check health
+npm run health
+```
+
+### Docker Configuration
+The application uses Docker Compose with:
+- **Multi-stage build** for optimized production images
+- **Health checks** for container monitoring
+- **Volume mounting** for persistent logs
+- **Automatic restarts** unless stopped manually
+- **Port mapping**: 5010:5010
+
+### Docker Environment
+- **Base Image**: `node:20-alpine`
+- **Working Directory**: `/app`
+- **Exposed Port**: `5010`
+- **Health Check**: `/health` endpoint
+- **User**: Non-root user (`appuser`) for security
 
 ## 🔧 Configuration
 
@@ -181,11 +267,17 @@ See [SETUP.md](SETUP.md) for complete configuration guide.
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## 📚 Documentation
+
+- 🚀 **[Development Guide](DEVELOPMENT.md)** - Quick start for developers
+- 🐳 **[Docker Guide](DOCKER.md)** - Docker deployment instructions
+- 🔧 **[Setup Guide](SETUP.md)** - Detailed configuration guide
+
 ## 🆘 Support
 
 - 📧 Email: spacester.app@gmail.com
 - 🐛 Issues: [GitHub Issues](https://github.com/yourusername/aicourse/issues)
-- 📖 Documentation: [SETUP.md](SETUP.md)
+- 📖 Documentation: See guides above
 
 ## 🙏 Acknowledgments
 
