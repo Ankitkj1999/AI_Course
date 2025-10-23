@@ -157,9 +157,19 @@ aicourse/
 - `npm run preview` - Preview production build
 
 ### Docker Commands
+
+#### Standard Setup
 - `npm run docker:up` - Build and start (foreground) → http://localhost:5010
 - `npm run docker:up:detached` - Build and start (background)
 - `npm run docker:down` - Stop and remove containers
+
+#### Low Memory Setup (for systems with limited RAM)
+- `npm run docker:up:light` - Build and start with memory limits (512MB)
+- `npm run docker:up:light:detached` - Low memory setup (background)
+- `npm run docker:down:light` - Stop low memory setup
+- `npm run docker:build:low-memory` - Custom low memory build script
+
+#### General Commands
 - `npm run docker:build` - Build Docker images only
 - `npm run docker:logs` - View container logs
 - `npm run docker:restart` - Restart containers
@@ -194,13 +204,20 @@ npm run health
 ```
 
 ### Docker Configuration
-The application uses Docker Compose with:
+
+#### Standard Setup
 - **Single container** for simplicity
 - **Multi-stage build** for optimized production images
+- **Memory limit**: 1GB runtime, 2GB build
 - **Health checks** for container monitoring
 - **Volume mounting** for persistent logs
-- **Automatic restarts** unless stopped manually
 - **Port mapping**: 5010:5010
+
+#### Low Memory Setup
+- **Single-stage build** to save memory
+- **Memory limit**: 512MB runtime, 1GB build
+- **Optimized dependencies** (production only)
+- **Reduced build context** via .dockerignore
 
 ### Docker Environment
 - **Base Image**: `node:20-alpine`
@@ -208,6 +225,7 @@ The application uses Docker Compose with:
 - **Exposed Port**: `5010`
 - **Health Check**: `/health` endpoint
 - **User**: Non-root user (`appuser`) for security
+- **Memory Optimization**: Node.js heap limits configured
 
 ## 🔧 Configuration
 

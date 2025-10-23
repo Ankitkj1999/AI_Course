@@ -18,9 +18,13 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "docker:build": "docker-compose build",
+    "docker:build:low-memory": "./scripts/docker-build-low-memory.sh",
     "docker:up": "docker-compose up --build",
     "docker:up:detached": "docker-compose up --build -d",
+    "docker:up:light": "docker-compose -f docker-compose.light.yml up --build",
+    "docker:up:light:detached": "docker-compose -f docker-compose.light.yml up --build -d",
     "docker:down": "docker-compose down",
+    "docker:down:light": "docker-compose -f docker-compose.light.yml down",
     "docker:logs": "docker-compose logs -f aicourse-app",
     "docker:restart": "docker-compose restart",
     "health": "curl -f http://localhost:5010/health || curl -f http://localhost:5011/health || curl -f http://localhost:5012/health"

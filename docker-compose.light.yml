@@ -1,14 +1,12 @@
 services:
-  # AiCourse Application (RAM Optimized Setup)
+  # AiCourse Application (Ultra Low Memory Setup)
   aicourse:
     build:
       context: .
-      target: runner
-      # Limit build resources
-      shm_size: '1gb'
-      args:
-        - NODE_OPTIONS=--max-old-space-size=2048
-    container_name: aicourse-app
+      dockerfile: Dockerfile.light
+      # Minimal build resources
+      shm_size: '512mb'
+    container_name: aicourse-app-light
     restart: unless-stopped
     ports:
       - "5010:5010"
@@ -16,22 +14,22 @@ services:
       - NODE_ENV=production
       - PORT=5010
       - WEBSITE_URL=http://localhost:5010
-      - NODE_OPTIONS=--max-old-space-size=1024
+      - NODE_OPTIONS=--max-old-space-size=512
     env_file:
       - server/.env
     volumes:
       - ./server/logs:/app/server/logs
     networks:
       - aicourse-network
-    # Runtime memory limits
-    mem_limit: 1g
-    mem_reservation: 512m
+    # Strict memory limits for low-memory systems
+    mem_limit: 512m
+    mem_reservation: 256m
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5010/health"]
-      interval: 30s
+      interval: 60s
       timeout: 10s
-      retries: 3
-      start_period: 40s
+      retries: 2
+      start_period: 60s
 
 networks:
   aicourse-network:

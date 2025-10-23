@@ -3,6 +3,8 @@ node_modules
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+package-lock.json
+yarn.lock
 
 # Environment files
 .env
@@ -20,35 +22,67 @@ build
 # Git
 .git
 .gitignore
+.gitattributes
 
 # Documentation
 README.md
 docs/
 *.md
+CHANGELOG.md
+LICENSE
 
 # IDE
 .vscode
 .idea
 *.swp
 *.swo
+.editorconfig
 
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Logs
 logs
 *.log
+server/logs
 
 # Coverage
 coverage
 .nyc_output
+.coverage
 
 # Cache
 .cache
 .parcel-cache
 .next
+.nuxt
+.vuepress
 
 # Temporary
 tmp
 temp
+.tmp
+
+# Testing
+test/
+tests/
+__tests__
+*.test.js
+*.spec.js
+
+# Development tools
+.eslintrc*
+.prettierrc*
+jest.config.*
+vitest.config.*
+
+# Docker
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Misc
+*.tgz
+*.tar.gz

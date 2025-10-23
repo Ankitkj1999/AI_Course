@@ -15,19 +15,24 @@ npm run dev:full
 ```bash
 git clone <repo> && cd aicourse
 cp server/.env.example server/.env  # Edit with your API keys
+
+# Standard setup (4GB+ RAM)
 npm run docker:up
+
+# Low memory setup (2GB+ RAM)
+npm run docker:up:light
 ```
 **→ Access:** http://localhost:5010
 
 ## 🎯 Key Commands
 
-| Task | Local Dev | Docker |
-|------|-----------|--------|
-| **Start** | `npm run dev:full` | `npm run docker:up` |
-| **Start (bg)** | `npm run dev:clean` | `npm run docker:up:detached` |
-| **Stop** | `Ctrl+C` | `npm run docker:down` |
-| **Access** | http://localhost:8080 | http://localhost:5010 |
-| **Health** | http://localhost:5010/health | `npm run health` |
+| Task | Local Dev | Docker (Standard) | Docker (Low Memory) |
+|------|-----------|-------------------|---------------------|
+| **Start** | `npm run dev:full` | `npm run docker:up` | `npm run docker:up:light` |
+| **Start (bg)** | `npm run dev:clean` | `npm run docker:up:detached` | `npm run docker:up:light:detached` |
+| **Stop** | `Ctrl+C` | `npm run docker:down` | `npm run docker:down:light` |
+| **Memory** | ~2GB | ~1GB runtime | ~512MB runtime |
+| **Access** | http://localhost:8080 | http://localhost:5010 | http://localhost:5010 |
 
 ## 🔑 Required Environment Variables
 ```env

@@ -12,9 +12,10 @@ WORKDIR /app
 COPY package*.json ./
 COPY server/package*.json ./server/
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
-RUN cd server && npm install --only=production && npm cache clean --force
+# Install dependencies with memory optimization
+ENV NODE_OPTIONS="--max-old-space-size=1024"
+RUN npm ci --only=production --prefer-offline --no-audit --progress=false && npm cache clean --force
+RUN cd server && npm install --only=production --prefer-offline --no-audit --progress=false && npm cache clean --force
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -23,14 +24,22 @@ WORKDIR /app
 # Copy package files and install all dependencies (including devDependencies)
 COPY package*.json ./
 COPY server/package*.json ./server/
-RUN npm ci
-RUN cd server && npm install
+
+# Set Node.js memory limit for build process
+ENV NODE_OPTIONS="--max-old-space-size=2048"
+
+# Install dependencies with memory optimization
+RUN npm ci --prefer-offline --no-audit --progress=false
+RUN cd server && npm install --prefer-offline --no-audit --progress=false
 
 # Copy source code
 COPY . .
 
-# Build the application for production
-RUN npm run build:prod
+# Build the application for production with memory limit
+RUN NODE_OPTIONS="--max-old-space-size=2048" npm run build:prod
+
+# Clear npm cache to save space
+RUN npm cache clean --force
 
 # Production image, copy all the files and run the app
 FROM base AS runner
