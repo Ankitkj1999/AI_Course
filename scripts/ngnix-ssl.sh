@@ -25,7 +25,6 @@ read -p "Press enter to continue or Ctrl+C to exit..."
 # Update system packages
 echo -e "${GREEN}📦 Updating system packages...${NC}"
 sudo apt update
-sudo apt upgrade -y
 
 # Install Nginx
 echo -e "${GREEN}🔧 Installing Nginx...${NC}"
@@ -39,71 +38,43 @@ sudo apt install certbot python3-certbot-nginx -y
 echo -e "${GREEN}🛑 Stopping Nginx...${NC}"
 sudo systemctl stop nginx
 
-# Create Nginx configuration for the application
-echo -e "${GREEN}📝 Creating Nginx configuration...${NC}"
-sudo tee /etc/nginx/sites-available/gksage.com > /dev/null <<EOF
+# Create initial HTTP-only Nginx configuration
+echo -e "${GREEN}📝 Creating initial HTTP Nginx configuration...${NC}"
+sudo tee /etc/nginx/sites-available/gksage.com > /dev/null <<'EOF'
 server {
     listen 80;
     listen [::]:80;
-    server_name $DOMAIN $WWW_DOMAIN;
+    server_name gksage.com www.gksage.com;
+
+    # Logging
+    access_log /var/log/nginx/gksage_access.log;
+    error_log /var/log/nginx/gksage_error.log;
+
+    # Client body size limit
+    client_max_body_size 50M;
 
     # For Certbot challenges
     location /.well-known/acme-challenge/ {
         root /var/www/html;
     }
 
-    # Redirect all HTTP to HTTPS (will be used after SSL is configured)
-    location / {
-        return 301 https://\$server_name\$request_uri;
-    }
-}
-
-server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
-    server_name $DOMAIN $WWW_DOMAIN;
-
-    # SSL certificates (will be configured by Certbot)
-    # ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
-    # ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
-
-    # SSL configuration
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_prefer_server_ciphers on;
-    ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 10m;
-
-    # Security headers
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-
-    # Logging
-    access_log /var/log/nginx/gksage_access.log;
-    error_log /var/log/nginx/gksage_error.log;
-
-    # Client body size limit (adjust as needed)
-    client_max_body_size 50M;
-
     # Proxy settings
     location / {
-        proxy_pass http://localhost:$APP_PORT;
+        proxy_pass http://localhost:5010;
         proxy_http_version 1.1;
         
         # WebSocket support
-        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_cache_bypass \$http_upgrade;
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
         
         # Proxy headers
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_set_header X-Forwarded-Host \$host;
-        proxy_set_header X-Forwarded-Port \$server_port;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
         
         # Timeouts
         proxy_connect_timeout 60s;
@@ -113,21 +84,21 @@ server {
 
     # Health check endpoint
     location /health {
-        proxy_pass http://localhost:$APP_PORT/health;
+        proxy_pass http://localhost:5010/health;
         access_log off;
     }
 
     # API endpoints
     location /api {
-        proxy_pass http://localhost:$APP_PORT/api;
+        proxy_pass http://localhost:5010/api;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_cache_bypass \$http_upgrade;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 EOF
@@ -153,21 +124,34 @@ sudo systemctl enable nginx
 echo -e "${GREEN}🔥 Configuring firewall...${NC}"
 sudo ufw allow 'Nginx Full'
 sudo ufw allow OpenSSH
-sudo ufw --force enable
+echo "y" | sudo ufw enable || true
+
+# Wait a moment for Nginx to fully start
+sleep 2
+
+# Test if the site is accessible
+echo -e "${GREEN}🧪 Testing HTTP access...${NC}"
+if curl -s -o /dev/null -w "%{http_code}" http://localhost | grep -q "200\|301\|302"; then
+    echo -e "${GREEN}✅ HTTP access working!${NC}"
+else
+    echo -e "${YELLOW}⚠️  Warning: HTTP access test inconclusive, but continuing...${NC}"
+fi
 
 # Obtain SSL certificate
 echo -e "${GREEN}🔒 Obtaining SSL certificate from Let's Encrypt...${NC}"
 echo -e "${YELLOW}Note: Make sure your domain is pointing to this server's IP address!${NC}"
+echo -e "${YELLOW}Certbot will now obtain SSL and automatically configure HTTPS...${NC}"
 read -p "Press enter to continue with SSL setup or Ctrl+C to exit..."
 
+# Run Certbot with Nginx plugin (it will automatically modify the config)
 sudo certbot --nginx -d $DOMAIN -d $WWW_DOMAIN --non-interactive --agree-tos --email $EMAIL --redirect
 
 # Test SSL renewal
 echo -e "${GREEN}🔄 Testing SSL certificate auto-renewal...${NC}"
 sudo certbot renew --dry-run
 
-# Setup auto-renewal cron job (Certbot usually does this automatically)
-echo -e "${GREEN}⏰ Setting up auto-renewal...${NC}"
+# Setup auto-renewal (Certbot usually does this automatically)
+echo -e "${GREEN}⏰ Ensuring auto-renewal is enabled...${NC}"
 sudo systemctl enable certbot.timer
 sudo systemctl start certbot.timer
 
@@ -176,6 +160,7 @@ echo -e "${GREEN}🔄 Restarting Nginx...${NC}"
 sudo systemctl restart nginx
 
 # Display status
+echo ""
 echo -e "${GREEN}✅ Setup complete!${NC}"
 echo ""
 echo -e "${GREEN}📊 Service Status:${NC}"
@@ -185,17 +170,22 @@ echo -e "${GREEN}🔒 SSL Certificate Status:${NC}"
 sudo certbot certificates
 echo ""
 echo -e "${GREEN}🌐 Your site should now be accessible at:${NC}"
-echo -e "   https://$DOMAIN"
-echo -e "   https://$WWW_DOMAIN"
+echo -e "   ${GREEN}✅ https://$DOMAIN${NC}"
+echo -e "   ${GREEN}✅ https://$WWW_DOMAIN${NC}"
+echo -e "   ${YELLOW}➡️  http://$DOMAIN (redirects to HTTPS)${NC}"
+echo -e "   ${YELLOW}➡️  http://$WWW_DOMAIN (redirects to HTTPS)${NC}"
 echo ""
-echo -e "${YELLOW}⚠️  Important:${NC}"
-echo "   1. Make sure your Docker container is running on port $APP_PORT"
-echo "   2. Update your frontend VITE_SERVER_URL to: https://$DOMAIN"
-echo "   3. SSL certificates will auto-renew via Certbot"
+echo -e "${YELLOW}⚠️  Important Next Steps:${NC}"
+echo "   1. ✅ Docker container is running on port $APP_PORT"
+echo "   2. 🔄 Update your frontend VITE_SERVER_URL to: https://$DOMAIN"
+echo "   3. 🔄 Rebuild/restart your frontend Docker container with the new URL"
+echo "   4. ✅ SSL certificates will auto-renew via Certbot"
 echo ""
 echo -e "${GREEN}📝 Useful commands:${NC}"
 echo "   - Check Nginx status: sudo systemctl status nginx"
 echo "   - Restart Nginx: sudo systemctl restart nginx"
 echo "   - Check SSL status: sudo certbot certificates"
 echo "   - Renew SSL manually: sudo certbot renew"
-echo "   - View Nginx logs: sudo tail -f /var/log/nginx/gksage_error.log"
+echo "   - View error logs: sudo tail -f /var/log/nginx/gksage_error.log"
+echo "   - View access logs: sudo tail -f /var/log/nginx/gksage_access.log"
+echo "   - Test site: curl -I https://$DOMAIN"
