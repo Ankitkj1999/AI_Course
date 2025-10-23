@@ -49,19 +49,29 @@ const corsOptions = {
             }
         }
         
-        // In production (Docker), be more permissive with localhost
+        // Get allowed origins from environment or use defaults
+        const envOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [];
+        
         const allowedOrigins = [
             process.env.WEBSITE_URL,
             `http://localhost:${process.env.PORT}`,
             `https://localhost:${process.env.PORT}`,
-            'http://localhost:5010', // Explicit Docker port
-            'https://localhost:5010', // Explicit Docker port (HTTPS)
+            'http://localhost:5010',
+            'https://localhost:5010',
+            // Production domains
+            'https://gksage.com',
+            'https://www.gksage.com',
+            'http://gksage.com',
+            'http://www.gksage.com',
+            // Additional origins from environment
+            ...envOrigins,
         ].filter(Boolean);
         
-        // Also allow any localhost origin in Docker environment
+        // Also allow any localhost origin and production domains
         const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+        const isProductionDomain = /^https?:\/\/(www\.)?gksage\.com$/.test(origin);
         
-        if (allowedOrigins.includes(origin) || isLocalhost) {
+        if (allowedOrigins.includes(origin) || isLocalhost || isProductionDomain) {
             logger.info(`CORS: Allowing origin: ${origin}`);
             callback(null, true);
         } else {
