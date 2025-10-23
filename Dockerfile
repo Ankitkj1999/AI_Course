@@ -14,7 +14,14 @@ COPY server/package*.json ./server/
 
 # Install dependencies with memory optimization
 ENV NODE_OPTIONS="--max-old-space-size=1024"
-RUN npm ci --only=production --prefer-offline --no-audit --progress=false && npm cache clean --force
+
+# Use npm install if package-lock.json doesn't exist, otherwise use npm ci
+RUN if [ -f package-lock.json ]; then \
+        npm ci --only=production --prefer-offline --no-audit --progress=false; \
+    else \
+        npm install --only=production --prefer-offline --no-audit --progress=false; \
+    fi && npm cache clean --force
+
 RUN cd server && npm install --only=production --prefer-offline --no-audit --progress=false && npm cache clean --force
 
 # Rebuild the source code only when needed
@@ -29,7 +36,12 @@ COPY server/package*.json ./server/
 ENV NODE_OPTIONS="--max-old-space-size=2048"
 
 # Install dependencies with memory optimization
-RUN npm ci --prefer-offline --no-audit --progress=false
+RUN if [ -f package-lock.json ]; then \
+        npm ci --prefer-offline --no-audit --progress=false; \
+    else \
+        npm install --prefer-offline --no-audit --progress=false; \
+    fi
+
 RUN cd server && npm install --prefer-offline --no-audit --progress=false
 
 # Copy source code

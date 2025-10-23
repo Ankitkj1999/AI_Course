@@ -20,13 +20,23 @@ npm run docker:up:light
 - **Features**: Single-stage build, production deps only
 - **Best for**: VPS, limited memory environments
 
+### 🔧 Simple Setup (Maximum Compatibility)
+```bash
+npm run docker:up:simple
+# OR
+npm run docker:build:simple
+```
+- **Memory Usage**: ~1GB runtime, ~1.5GB during build
+- **Features**: Ultra-simple build, maximum compatibility
+- **Best for**: Older Docker versions, problematic systems
+
 ### ⚡ Custom Low Memory Build
 ```bash
 npm run docker:build:low-memory
 ```
 - **Memory Usage**: Configurable limits
 - **Features**: Custom memory constraints, manual control
-- **Best for**: Very limited memory systems
+- **Best for**: Very limited memory systems (if BuildKit available)
 
 ## 🔧 Memory Optimization Features
 
