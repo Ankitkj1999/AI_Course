@@ -158,16 +158,16 @@ aicourse/
 
 ### Docker Commands
 
-#### Standard Setup
+#### Local Development
 - `npm run docker:up` - Build and start (foreground) → http://localhost:5010
 - `npm run docker:up:detached` - Build and start (background)
 - `npm run docker:down` - Stop and remove containers
 
-#### Low Memory Setup (for systems with limited RAM)
-- `npm run docker:up:light` - Build and start with memory limits (512MB)
-- `npm run docker:up:light:detached` - Low memory setup (background)
-- `npm run docker:down:light` - Stop low memory setup
-- `npm run docker:build:low-memory` - Custom low memory build script
+#### Docker Hub Deployment
+- `npm run docker:build:push` - Build and push to Docker Hub
+- `npm run docker:build:production` - Build production image
+- `npm run docker:deploy:production` - Deploy on server from Docker Hub
+- `npm run docker:up:hub` - Run from Docker Hub image
 
 #### General Commands
 - `npm run docker:build` - Build Docker images only
@@ -204,20 +204,12 @@ npm run health
 ```
 
 ### Docker Configuration
-
-#### Standard Setup
 - **Single container** for simplicity
 - **Multi-stage build** for optimized production images
-- **Memory limit**: 1GB runtime, 2GB build
 - **Health checks** for container monitoring
 - **Volume mounting** for persistent logs
 - **Port mapping**: 5010:5010
-
-#### Low Memory Setup
-- **Single-stage build** to save memory
-- **Memory limit**: 512MB runtime, 1GB build
-- **Optimized dependencies** (production only)
-- **Reduced build context** via .dockerignore
+- **Docker Hub integration** for easy deployment
 
 ### Docker Environment
 - **Base Image**: `node:20-alpine`
@@ -225,7 +217,6 @@ npm run health
 - **Exposed Port**: `5010`
 - **Health Check**: `/health` endpoint
 - **User**: Non-root user (`appuser`) for security
-- **Memory Optimization**: Node.js heap limits configured
 
 ## 🔧 Configuration
 
