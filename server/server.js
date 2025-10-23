@@ -34,13 +34,13 @@ const flw = new Flutterwave(process.env.FLUTTERWAVE_PUBLIC_KEY, process.env.FLUT
 //INITIALIZE
 const app = express();
 
-// Configure CORS properly - Dynamic origin handling
+// Configure CORS - Simplified for Docker setup
 const corsOptions = {
     origin: (origin, callback) => {
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
         
-        // In development, allow any localhost/127.0.0.1 port
+        // Allow all localhost origins in development
         if (process.env.NODE_ENV !== 'production') {
             const localhostRegex = /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/;
             if (localhostRegex.test(origin)) {
@@ -49,16 +49,20 @@ const corsOptions = {
             }
         }
         
-        // Production allowed origins
+        // In production (Docker), be more permissive with localhost
         const allowedOrigins = [
             process.env.WEBSITE_URL,
-            `http://localhost:${process.env.PORT}`, // Allow same-origin requests
-            `https://localhost:${process.env.PORT}`, // Allow same-origin requests (HTTPS)
-            // Add any additional production domains here
+            `http://localhost:${process.env.PORT}`,
+            `https://localhost:${process.env.PORT}`,
+            'http://localhost:5010', // Explicit Docker port
+            'https://localhost:5010', // Explicit Docker port (HTTPS)
         ].filter(Boolean);
         
-        if (allowedOrigins.includes(origin)) {
-            logger.info(`CORS: Allowing production origin: ${origin}`);
+        // Also allow any localhost origin in Docker environment
+        const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+        
+        if (allowedOrigins.includes(origin) || isLocalhost) {
+            logger.info(`CORS: Allowing origin: ${origin}`);
             callback(null, true);
         } else {
             logger.warn(`CORS: Blocked origin: ${origin}`);

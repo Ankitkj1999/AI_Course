@@ -16,14 +16,14 @@ cp server/.env.example server/.env
 # 3. Start the application
 npm run docker:up
 ```
-
-**Access the application at:** http://localhost:5010
+**Access at:** http://localhost:5010
 
 ## 📋 Docker Commands
 
 ### Basic Commands
+
 ```bash
-# Start application (builds automatically)
+# Start application
 npm run docker:up
 
 # Start in background

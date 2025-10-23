@@ -100,7 +100,7 @@ An intelligent course generation platform that uses AI to create comprehensive e
    - Frontend: http://localhost:8080
    - Backend API: http://localhost:5010
 
-#### Option 2: Docker Deployment (Production Ready)
+#### Option 2: Docker Deployment
 1. **Clone the repository**
    ```bash
    git clone https://github.com/yourusername/aicourse.git
@@ -117,11 +117,6 @@ An intelligent course generation platform that uses AI to create comprehensive e
 3. **Start with Docker**
    ```bash
    npm run docker:up
-   ```
-   
-   Or use Docker Compose directly:
-   ```bash
-   docker-compose up --build
    ```
 
 4. **Access the application**
@@ -162,8 +157,8 @@ aicourse/
 - `npm run preview` - Preview production build
 
 ### Docker Commands
-- `npm run docker:up` - Build and start containers (foreground)
-- `npm run docker:up:detached` - Build and start containers (background)
+- `npm run docker:up` - Build and start (foreground) → http://localhost:5010
+- `npm run docker:up:detached` - Build and start (background)
 - `npm run docker:down` - Stop and remove containers
 - `npm run docker:build` - Build Docker images only
 - `npm run docker:logs` - View container logs
@@ -200,6 +195,7 @@ npm run health
 
 ### Docker Configuration
 The application uses Docker Compose with:
+- **Single container** for simplicity
 - **Multi-stage build** for optimized production images
 - **Health checks** for container monitoring
 - **Volume mounting** for persistent logs

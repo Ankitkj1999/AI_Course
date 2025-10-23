@@ -14,11 +14,9 @@ const getServerURL = () => {
     return import.meta.env.VITE_SERVER_URL;
   }
   
-  // In production or when served from nginx, use same origin
-  if (import.meta.env.PROD || (typeof window !== 'undefined' && window.location.port === '80')) {
-    return typeof window !== 'undefined' 
-      ? `${window.location.protocol}//${window.location.host}`
-      : 'http://localhost';
+  // In production (Docker), use same origin
+  if (import.meta.env.PROD && typeof window !== 'undefined') {
+    return `${window.location.protocol}//${window.location.host}`;
   }
   
   // In development, try to detect from browser
@@ -27,8 +25,7 @@ const getServerURL = () => {
     const hostname = window.location.hostname;
     
     // Check if there's a server running on common ports
-    // This is a synchronous fallback - for async detection use the API client
-    const commonPorts = [5011, 5010, 5012, 5013]; // 5011 first since that's what's running
+    const commonPorts = [5011, 5010, 5012, 5013];
     
     // For now, return the most likely port based on current setup
     return `${protocol}//${hostname}:5011`;

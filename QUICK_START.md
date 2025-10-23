@@ -11,7 +11,7 @@ npm run dev:full
 ```
 **→ Access:** http://localhost:8080
 
-### 🐳 Docker (Production-like)
+### 🐳 Docker
 ```bash
 git clone <repo> && cd aicourse
 cp server/.env.example server/.env  # Edit with your API keys
@@ -24,9 +24,9 @@ npm run docker:up
 | Task | Local Dev | Docker |
 |------|-----------|--------|
 | **Start** | `npm run dev:full` | `npm run docker:up` |
-| **Start (clean)** | `npm run dev:clean` | `npm run docker:up:detached` |
+| **Start (bg)** | `npm run dev:clean` | `npm run docker:up:detached` |
 | **Stop** | `Ctrl+C` | `npm run docker:down` |
-| **Logs** | Terminal output | `npm run docker:logs` |
+| **Access** | http://localhost:8080 | http://localhost:5010 |
 | **Health** | http://localhost:5010/health | `npm run health` |
 
 ## 🔑 Required Environment Variables

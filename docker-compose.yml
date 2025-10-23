@@ -1,31 +1,17 @@
 services:
-  # Nginx Reverse Proxy
-  nginx:
-    build:
-      context: .
-      target: nginx
-    container_name: aicourse-nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    networks:
-      - aicourse-network
-    depends_on:
-      - aicourse
-
-  # AiCourse Application
+  # AiCourse Application (Simple Single Container Setup)
   aicourse:
     build:
       context: .
       target: runner
     container_name: aicourse-app
     restart: unless-stopped
+    ports:
+      - "5010:5010"
     environment:
       - NODE_ENV=production
       - PORT=5010
-      - WEBSITE_URL=http://localhost
+      - WEBSITE_URL=http://localhost:5010
     env_file:
       - server/.env
     volumes:
@@ -38,12 +24,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    # Add logging configuration to see backend logs
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
 networks:
   aicourse-network:

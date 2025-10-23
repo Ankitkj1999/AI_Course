@@ -60,15 +60,3 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # Start the application
 CMD ["node", "server/server.js"]
-
-# --- Nginx Stage ---
-FROM nginx:alpine AS nginx
-
-# Copy nginx config
-COPY nginx/nginx.conf /etc/nginx/nginx.conf
-
-# Copy built static assets from the builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Expose port 80
-EXPOSE 80
