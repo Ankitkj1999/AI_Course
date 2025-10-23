@@ -22,6 +22,7 @@
     "docker:build:low-memory": "./scripts/docker-build-low-memory.sh",
     "docker:build:push": "./scripts/docker-build-push.sh",
     "docker:pull:run": "./scripts/docker-pull-run.sh",
+    "docker:deploy": "./scripts/server-deploy.sh",
     "docker:up": "docker-compose up --build",
     "docker:up:detached": "docker-compose up --build -d",
     "docker:up:hub": "docker-compose -f docker-compose.hub.yml up -d",

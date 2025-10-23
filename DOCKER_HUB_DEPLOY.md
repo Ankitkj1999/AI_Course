@@ -39,13 +39,16 @@ cp server/.env.example server/.env
 
 ### Step 2: Pull and Run
 ```bash
-# Method 1: Using script (recommended)
+# Method 1: Using deployment script (recommended)
+npm run docker:deploy
+
+# Method 2: Using pull script
 npm run docker:pull:run
 
-# Method 2: Using docker-compose
+# Method 3: Using docker-compose
 npm run docker:up:hub
 
-# Method 3: Manual docker commands
+# Method 4: Manual docker commands
 docker pull ankitkj199/aicourse:latest
 docker run -d -p 5010:5010 --env-file server/.env ankitkj199/aicourse:latest
 ```
