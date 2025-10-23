@@ -1,11 +1,8 @@
 services:
-  # AiCourse Application (RAM Optimized Setup)
   aicourse:
     build:
       context: .
       target: runner
-      # Limit build resources
-      shm_size: '1gb'
     container_name: aicourse-app
     restart: unless-stopped
     ports:
@@ -14,16 +11,12 @@ services:
       - NODE_ENV=production
       - PORT=5010
       - WEBSITE_URL=http://localhost:5010
-      - NODE_OPTIONS=--max-old-space-size=1024
     env_file:
       - server/.env
     volumes:
       - ./server/logs:/app/server/logs
     networks:
       - aicourse-network
-    # Runtime memory limits
-    mem_limit: 1g
-    mem_reservation: 512m
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5010/health"]
       interval: 30s
