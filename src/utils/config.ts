@@ -25,6 +25,11 @@ export const getServerURL = () => {
     return import.meta.env.VITE_SERVER_URL;
   }
   
+  // In production, use the current origin
+  if (isProduction() && typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+
   // In development, try to detect from current location
   if (isDevelopment() && typeof window !== 'undefined') {
     const protocol = window.location.protocol;
@@ -37,7 +42,7 @@ export const getServerURL = () => {
     return `${protocol}//${hostname}:${preferredPort}`;
   }
   
-  // Fallback
+  // Fallback for non-browser environments or other cases
   return 'http://localhost:5010';
 };
 
@@ -48,6 +53,21 @@ export const detectServerURL = async (): Promise<string> => {
   // If we have a specific URL from env, use it
   if (import.meta.env.VITE_SERVER_URL) {
     return baseURL;
+  }
+
+  // In production, the server URL is the origin, so we can test the health endpoint directly
+  if (isProduction() && typeof window !== 'undefined') {
+    try {
+      const response = await fetch(`${window.location.origin}/health`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(1000)
+      });
+      if (response.ok) {
+        return window.location.origin;
+      }
+    } catch (error) {
+      // Fallback to the default if health check fails
+    }
   }
   
   // In development, try to find the actual server port

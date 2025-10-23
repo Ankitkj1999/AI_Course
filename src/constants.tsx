@@ -14,6 +14,13 @@ const getServerURL = () => {
     return import.meta.env.VITE_SERVER_URL;
   }
   
+  // In production or when served from nginx, use same origin
+  if (import.meta.env.PROD || (typeof window !== 'undefined' && window.location.port === '80')) {
+    return typeof window !== 'undefined' 
+      ? `${window.location.protocol}//${window.location.host}`
+      : 'http://localhost';
+  }
+  
   // In development, try to detect from browser
   if (import.meta.env.DEV && typeof window !== 'undefined') {
     const protocol = window.location.protocol;
