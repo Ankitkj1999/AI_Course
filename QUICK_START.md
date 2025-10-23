@@ -46,3 +46,31 @@ PASSWORD=your_gmail_app_password
 - **[DEVELOPMENT.md](DEVELOPMENT.md)** - Complete dev guide
 - **[DOCKER.md](DOCKER.md)** - Docker-specific guide
 - **[README.md](README.md)** - Full project documentation
+
+
+✅ Ready to Use!
+🏠 On Your Local Machine:
+# 1. Login to Docker Hub
+docker login
+
+# 2. Build and push
+npm run docker:build:push
+
+# Or with a specific tag
+npm run docker:build:push v1.0.0
+🖥️ On Your EC2 Server:
+# 1. Setup (one time)
+git clone <your-repo>
+cd aicourse
+cp server/.env.example server/.env  # Edit with your API keys
+
+# 2. Pull and run
+npm run docker:pull:run
+
+# Or use docker-compose
+npm run docker:up:hub
+🎯 Key Commands:
+Build & Push: npm run docker:build:push [tag]
+Pull & Run: npm run docker:pull:run [tag]
+Docker Compose: npm run docker:up:hub
+This approach will completely eliminate the memory issues on your EC2 server since you're not building there anymore! 🚀

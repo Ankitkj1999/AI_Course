@@ -11,8 +11,14 @@ FULL_IMAGE_NAME="$DOCKER_USERNAME/$IMAGE_NAME:$TAG"
 
 echo "📦 Building image: $FULL_IMAGE_NAME"
 
-# Build the image
-docker build -t $FULL_IMAGE_NAME .
+# Detect platform and build accordingly
+if [[ $(uname -m) == "arm64" ]] || [[ $(uname -m) == "aarch64" ]]; then
+    echo "🍎 Detected ARM64 (Apple Silicon/ARM), building for linux/amd64..."
+    docker build --platform linux/amd64 -t $FULL_IMAGE_NAME .
+else
+    echo "🐧 Detected AMD64, building normally..."
+    docker build -t $FULL_IMAGE_NAME .
+fi
 
 if [ $? -eq 0 ]; then
     echo "✅ Build completed successfully!"

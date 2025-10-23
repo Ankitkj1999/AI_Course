@@ -17,11 +17,18 @@ docker login
 
 ### Step 2: Build and Push
 ```bash
-# Build and push latest version
+# Build and push latest version (auto-detects platform)
 npm run docker:build:push
+
+# Build for multiple platforms (AMD64 + ARM64)
+npm run docker:build:multiplatform
 
 # Build and push with specific tag
 npm run docker:build:push v1.0.0
+
+# Manual cross-platform build (if on Apple Silicon)
+docker build --platform linux/amd64 -t ankitkj199/aicourse:latest .
+docker push ankitkj199/aicourse:latest
 ```
 
 ## 🖥️ **Server (EC2/VPS) - Pull & Run**
