@@ -1,12 +1,16 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, UserCog, Shield, Users } from 'lucide-react';
+import { Search, UserCog, Shield, Users, Trash2, UserPlus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Pagination, PaginationInfo } from '@/components/ui/pagination';
 import { useAdminPagination } from '@/hooks/useAdminPagination';
+import axios from 'axios';
+import { serverURL } from '@/constants';
+import { useToast } from '@/hooks/use-toast';
 
 interface User {
   _id: string;
@@ -24,22 +28,55 @@ interface Admin {
 
 const AdminAdmins = () => {
   const {
-    data: adminData,
+    data: users,
+    admins,
     pagination,
     loading,
     error,
     searchQuery,
     setSearchQuery,
     currentPage,
-    setCurrentPage
+    setCurrentPage,
+    refetch
   } = useAdminPagination<User | Admin>({
     endpoint: 'getadmins',
     initialLimit: 10
   });
+  const { toast } = useToast();
 
-  // Separate admins and regular users from the combined data
-  const admins = adminData.filter((item: any) => item.type && (item.type === 'main' || item.type === 'no'));
-  const users = adminData.filter((item: any) => !item.type || (item.type !== 'main' && item.type !== 'no'));
+  const handleMakeAdmin = async (email: string) => {
+    try {
+      await axios.post(`${serverURL}/api/addadmin`, { email });
+      toast({
+        title: "Success",
+        description: "User has been promoted to admin.",
+      });
+      refetch();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to promote user to admin.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRemoveAdmin = async (email: string) => {
+    try {
+      await axios.post(`${serverURL}/api/removeadmin`, { email });
+      toast({
+        title: "Success",
+        description: "Admin has been demoted to a regular user.",
+      });
+      refetch();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to demote admin.",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (error) {
     return (
@@ -85,6 +122,7 @@ const AdminAdmins = () => {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             {loading ? (
@@ -100,6 +138,9 @@ const AdminAdmins = () => {
                     <TableCell>
                       <Skeleton className="h-5 w-16" />
                     </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="h-8 w-24" />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -114,12 +155,24 @@ const AdminAdmins = () => {
                         {admin.type === 'main' ? 'Main Admin' : 'Admin'}
                       </Badge>
                     </TableCell>
+                    <TableCell className="text-right">
+                      {admin.type !== 'main' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveAdmin(admin.email)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Remove Admin
+                        </Button>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
 
                 {admins.length === 0 && !loading && (
                   <TableRow>
-                    <TableCell colSpan={3} className="text-center py-4">
+                    <TableCell colSpan={4} className="text-center py-4">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <Shield className="h-6 w-6 mb-2" />
                         <p>No administrators found</p>
@@ -160,6 +213,7 @@ const AdminAdmins = () => {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Account Type</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             {loading ? (
@@ -175,6 +229,9 @@ const AdminAdmins = () => {
                     <TableCell>
                       <Skeleton className="h-5 w-16" />
                     </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="h-8 w-24" />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -189,12 +246,22 @@ const AdminAdmins = () => {
                         {user.type !== 'free' ? 'Paid' : 'Free'}
                       </Badge>
                     </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleMakeAdmin(user.email)}
+                      >
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Make Admin
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
 
                 {users.length === 0 && !loading && (
                   <TableRow>
-                    <TableCell colSpan={3} className="text-center py-8">
+                    <TableCell colSpan={4} className="text-center py-8">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <Users className="h-8 w-8 mb-2" />
                         <p>No users found</p>
