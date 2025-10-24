@@ -18,6 +18,7 @@ interface UseAdminPaginationProps {
 
 interface UseAdminPaginationReturn<T> {
   data: T[];
+  admins: T[];
   pagination: PaginationData | null;
   loading: boolean;
   error: string | null;
