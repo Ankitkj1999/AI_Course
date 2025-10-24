@@ -656,7 +656,7 @@ app.post('/api/course', async (req, res) => {
         orientation: 'landscape',
     }).then(async (result) => {
         const photos = result.response.results;
-        const photo = photos[0].urls.regular
+        const photo = photos && photos.length > 0 ? photos[0].urls.regular : null;
         try {
             // Generate SEO-friendly slug
             const title = extractTitleFromContent(content, mainTopic);
@@ -695,7 +695,7 @@ app.post('/api/courseshared', async (req, res) => {
         orientation: 'landscape',
     }).then(async (result) => {
         const photos = result.response.results;
-        const photo = photos[0].urls.regular
+        const photo = photos && photos.length > 0 ? photos[0].urls.regular : null;
         try {
             // Generate SEO-friendly slug for shared course
             const title = extractTitleFromContent(content, mainTopic);
