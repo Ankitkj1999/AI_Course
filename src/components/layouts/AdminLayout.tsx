@@ -55,22 +55,11 @@ const AdminLayout = () => {
   }
 
   useEffect(() => {
-    async function dashboardData() {
-      const postURL = serverURL + `/api/dashboard`;
-      const response = await axios.post(postURL);
-      sessionStorage.setItem('adminEmail', response.data.admin.email);
-      if (response.data.admin.email !== sessionStorage.getItem('email')) {
-        redirectHome();
-      }
+    const isAdmin = sessionStorage.getItem('isAdmin') === 'true';
+    if (!isAdmin) {
+      redirectHome();
     }
-    if (sessionStorage.getItem('adminEmail')) {
-      if (sessionStorage.getItem('adminEmail') !== sessionStorage.getItem('email')) {
-        redirectHome();
-      }
-    } else {
-      dashboardData();
-    }
-  });
+  }, []);
 
   return (
     <SidebarProvider>

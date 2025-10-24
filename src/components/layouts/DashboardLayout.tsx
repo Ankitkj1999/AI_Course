@@ -42,21 +42,8 @@ const DashboardLayout = () => {
     if (sessionStorage.getItem('uid') === null) {
       window.location.href = websiteURL + '/login';
     }
-    async function dashboardData() {
-      const postURL = serverURL + `/api/dashboard`;
-      const response = await axios.post(postURL);
-      sessionStorage.setItem('adminEmail', response.data.admin.email);
-      if (response.data.admin.email === sessionStorage.getItem('email')) {
-        setAdmin(true);
-      }
-    }
-    if (sessionStorage.getItem('adminEmail')) {
-      if (sessionStorage.getItem('adminEmail') === sessionStorage.getItem('email')) {
-        setAdmin(true);
-      }
-    } else {
-      dashboardData();
-    }
+    const isAdmin = sessionStorage.getItem('isAdmin') === 'true';
+    setAdmin(isAdmin);
   }, []);
 
   useEffect(() => {

@@ -57,6 +57,7 @@ const Login = () => {
         sessionStorage.setItem('auth', 'true');
         sessionStorage.setItem('uid', response.data.userData._id);
         sessionStorage.setItem('type', response.data.userData.type);
+        sessionStorage.setItem('isAdmin', response.data.userData.isAdmin);
         toast({
           title: "Login successful",
           description: "Welcome back to " + appName,

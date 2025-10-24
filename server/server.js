@@ -129,6 +129,7 @@ const userSchema = new mongoose.Schema({
     mName: String,
     password: String,
     type: String,
+    isAdmin: { type: Boolean, default: false },
     resetPasswordToken: { type: String, default: null },
     resetPasswordExpires: { type: Date, default: null },
 });
@@ -329,7 +330,7 @@ app.post('/api/signup', async (req, res) => {
             await newUser.save();
             res.json({ success: true, message: 'Account created successfully', userId: newUser._id });
         } else {
-            const newUser = new User({ email, mName, password, type: 'forever' });
+            const newUser = new User({ email, mName, password, type: 'forever', isAdmin: true });
             await newUser.save();
             const newAdmin = new Admin({ email, mName, type: 'main' });
             await newAdmin.save();
@@ -353,7 +354,7 @@ app.post('/api/signin', async (req, res) => {
         }
 
         if (password === user.password) {
-            return res.json({ success: true, message: 'SignIn Successful', userData: user });
+            return res.json({ success: true, message: 'SignIn Successful', userData: { ...user.toObject(), isAdmin: user.isAdmin } });
         }
 
         res.json({ success: false, message: 'Invalid email or password' });
@@ -2026,6 +2027,11 @@ app.post('/api/addadmin', async (req, res) => {
     const { email } = req.body;
     try {
         const user = await User.findOne({ email: email });
+        if (user) {
+            user.isAdmin = true;
+            await user.save();
+        }
+
         const paidUser = await Subscription.findOne({ user: user._id });
         if (!paidUser) {
             await User.findOneAndUpdate(
@@ -2047,11 +2053,12 @@ app.post('/api/removeadmin', async (req, res) => {
     try {
         await Admin.findOneAndDelete({ email: email });
         const user = await User.findOne({ email: email });
-        if (user.type === 'forever') {
-            await User.findOneAndUpdate(
-                { email: email },
-                { $set: { type: 'free' } }
-            );
+        if (user) {
+            user.isAdmin = false;
+            if (user.type === 'forever') {
+                user.type = 'free';
+            }
+            await user.save();
         }
         res.json({ success: true, message: 'Admin removed successfully' });
     } catch (error) {

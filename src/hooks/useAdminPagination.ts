@@ -35,6 +35,7 @@ export function useAdminPagination<T = any>({
   initialLimit = 10
 }: UseAdminPaginationProps): UseAdminPaginationReturn<T> {
   const [data, setData] = useState<T[]>([]);
+  const [admins, setAdmins] = useState<T[]>([]);
   const [pagination, setPagination] = useState<PaginationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,23 +56,27 @@ export function useAdminPagination<T = any>({
 
       const response = await axios.get(`${serverURL}/api/${endpoint}?${params}`);
       
-      // Handle different response structures
-      if (response.data.users) {
+      if (endpoint === 'getadmins') {
         setData(response.data.users);
+        setAdmins(response.data.admins);
+        setPagination(response.data.pagination.users);
+      } else if (response.data.users) {
+        setData(response.data.users);
+        setPagination(response.data.pagination);
       } else if (response.data.courses) {
         setData(response.data.courses);
+        setPagination(response.data.pagination);
       } else if (response.data.blogs) {
         setData(response.data.blogs);
+        setPagination(response.data.pagination);
       } else if (response.data.contacts) {
         setData(response.data.contacts);
-      } else if (response.data.admins) {
-        // For admin endpoint, we'll handle both users and admins
-        setData([...response.data.users, ...response.data.admins]);
+        setPagination(response.data.pagination);
       } else {
         setData(response.data);
+        setPagination(null);
       }
 
-      setPagination(response.data.pagination);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       console.error('Pagination fetch error:', err);
@@ -97,6 +102,7 @@ export function useAdminPagination<T = any>({
 
   return {
     data,
+    admins,
     pagination,
     loading,
     error,
