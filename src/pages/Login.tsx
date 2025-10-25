@@ -180,7 +180,7 @@ const Login = () => {
             <GoogleLogin
               theme='outline'
               type='standard'
-              width={400}
+              width="100%"
               onSuccess={async (credentialResponse) => {
                 const decoded = jwtDecode(credentialResponse.credential);
                 const email = decoded.email;
