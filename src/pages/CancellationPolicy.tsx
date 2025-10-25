@@ -1,10 +1,9 @@
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, FileText, AlertCircle, Mail, Shield, BookOpen, CreditCard } from 'lucide-react';
-import { appName, serverURL } from '@/constants';
+import { ArrowLeft, FileText } from 'lucide-react';
+import { serverURL } from '@/constants';
 import axios from 'axios';
 import StyledText from '@/components/styledText';
 
@@ -38,7 +37,7 @@ const CancellationPolicy = () => {
           </div>
 
           <div className="prose prose-slate dark:prose-invert max-w-none">
-            <StyledText text={data} />
+            <StyledText text={data} contentType="html" />
           </div>
 
           <div className="text-center mt-16">

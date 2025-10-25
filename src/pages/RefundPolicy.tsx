@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, FileText } from 'lucide-react';
@@ -37,7 +37,7 @@ const RefundPolicy = () => {
           </div>
 
           <div className="prose prose-slate dark:prose-invert max-w-none">
-            <StyledText text={data} />
+            <StyledText text={data} contentType="html" />
           </div>
 
           <div className="text-center mt-16">
