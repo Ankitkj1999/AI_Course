@@ -278,6 +278,100 @@ const Quiz = mongoose.model('Quiz', quizSchema);
 const Flashcard = mongoose.model('Flashcard', flashcardSchema);
 const Guide = mongoose.model('Guide', guideSchema);
 
+// MIDDLEWARE DEFINITIONS
+
+// Basic auth middleware - requires valid user
+const requireAuth = async (req, res, next) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        if (!token || token === 'null' || token === 'undefined') {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id);
+        
+        if (!user) {
+            return res.status(401).json({ error: 'User not found' });
+        }
+        
+        req.user = user;
+        next();
+    } catch (error) {
+        console.error('Auth middleware error:', error.message);
+        res.status(401).json({ error: 'Invalid token' });
+    }
+};
+
+// Admin middleware - requires admin user
+const requireAdmin = async (req, res, next) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        if (!token || token === 'null' || token === 'undefined') {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id);
+        
+        if (!user || !user.isAdmin) {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+
+        // Check if user is in Admin collection
+        const adminRecord = await Admin.findOne({ email: user.email });
+        if (!adminRecord) {
+            return res.status(403).json({ error: 'Admin record not found' });
+        }
+        
+        req.user = user;
+        req.adminRecord = adminRecord;
+        next();
+    } catch (error) {
+        console.error('Admin middleware error:', error.message);
+        res.status(401).json({ error: 'Invalid token' });
+    }
+};
+
+// Main admin middleware (for critical settings)
+const requireMainAdmin = async (req, res, next) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        if (!token || token === 'null' || token === 'undefined') {
+            return res.status(401).json({ error: 'No valid token provided' });
+        }
+
+        console.log('Verifying token:', token.substring(0, 20) + '...');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        console.log('Token decoded successfully for user:', decoded.email);
+        
+        const user = await User.findById(decoded.id);
+        
+        if (!user || !user.isAdmin) {
+            return res.status(403).json({ error: 'Access denied. Admin access required.' });
+        }
+
+        // Check if user is in Admin collection (for settings access, any admin should work)
+        const adminRecord = await Admin.findOne({ email: user.email });
+        if (!adminRecord) {
+            return res.status(403).json({ error: 'Access denied. Admin record not found.' });
+        }
+        
+        console.log('Admin access granted for:', user.email);
+        req.user = user;
+        req.adminRecord = adminRecord;
+        next();
+    } catch (error) {
+        console.error('Admin middleware error:', error.message);
+        if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({ error: 'Invalid token format' });
+        } else if (error.name === 'TokenExpiredError') {
+            return res.status(401).json({ error: 'Token expired' });
+        }
+        res.status(401).json({ error: 'Token verification failed' });
+    }
+};
+
 //REQUEST
 
 //HEALTH CHECK
@@ -572,7 +666,7 @@ app.post('/api/reset-password', async (req, res) => {
 });
 
 //GET DATA FROM MODEL
-app.post('/api/prompt', async (req, res) => {
+app.post('/api/prompt', requireAuth, async (req, res) => {
     const receivedData = req.body;
 
     const promptString = receivedData.prompt;
@@ -612,7 +706,7 @@ app.post('/api/prompt', async (req, res) => {
 });
 
 //GET GENERATE THEORY
-app.post('/api/generate', async (req, res) => {
+app.post('/api/generate', requireAuth, async (req, res) => {
     const receivedData = req.body;
 
     const promptString = receivedData.prompt;
@@ -702,7 +796,7 @@ app.post('/api/transcript', async (req, res) => {
 });
 
 //STORE COURSE
-app.post('/api/course', async (req, res) => {
+app.post('/api/course', requireAuth, async (req, res) => {
     const { user, content, type, mainTopic, lang } = req.body;
 
     unsplash.search.getPhotos({
@@ -741,7 +835,7 @@ app.post('/api/course', async (req, res) => {
 });
 
 //STORE COURSE SHARED
-app.post('/api/courseshared', async (req, res) => {
+app.post('/api/courseshared', requireAuth, async (req, res) => {
     const { user, content, type, mainTopic } = req.body;
 
     unsplash.search.getPhotos({
@@ -2001,44 +2095,7 @@ app.get('/api/getpaid', async (req, res) => {
     }
 });
 
-// Admin middleware
-const requireMainAdmin = async (req, res, next) => {
-    try {
-        const token = req.headers.authorization?.split(' ')[1];
-        if (!token || token === 'null' || token === 'undefined') {
-            return res.status(401).json({ error: 'No valid token provided' });
-        }
 
-        console.log('Verifying token:', token.substring(0, 20) + '...');
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        console.log('Token decoded successfully for user:', decoded.email);
-        
-        const user = await User.findById(decoded.id);
-        
-        if (!user || !user.isAdmin) {
-            return res.status(403).json({ error: 'Access denied. Admin access required.' });
-        }
-
-        // Check if user is in Admin collection (for settings access, any admin should work)
-        const adminRecord = await Admin.findOne({ email: user.email });
-        if (!adminRecord) {
-            return res.status(403).json({ error: 'Access denied. Admin record not found.' });
-        }
-        
-        console.log('Admin access granted for:', user.email);
-        req.user = user;
-        req.adminRecord = adminRecord;
-        next();
-    } catch (error) {
-        console.error('Admin middleware error:', error.message);
-        if (error.name === 'JsonWebTokenError') {
-            return res.status(401).json({ error: 'Invalid token format' });
-        } else if (error.name === 'TokenExpiredError') {
-            return res.status(401).json({ error: 'Token expired' });
-        }
-        res.status(401).json({ error: 'Token verification failed' });
-    }
-};
 
 // GET Admin Settings
 app.get('/api/admin/settings', requireMainAdmin, async (req, res) => {
@@ -2121,7 +2178,7 @@ app.put('/api/admin/settings/:key', requireMainAdmin, async (req, res) => {
 });
 
 //GET ADMINS
-app.get('/api/getadmins', async (req, res) => {
+app.get('/api/getadmins', requireAdmin, async (req, res) => {
     try {
         const { page = 1, limit = 10, search = '' } = req.query;
         const skip = (page - 1) * limit;
@@ -2198,7 +2255,7 @@ async function getEmailsOfAdmins() {
 }
 
 //ADD ADMIN
-app.post('/api/addadmin', async (req, res) => {
+app.post('/api/addadmin', requireAdmin, async (req, res) => {
     const { email } = req.body;
     try {
         const user = await User.findOne({ email: email });
@@ -2223,7 +2280,7 @@ app.post('/api/addadmin', async (req, res) => {
 });
 
 //REMOVE ADMIN
-app.post('/api/removeadmin', async (req, res) => {
+app.post('/api/removeadmin', requireAdmin, async (req, res) => {
     const { email } = req.body;
     try {
         await Admin.findOneAndDelete({ email: email });
@@ -2748,7 +2805,7 @@ app.post('/api/flutterwavecancel', async (req, res) => {
 
 
 //CHAT
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', requireAuth, async (req, res) => {
     const receivedData = req.body;
 
     const promptString = receivedData.prompt;
@@ -2870,7 +2927,7 @@ app.post('/api/savenotes', async (req, res) => {
 });
 
 //GENERATE EXAMS
-app.post('/api/aiexam', async (req, res) => {
+app.post('/api/aiexam', requireAuth, async (req, res) => {
     const { courseId, mainTopic, subtopicsString, lang } = req.body;
 
     const existingNotes = await ExamSchema.findOne({ course: courseId });
@@ -3224,7 +3281,7 @@ const server = await startServer();
 //QUIZ ENDPOINTS
 
 //CREATE QUIZ
-app.post('/api/quiz/create', async (req, res) => {
+app.post('/api/quiz/create', requireAuth, async (req, res) => {
     try {
         const { userId, keyword, title, format, questionAndAnswers } = req.body;
         
@@ -3460,7 +3517,7 @@ app.delete('/api/quiz/:slug', async (req, res) => {
 });
 
 //CREATE FLASHCARD
-app.post('/api/flashcard/create', async (req, res) => {
+app.post('/api/flashcard/create', requireAuth, async (req, res) => {
     try {
         const { userId, keyword, title } = req.body;
 
@@ -3700,7 +3757,7 @@ app.delete('/api/flashcard/:slug', async (req, res) => {
 });
 
 //CREATE GUIDE
-app.post('/api/guide/create', async (req, res) => {
+app.post('/api/guide/create', requireAuth, async (req, res) => {
     try {
         const { userId, keyword, title, customization } = req.body;
 
