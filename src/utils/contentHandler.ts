@@ -13,7 +13,7 @@ export const preprocessEscapedContent = (content: string): string => {
   } catch {
     let processed = content.replace(/\\n/g, '\n');
     processed = processed.replace(/\\"/g, '"');
-    processed = processed.replace(/\'/g, "'");
+    processed = processed.replace(/'/g, "'");
     processed = processed.replace(/\\\\/g, '\\');
     processed = processed.replace(/\\t/g, '\t');
     processed = processed.replace(/\\r/g, '\r');
@@ -59,10 +59,30 @@ export const detectContentType = (content: string): 'html' | 'markdown' | 'json'
 
   if (safeJsonParse(content)) return 'json';
   
-  const htmlTagPattern = /<\/?\[a-z][\s\S]*>/i;
-  const hasHtmlTags = htmlTagPattern.test(content);
+  // Enhanced HTML detection for TipTap editor output
+  const htmlTagPatterns = [
+    /<\/?[a-z][a-z0-9]*[^<>]*>/i,  // Standard HTML tags
+    /<p[^>]*>/i,                    // Paragraph tags (common in TipTap)
+    /<div[^>]*>/i,                  // Div tags
+    /<h[1-6][^>]*>/i,              // Heading tags
+    /<strong[^>]*>/i,              // Strong tags
+    /<em[^>]*>/i,                  // Emphasis tags
+    /<ul[^>]*>/i,                  // Unordered list
+    /<ol[^>]*>/i,                  // Ordered list
+    /<li[^>]*>/i,                  // List items
+    /<br\s*\/?>/i,                 // Line breaks
+    /<a[^>]*>/i,                   // Links
+  ];
+  
+  const hasHtmlTags = htmlTagPatterns.some(pattern => pattern.test(content));
 
-  // Check for markdown patterns
+  // If we detect HTML tags, prioritize HTML over markdown
+  if (hasHtmlTags) {
+    console.log('Detected HTML content');
+    return 'html';
+  }
+
+  // Check for markdown patterns only if no HTML detected
   const markdownPatterns = [
     { pattern: /^#{1,6}\s+/m, name: 'Header' },
     { pattern: /\*\*.*?\*\*|\*.*?\*/, name: 'Bold/Italic' },
@@ -78,11 +98,6 @@ export const detectContentType = (content: string): 'html' | 'markdown' | 'json'
     }
   }
   
-  if (hasHtmlTags) {
-    console.log('Detected HTML content');
-    return 'html';
-  }
-  
   console.log('Detected plain text content');
   return 'text';
 };
@@ -96,7 +111,7 @@ export const prepareContentForRendering = (content: string, contentType?: string
   content: string;
   language?: string;
   code?: string;
-  parsedJson?: any;
+  parsedJson?: unknown;
 } => {
   if (!content) {
     return { type: 'text', content: '' };
@@ -114,6 +129,7 @@ export const prepareContentForRendering = (content: string, contentType?: string
     };
   }
 
+  // If contentType is explicitly provided, use it; otherwise detect it
   const detectedType = contentType || detectContentType(preprocessedContent);
 
   if (detectedType === 'json') {
@@ -134,10 +150,25 @@ export const prepareContentForRendering = (content: string, contentType?: string
 };
 
 /**
- * Sanitize HTML content to prevent XSS.
+ * Sanitize HTML content to prevent XSS while allowing safe TipTap editor tags.
  */
 export const sanitizeHtml = (html: string): string => {
-  return html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  if (!html) return '';
+  
+  // Remove dangerous tags and attributes
+  const sanitized = html
+    // Remove script tags
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    // Remove iframe tags
+    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+    // Remove object and embed tags
+    .replace(/<(object|embed)\b[^<]*(?:(?!<\/\1>)<[^<]*)*<\/\1>/gi, '')
+    // Remove on* event handlers
+    .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '')
+    // Remove javascript: links
+    .replace(/href\s*=\s*["']javascript:[^"']*["']/gi, '');
+  
+  return sanitized;
 };
 
 /**

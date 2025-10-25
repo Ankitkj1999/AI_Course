@@ -34,7 +34,9 @@ const StyledText: React.FC<StyledTextProps> = ({
 
   useEffect(() => {
     if (text) {
+      console.log('StyledText received:', { text: text.substring(0, 100), contentType });
       const prepared = prepareContentForRendering(text, contentType);
+      console.log('StyledText prepared content:', prepared);
       setPreparedContent(prepared as PreparedContent);
     }
   }, [text, contentType]);
