@@ -21,7 +21,7 @@ type PreparedContent = {
   content: string;
   language?: BundledLanguage;
   code?: string;
-  parsedJson?: any;
+  parsedJson?: unknown;
 };
 
 
@@ -34,9 +34,7 @@ const StyledText: React.FC<StyledTextProps> = ({
 
   useEffect(() => {
     if (text) {
-      console.log('StyledText received:', { text: text.substring(0, 100), contentType });
       const prepared = prepareContentForRendering(text, contentType);
-      console.log('StyledText prepared content:', prepared);
       setPreparedContent(prepared as PreparedContent);
     }
   }, [text, contentType]);
@@ -59,7 +57,7 @@ const StyledText: React.FC<StyledTextProps> = ({
     case 'html':
       return (
         <div
-          className={`prose prose-lg dark:prose-invert ${className}`}
+          className={`prose prose-lg dark:prose-invert max-w-none ${className}`}
           dangerouslySetInnerHTML={{ __html: sanitizeHtml(preparedContent.content) }}
         />
       );
@@ -80,9 +78,6 @@ const StyledText: React.FC<StyledTextProps> = ({
                 [key: string]: any;
               }) {
                 const codeContent = String(children);
-                
-                // Debug logging to understand what's happening
-                console.log('Code element:', { inline, className, codeContent: codeContent.substring(0, 50) });
                 
                 // Check if this is truly inline code (no newlines, short content)
                 const isReallyInline = inline || (!className && !codeContent.includes('\n') && codeContent.length < 100);
