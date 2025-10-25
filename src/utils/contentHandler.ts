@@ -78,7 +78,6 @@ export const detectContentType = (content: string): 'html' | 'markdown' | 'json'
 
   // If we detect HTML tags, prioritize HTML over markdown
   if (hasHtmlTags) {
-    console.log('Detected HTML content');
     return 'html';
   }
 
@@ -91,14 +90,12 @@ export const detectContentType = (content: string): 'html' | 'markdown' | 'json'
     { pattern: /^\s*\d+\.\s+/m, name: 'Numbered List' },
   ];
   
-  for (const { pattern, name } of markdownPatterns) {
+  for (const { pattern } of markdownPatterns) {
     if (pattern.test(content)) {
-      console.log(`Detected markdown content due to pattern: ${name}`);
       return 'markdown';
     }
   }
   
-  console.log('Detected plain text content');
   return 'text';
 };
 

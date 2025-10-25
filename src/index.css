@@ -125,4 +125,82 @@ html {
   scroll-behavior: smooth;
 }
 
+/* TipTap Editor Content Styles */
+@layer components {
+  .prose .text-node {
+    @apply mb-4 leading-relaxed;
+  }
+  
+  .prose .text-node:last-child {
+    @apply mb-0;
+  }
+  
+  .prose .heading-node {
+    @apply mt-8 mb-4 font-semibold;
+  }
+  
+  .prose .heading-node:first-child {
+    @apply mt-0;
+  }
+  
+  .prose h1.heading-node {
+    @apply text-4xl leading-tight;
+  }
+  
+  .prose h2.heading-node {
+    @apply text-3xl leading-tight;
+  }
+  
+  .prose h3.heading-node {
+    @apply text-2xl leading-snug;
+  }
+  
+  .prose h4.heading-node {
+    @apply text-xl leading-snug;
+  }
+  
+  .prose h5.heading-node {
+    @apply text-lg leading-normal;
+  }
+  
+  .prose h6.heading-node {
+    @apply text-base leading-normal;
+  }
+  
+  .prose .list-node {
+    @apply mb-4 pl-6;
+  }
+  
+  .prose ul.list-node {
+    @apply list-disc;
+  }
+  
+  .prose ol.list-node {
+    @apply list-decimal;
+  }
+  
+  .prose .list-node li {
+    @apply mb-2;
+  }
+  
+  .prose .list-node li .text-node {
+    @apply mb-0;
+  }
+  
+  .prose .list-node .list-node {
+    @apply mt-2 mb-2;
+  }
+  
+  /* Strong and emphasis within text nodes */
+  .prose .text-node strong,
+  .prose .list-node strong {
+    @apply font-semibold;
+  }
+  
+  .prose .text-node em,
+  .prose .list-node em {
+    @apply italic;
+  }
+}
+
 
