@@ -316,7 +316,10 @@ const CoursePage = () => {
     const url = serverURL + "/api/chat";
 
     try {
-      const response = await axios.post(url, dataToSend);
+      const token = localStorage.getItem("token");
+      const response = await axios.post(url, dataToSend, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       if (response.data.success === false) {
         toast({
           title: "Error",
@@ -531,7 +534,10 @@ const CoursePage = () => {
     };
     try {
       const postURL = serverURL + "/api/generate";
-      const res = await axios.post(postURL, dataToSend);
+      const token = localStorage.getItem("token");
+      const res = await axios.post(postURL, dataToSend, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       const generatedText = res.data.text;
       const contentType = res.data.contentType || "html"; // Default to HTML for backward compatibility
       const htmlContent = generatedText;
@@ -736,7 +742,10 @@ const CoursePage = () => {
     };
     try {
       const postURL = serverURL + "/api/generate";
-      const res = await axios.post(postURL, dataToSend);
+      const token = localStorage.getItem("token");
+      const res = await axios.post(postURL, dataToSend, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       const generatedText = res.data.text;
       const contentType = res.data.contentType || "html"; // Default to HTML for backward compatibility
       const htmlContent = generatedText;
@@ -921,11 +930,14 @@ const CoursePage = () => {
         subtopicsString = subtopicsString + " , " + titleOfSubTopic;
       });
       const postURL = serverURL + "/api/aiexam";
+      const token = localStorage.getItem("token");
       const response = await axios.post(postURL, {
         courseId,
         mainTopic,
         subtopicsString,
         lang,
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
       if (response.data.success) {
         setIsLoading(false);

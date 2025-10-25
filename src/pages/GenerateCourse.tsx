@@ -187,7 +187,10 @@ const GenerateCourse = () => {
     };
     try {
       const postURL = serverURL + '/api/prompt';
-      const res = await axios.post(postURL, dataToSend);
+      const token = localStorage.getItem("token");
+      const res = await axios.post(postURL, dataToSend, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       const generatedText = res.data.generatedText;
       const cleanedJsonString = generatedText.replace(/```json/g, '').replace(/```/g, '');
       try {

@@ -61,7 +61,10 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
         };
         try {
             const postURL = serverURL + '/api/generate';
-            const res = await axios.post(postURL, dataToSend);
+            const token = localStorage.getItem("token");
+            const res = await axios.post(postURL, dataToSend, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
             const generatedText = res.data.text;
             const htmlContent = generatedText;
 
@@ -124,7 +127,10 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
         const user = sessionStorage.getItem('uid');
         const content = JSON.stringify(topics);
         const postURL = serverURL + '/api/course';
-        const response = await axios.post(postURL, { user, content, type, mainTopic: courseName, lang });
+        const token = localStorage.getItem("token");
+        const response = await axios.post(postURL, { user, content, type, mainTopic: courseName, lang }, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
 
         if (response.data.success) {
             sessionStorage.setItem('courseId', response.data.courseId);
@@ -158,7 +164,10 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
         const user = sessionStorage.getItem('uid');
         const content = JSON.stringify(topics);
         const postURL = serverURL + '/api/course';
-        const response = await axios.post(postURL, { user, content, type, mainTopic: courseName, lang });
+        const token = localStorage.getItem("token");
+        const response = await axios.post(postURL, { user, content, type, mainTopic: courseName, lang }, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
 
         if (response.data.success) {
             sessionStorage.setItem('courseId', response.data.courseId);
@@ -245,7 +254,10 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
         };
         try {
             const postURL = serverURL + '/api/generate';
-            const res = await axios.post(postURL, dataToSend);
+            const token = localStorage.getItem("token");
+            const res = await axios.post(postURL, dataToSend, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
             const generatedText = res.data.text;
             const htmlContent = generatedText;
 
