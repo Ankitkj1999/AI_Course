@@ -31,6 +31,7 @@ import {
   Menu,
   FileEdit,
   FileSliders,
+  Settings,
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
@@ -234,6 +235,27 @@ const AdminLayout = () => {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+
+            {/* System Configuration */}
+            <SidebarGroup>
+              <div className="px-3 py-2">
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  System
+                </h4>
+              </div>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="System Settings" isActive={isActive('/admin/settings')}>
+                      <Link to="/admin/settings" className={cn(isActive('/admin/settings') && "text-primary")}>
+                        <Settings />
+                        <span>Settings</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
           </SidebarContent>
 
           <SidebarFooter className="border-t border-border/40 p-4">
@@ -260,6 +282,7 @@ const AdminLayout = () => {
               <Button
                 onClick={() => {
                   sessionStorage.clear();
+                  localStorage.removeItem('token');
                   navigate('/login');
                 }}
                 variant="outline"

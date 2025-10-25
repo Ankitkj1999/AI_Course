@@ -71,6 +71,7 @@ const Profile = () => {
 
   function redirectLogin() {
     sessionStorage.clear();
+    localStorage.removeItem('token');
     navigate("/login");
   }
 

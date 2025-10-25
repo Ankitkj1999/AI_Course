@@ -19,6 +19,7 @@
     "express": "^4.18.2",
     "flutterwave-node-v3": "^1.1.10",
     "g-i-s": "^2.1.7",
+    "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.0.2",
     "nodemailer": "^6.9.7",
     "portfinder": "^1.0.38",

@@ -52,6 +52,11 @@ const Login = () => {
       const postURL = serverURL + '/api/signin';
       const response = await axios.post(postURL, { email, password });
       if (response.data.success) {
+        // Store JWT token
+        if (response.data.token) {
+          localStorage.setItem('token', response.data.token);
+        }
+        
         sessionStorage.setItem('email', response.data.userData.email);
         sessionStorage.setItem('mName', response.data.userData.mName);
         sessionStorage.setItem('auth', 'true');
@@ -185,6 +190,11 @@ const Login = () => {
                   setIsLoading(true);
                   const response = await axios.post(postURL, { email, name });
                   if (response.data.success) {
+                    // Store JWT token
+                    if (response.data.token) {
+                      localStorage.setItem('token', response.data.token);
+                    }
+                    
                     toast({
                       title: "Login successful",
                       description: "Welcome back to " + appName,
@@ -238,6 +248,11 @@ const Login = () => {
                   setIsLoading(true);
                   const response = await axios.post(postURL, { email, name });
                   if (response.data.success) {
+                    // Store JWT token
+                    if (response.data.token) {
+                      localStorage.setItem('token', response.data.token);
+                    }
+                    
                     toast({
                       title: "Login successful",
                       description: "Welcome back to " + appName,
