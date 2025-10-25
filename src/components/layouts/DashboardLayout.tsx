@@ -66,6 +66,7 @@ const DashboardLayout = () => {
 
   function Logout() {
     sessionStorage.clear();
+    localStorage.removeItem('token');
     toast({
       title: "Logged Out",
       description: "You have logged out successfully",

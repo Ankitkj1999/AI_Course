@@ -52,6 +52,7 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminCourses from "./pages/admin/AdminCourses";
 import AdminPaidUsers from "./pages/admin/AdminPaidUsers";
 import AdminAdmins from "./pages/admin/AdminAdmins";
+import AdminSettings from "./pages/admin/AdminSettings";
 import AdminContacts from "./pages/admin/AdminContacts";
 import AdminTerms from "./pages/admin/AdminTerms";
 import AdminPrivacy from "./pages/admin/AdminPrivacy";
@@ -157,6 +158,7 @@ const App = () => {
                   <Route path="courses" element={<AdminCourses />} />
                   <Route path="paid-users" element={<AdminPaidUsers />} />
                   <Route path="admins" element={<AdminAdmins />} />
+                  <Route path="settings" element={<AdminSettings />} />
                   <Route path="contacts" element={<AdminContacts />} />
                   <Route path="terms" element={<AdminTerms />} />
                   <Route path="privacy" element={<AdminPrivacy />} />

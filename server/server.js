@@ -5,6 +5,7 @@ import bodyParser from 'body-parser';
 import nodemailer from 'nodemailer';
 import cors from 'cors';
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import gis from 'g-i-s';
 import youtubesearchapi from 'youtube-search-api';
@@ -18,6 +19,8 @@ import Flutterwave from 'flutterwave-node-v3';
 import logger from './utils/logger.js';
 import errorHandler from './middleware/errorHandler.js';
 import { generateSlug, generateUniqueSlug, extractTitleFromContent } from './utils/slugify.js';
+import Settings from './models/Settings.js';
+import settingsCache from './services/settingsCache.js';
 import { generateCourseSEO } from './utils/seo.js';
 import { getServerPort, getServerURL, validateConfig } from './utils/config.js';
 
@@ -109,7 +112,11 @@ const transporter = nodemailer.createTransport({
         pass: process.env.PASSWORD,
     },
 });
-const genAI = new GoogleGenerativeAI(process.env.API_KEY);
+// Dynamic AI instance getter
+const getAI = async () => {
+    const apiKey = await settingsCache.get('API_KEY');
+    return new GoogleGenerativeAI(apiKey);
+};
 const unsplash = createApi({ accessKey: process.env.UNSPLASH_ACCESS_KEY });
 
 //SCHEMA
@@ -282,6 +289,7 @@ app.get('/health', async (req, res) => {
         // Check AI service (optional - can be slow)
         let aiStatus = 'unknown';
         try {
+            const genAI = await getAI();
             const testModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
             await testModel.generateContent("test");
             aiStatus = 'connected';
@@ -354,7 +362,33 @@ app.post('/api/signin', async (req, res) => {
         }
 
         if (password === user.password) {
-            return res.json({ success: true, message: 'SignIn Successful', userData: { ...user.toObject(), isAdmin: user.isAdmin } });
+            try {
+                // Generate JWT token
+                console.log('Generating JWT token for user:', user.email);
+                console.log('JWT_SECRET exists:', !!process.env.JWT_SECRET);
+                
+                const token = jwt.sign(
+                    { id: user._id, email: user.email },
+                    process.env.JWT_SECRET,
+                    { expiresIn: '7d' }
+                );
+                
+                console.log('Token generated successfully:', !!token);
+                
+                return res.json({ 
+                    success: true, 
+                    message: 'SignIn Successful', 
+                    token,
+                    userData: { ...user.toObject(), isAdmin: user.isAdmin } 
+                });
+            } catch (error) {
+                console.error('JWT generation error:', error);
+                return res.json({ 
+                    success: true, 
+                    message: 'SignIn Successful', 
+                    userData: { ...user.toObject(), isAdmin: user.isAdmin } 
+                });
+            }
         }
 
         res.json({ success: false, message: 'Invalid email or password' });
@@ -380,16 +414,36 @@ app.post('/api/social', async (req, res) => {
             if (estimate > 0) {
                 const newUser = new User({ email, mName, password, type });
                 await newUser.save();
-                res.json({ success: true, message: 'Account created successfully', userData: newUser });
+                
+                const token = jwt.sign(
+                    { id: newUser._id, email: newUser.email },
+                    process.env.JWT_SECRET,
+                    { expiresIn: '7d' }
+                );
+                
+                res.json({ success: true, message: 'Account created successfully', token, userData: newUser });
             } else {
                 const newUser = new User({ email, mName, password, type });
                 await newUser.save();
                 const newAdmin = new Admin({ email, mName, type: 'main' });
                 await newAdmin.save();
-                res.json({ success: true, message: 'Account created successfully', userData: newUser });
+                
+                const token = jwt.sign(
+                    { id: newUser._id, email: newUser.email },
+                    process.env.JWT_SECRET,
+                    { expiresIn: '7d' }
+                );
+                
+                res.json({ success: true, message: 'Account created successfully', token, userData: newUser });
             }
         } else {
-            return res.json({ success: true, message: 'SignIn Successful', userData: user });
+            const token = jwt.sign(
+                { id: user._id, email: user.email },
+                process.env.JWT_SECRET,
+                { expiresIn: '7d' }
+            );
+            
+            return res.json({ success: true, message: 'SignIn Successful', token, userData: user });
         }
 
     } catch (error) {
@@ -542,6 +596,7 @@ app.post('/api/prompt', async (req, res) => {
         },
     ];
 
+    const genAI = await getAI();
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
 
     const prompt = promptString;
@@ -581,6 +636,7 @@ app.post('/api/generate', async (req, res) => {
         },
     ];
 
+    const genAI = await getAI();
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
 
     const prompt = promptString
@@ -1945,6 +2001,125 @@ app.get('/api/getpaid', async (req, res) => {
     }
 });
 
+// Admin middleware
+const requireMainAdmin = async (req, res, next) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        if (!token || token === 'null' || token === 'undefined') {
+            return res.status(401).json({ error: 'No valid token provided' });
+        }
+
+        console.log('Verifying token:', token.substring(0, 20) + '...');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        console.log('Token decoded successfully for user:', decoded.email);
+        
+        const user = await User.findById(decoded.id);
+        
+        if (!user || !user.isAdmin) {
+            return res.status(403).json({ error: 'Access denied. Admin access required.' });
+        }
+
+        // Check if user is in Admin collection (for settings access, any admin should work)
+        const adminRecord = await Admin.findOne({ email: user.email });
+        if (!adminRecord) {
+            return res.status(403).json({ error: 'Access denied. Admin record not found.' });
+        }
+        
+        console.log('Admin access granted for:', user.email);
+        req.user = user;
+        req.adminRecord = adminRecord;
+        next();
+    } catch (error) {
+        console.error('Admin middleware error:', error.message);
+        if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({ error: 'Invalid token format' });
+        } else if (error.name === 'TokenExpiredError') {
+            return res.status(401).json({ error: 'Token expired' });
+        }
+        res.status(401).json({ error: 'Token verification failed' });
+    }
+};
+
+// GET Admin Settings
+app.get('/api/admin/settings', requireMainAdmin, async (req, res) => {
+    try {
+        const settings = await Settings.find({});
+        const settingsMap = {};
+        
+        // Convert to key-value pairs and mask secrets
+        settings.forEach(setting => {
+            settingsMap[setting.key] = {
+                value: setting.isSecret ? '••••••••' : setting.value,
+                category: setting.category,
+                isSecret: setting.isSecret
+            };
+        });
+
+        // Add env defaults for missing settings
+        const defaultSettings = {
+            API_KEY: { value: '••••••••', category: 'ai', isSecret: true },
+            EMAIL: { value: process.env.EMAIL || '', category: 'email', isSecret: false },
+            PASSWORD: { value: '••••••••', category: 'email', isSecret: true },
+            LOGO: { value: process.env.LOGO || '', category: 'branding', isSecret: false },
+            COMPANY: { value: process.env.COMPANY || '', category: 'branding', isSecret: false }
+        };
+
+        // Merge with defaults
+        Object.keys(defaultSettings).forEach(key => {
+            if (!settingsMap[key]) {
+                settingsMap[key] = defaultSettings[key];
+            }
+        });
+
+        res.json(settingsMap);
+    } catch (error) {
+        console.error('Settings fetch error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// UPDATE Admin Setting
+app.put('/api/admin/settings/:key', requireMainAdmin, async (req, res) => {
+    try {
+        const { key } = req.params;
+        const { value } = req.body;
+
+        // Validate allowed keys
+        const allowedKeys = ['API_KEY', 'EMAIL', 'PASSWORD', 'LOGO', 'COMPANY'];
+        if (!allowedKeys.includes(key)) {
+            return res.status(400).json({ error: 'Invalid setting key' });
+        }
+
+        // Basic validation
+        if (!value || value.trim() === '') {
+            return res.status(400).json({ error: 'Value cannot be empty' });
+        }
+
+        // Update or create setting
+        const isSecret = ['API_KEY', 'PASSWORD'].includes(key);
+        await Settings.findOneAndUpdate(
+            { key },
+            { 
+                value: value.trim(),
+                category: key === 'API_KEY' ? 'ai' : key.includes('EMAIL') || key.includes('PASSWORD') ? 'email' : 'branding',
+                isSecret,
+                updatedBy: req.user._id,
+                updatedAt: new Date()
+            },
+            { upsert: true, new: true }
+        );
+
+        // Clear cache
+        settingsCache.invalidate(key);
+
+        console.log(`Setting ${key} updated by ${req.user.email}`);
+        res.json({ success: true, message: 'Setting updated successfully' });
+    } catch (error) {
+        console.error('Settings update error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 //GET ADMINS
 app.get('/api/getadmins', async (req, res) => {
     try {
@@ -2597,6 +2772,7 @@ app.post('/api/chat', async (req, res) => {
         },
     ];
 
+    const genAI = await getAI();
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
 
     const prompt = promptString;
@@ -2762,6 +2938,7 @@ app.post('/api/aiexam', async (req, res) => {
             },
         ];
 
+        const genAI = await getAI();
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
 
         await model.generateContent(prompt).then(async result => {
@@ -3009,12 +3186,20 @@ const startServer = async () => {
         const serverPort = await getServerPort(PORT);
         const serverURL = getServerURL(serverPort);
         
-        const server = app.listen(serverPort, () => {
+        const server = app.listen(serverPort, async () => {
             logger.info(`🚀 Server started successfully!`);
             logger.info(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
             logger.info(`🌐 Server URL: ${serverURL}`);
             logger.info(`❤️  Health check: ${serverURL}/health`);
             logger.info(`🔗 API Base URL: ${serverURL}/api`);
+            
+            // Initialize settings cache
+            try {
+                await settingsCache.preload();
+                logger.info(`⚙️  Settings cache initialized`);
+            } catch (error) {
+                logger.error(`❌ Settings cache initialization failed:`, error);
+            }
             
             // Update environment variables for other parts of the app
             process.env.ACTUAL_PORT = serverPort.toString();
@@ -3064,6 +3249,7 @@ app.post('/api/quiz/create', async (req, res) => {
         
         Make the questions challenging and cover various aspects of the topic.`;
 
+        const genAI = await getAI();
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
         const result = await model.generateContent(quizPrompt);
         const quizContent = result.response.text();
@@ -3305,6 +3491,7 @@ app.post('/api/flashcard/create', async (req, res) => {
             },
         ];
 
+        const genAI = await getAI();
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
 
         const prompt = `Create a comprehensive set of flashcards for the topic: "${keyword}". 
@@ -3544,6 +3731,7 @@ app.post('/api/guide/create', async (req, res) => {
             },
         ];
 
+        const genAI = await getAI();
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
 
         const prompt = `Create a comprehensive study guide for the topic: "${keyword}".
