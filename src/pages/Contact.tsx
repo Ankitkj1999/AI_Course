@@ -19,7 +19,9 @@ import { appName, serverURL } from '@/constants';
 import axios from 'axios';
 
 const Contact = () => {
-  const [name, setName] = useState('');
+  const [fname, setFname] = useState('');
+  const [lname, setLname] = useState('');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
@@ -33,7 +35,7 @@ const Contact = () => {
 
     // Simulate API request
     const postURL = serverURL + '/api/contact';
-    const response = await axios.post(postURL, { fname: name, lname: subject, email, phone: '', msg: message });
+    const response = await axios.post(postURL, { fname, lname, email, phone, msg: message });
     if (response.data.success) {
       toast({
         title: "Message sent",
@@ -96,15 +98,28 @@ const Contact = () => {
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="name">Your Name</Label>
+                      <Label htmlFor="fname">First Name</Label>
                       <Input
-                        id="name"
-                        placeholder="John Doe"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
+                        id="fname"
+                        placeholder="John"
+                        value={fname}
+                        onChange={(e) => setFname(e.target.value)}
                         required
                       />
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lname">Last Name</Label>
+                      <Input
+                        id="lname"
+                        placeholder="Doe"
+                        value={lname}
+                        onChange={(e) => setLname(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                     <div className="space-y-2">
                       <Label htmlFor="email">Email Address</Label>
@@ -115,6 +130,16 @@ const Contact = () => {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone Number (Optional)</Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        placeholder="+1 (555) 123-4567"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
                       />
                     </div>
                   </div>
