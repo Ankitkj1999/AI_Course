@@ -1,7 +1,24 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, MessageSquare, Calendar, Phone, Mail } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Search, MessageSquare, Calendar, Phone, Mail, MoreVertical } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Pagination, PaginationInfo } from '@/components/ui/pagination';
@@ -98,6 +115,7 @@ const AdminContacts = () => {
                 <TableHead>Contact Info</TableHead>
                 <TableHead>Message</TableHead>
                 <TableHead>Received</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             {loading ? (
@@ -115,6 +133,9 @@ const AdminContacts = () => {
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-5 w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-16" />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -141,9 +162,22 @@ const AdminContacts = () => {
                       </div>
                     </TableCell>
                     <TableCell className="max-w-xs">
-                      <div className="truncate" title={contact.msg}>
-                        {contact.msg}
-                      </div>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm">View Message</Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Full Message from {contact.fname} {contact.lname}</AlertDialogTitle>
+                            <AlertDialogDescription className="whitespace-pre-wrap break-words">
+                              {contact.msg}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Close</AlertDialogCancel>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -151,12 +185,32 @@ const AdminContacts = () => {
                         <span className="text-sm">{formatDate(contact.date)}</span>
                       </div>
                     </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              const subject = encodeURIComponent(`Reply to your message: ${contact.msg.substring(0, 20)}...`);
+                              window.location.href = `mailto:${contact.email}?subject=${subject}`;
+                            }}
+                          >
+                            Reply
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
                   </TableRow>
                 ))}
 
                 {contacts.length === 0 && !loading && (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8">
+                    <TableCell colSpan={5} className="text-center py-8">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <MessageSquare className="h-8 w-8 mb-2" />
                         <p>No contact messages found</p>
