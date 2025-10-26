@@ -55,7 +55,12 @@ export function useAdminPagination<T = any>({
         ...(searchQuery && { search: searchQuery })
       });
 
-      const response = await axios.get(`${serverURL}/api/${endpoint}?${params}`);
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${serverURL}/api/${endpoint}?${params}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       
       if (endpoint === 'getadmins') {
         setData(response.data.users);
