@@ -3,13 +3,14 @@ import { Link } from 'react-router-dom';
 import { QuizService } from '@/services/quizService';
 import { getQuizURL, getQuizShareURL } from '@/utils/config';
 import { InlineLoader } from '@/components/ui/loading';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  Brain, 
-  Calendar, 
-  Eye, 
-  Share2, 
-  Trash2, 
+import {
+  Brain,
+  Calendar,
+  Eye,
+  Share2,
+  Trash2,
   Plus,
   Clock,
   BarChart3
@@ -122,12 +123,9 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
     return (
       <div className="text-center py-8">
         <p className="text-red-600 mb-4">{error}</p>
-        <button 
-          onClick={fetchQuizzes}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
+        <Button onClick={fetchQuizzes}>
           Retry
-        </button>
+        </Button>
       </div>
     );
   }
@@ -140,13 +138,12 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Quizzes</h1>
           <p className="text-gray-600 dark:text-gray-300">Manage your AI-generated quizzes</p>
         </div>
-        <Link
-          to="/dashboard/create-quiz"
-          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Create Quiz
-        </Link>
+        <Button asChild>
+          <Link to="/dashboard/create-quiz">
+            <Plus className="w-4 h-4 mr-2" />
+            Create Quiz
+          </Link>
+        </Button>
       </div>
 
       {/* Quiz Grid */}
@@ -155,13 +152,12 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
           <Brain className="h-16 w-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No quizzes yet</h3>
           <p className="text-gray-600 dark:text-gray-300 mb-6">Create your first AI-generated quiz to get started</p>
-          <Link
-            to="/dashboard/create-quiz"
-            className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Create Your First Quiz
-          </Link>
+          <Button asChild>
+            <Link to="/dashboard/create-quiz">
+              <Plus className="w-5 h-5 mr-2" />
+              Create Your First Quiz
+            </Link>
+          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -220,12 +216,11 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
 
                   {/* Actions */}
                   <div className="flex items-center justify-between">
-                    <Link
-                      to={quizURL}
-                      className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
-                    >
-                      Take Quiz
-                    </Link>
+                    <Button asChild size="sm">
+                      <Link to={quizURL}>
+                        Take Quiz
+                      </Link>
+                    </Button>
                     
                     <div className="flex items-center space-x-2">
                       <button
@@ -256,25 +251,27 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center space-x-2">
-          <button
+          <Button
             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
-            className="px-3 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            variant="outline"
+            size="sm"
           >
             Previous
-          </button>
-          
+          </Button>
+
           <span className="px-4 py-2 text-sm text-gray-600">
             Page {currentPage} of {totalPages}
           </span>
-          
-          <button
+
+          <Button
             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
             disabled={currentPage === totalPages}
-            className="px-3 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            variant="outline"
+            size="sm"
           >
             Next
-          </button>
+          </Button>
         </div>
       )}
     </div>
