@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Home, User, DollarSign, LogOut, Sparkles, Menu, Settings2Icon, Brain, List, Plus, CreditCard, Layers, BookOpen, FileText, Moon, Sun } from 'lucide-react';
+import { Home, User, DollarSign, LogOut, Sparkles, PanelLeftOpen, Settings2Icon, Brain, List, Plus, CreditCard, Layers, BookOpen, FileText, Moon, Sun } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -276,15 +276,14 @@ const DashboardLayout = () => {
 
         <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
           {isMobile && (
-            <div className="flex items-center mb-6 bg-background/80 backdrop-blur-sm rounded-lg p-3 shadow-sm">
-              <SidebarTrigger className="mr-3">
-                <Menu className="h-6 w-6" />
+            <div className="flex items-center justify-between mb-6 py-2">
+              <SidebarTrigger>
+                <PanelLeftOpen className="h-6 w-6" />
               </SidebarTrigger>
-              <h1 className="text-xl font-semibold bg-gradient-to-r from-primary to-indigo-500 text-gradient flex-1">{appName}</h1>
+              <h1 className="text-xl font-semibold bg-gradient-to-r from-primary to-indigo-500 text-gradient">{appName}</h1>
               <ThemeToggle
                 variant="ghost"
                 size="sm"
-                className="ml-2 hover:bg-accent/50"
               />
             </div>
           )}
