@@ -13,7 +13,12 @@ const API_BASE = `${serverURL}/api`;
 export const flashcardService = {
   // Create a new flashcard set
   async createFlashcardSet(data: CreateFlashcardRequest): Promise<CreateFlashcardResponse> {
-    const response = await axios.post(`${API_BASE}/flashcard/create`, data);
+    const token = localStorage.getItem("token");
+    const response = await axios.post(`${API_BASE}/flashcard/create`, data, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
     return response.data;
   },
 
