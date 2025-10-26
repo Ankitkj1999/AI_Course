@@ -14,8 +14,18 @@ import { useSettings } from '@/hooks/useSettings';
 import Logo from '../res/logo.svg';
 import axios from 'axios';
 import { GoogleLogin } from '@react-oauth/google';
-import { jwtDecode } from "jwt-decode";
+import { jwtDecode, JwtPayload } from "jwt-decode";
 import FacebookLogin from '@greatsumini/react-facebook-login';
+
+interface GoogleJwtPayload extends JwtPayload {
+  email: string;
+  name: string;
+}
+
+interface FacebookProfileResponse {
+  email: string;
+  name: string;
+}
 
 const Signup = () => {
   const [name, setName] = useState('');
@@ -110,7 +120,7 @@ const Signup = () => {
                 <html lang="en">
                 
                   <head></head>
-                 <div id="__react-email-preview" style="display:none;overflow:hidden;line-height:1px;opacity:0;max-height:0;max-width:0;">Welcome to AiCourse<div> ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿</div>
+                 <div id="__react-email-preview" style="display:none;overflow:hidden;line-height:1px;opacity:0;max-height:0;max-width:0;">Welcome to ${appName}</div>
                  </div>
                 
                   <body style="padding:20px; margin-left:auto;margin-right:auto;margin-top:auto;margin-bottom:auto;background-color:#f6f9fc;font-family:ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, &quot;Helvetica Neue&quot;, Arial, &quot;Noto Sans&quot;, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;, &quot;Segoe UI Symbol&quot;, &quot;Noto Color Emoji&quot;">
@@ -125,7 +135,7 @@ const Signup = () => {
                             </tbody>
                           </table>
                           <h1 style="margin-left:0px;margin-right:0px;margin-top:30px;margin-bottom:30px;padding:0px;text-align:center;font-size:24px;font-weight:400;color:rgb(0,0,0)">Welcome to <strong>${appName}</strong></h1>
-                          <p style="font-size:14px;line-height:24px;margin:16px 0;color:rgb(0,0,0)">Hello <strong>${name}</strong>,</p>
+                          <p style="font-size:14px;line-height:24px;margin:16px 0;color:rgb(0,0,0)">Hello <strong>${mName}</strong>,</p>
                           <p style="font-size:14px;line-height:24px;margin:16px 0;color:rgb(0,0,0)">Welcome to <strong>${appName}</strong>, Unleash your AI potential with our platform, offering a seamless blend of theory and video courses. Dive into comprehensive lessons, from foundational theories to real-world applications, tailored to your learning preferences. Experience the future of AI education with ${appName} – where theory meets engaging visuals for a transformative learning journey!</p>
                           <table align="center" border="0" cellPadding="0" cellSpacing="0" role="presentation" width="100%" style="margin-bottom:32px;margin-top:32px;text-align:center">
                             <tbody>
@@ -134,7 +144,7 @@ const Signup = () => {
                               </tr>
                             </tbody>
                           </table>
-                          <p style="font-size:14px;line-height:24px;margin:16px 0;color:rgb(0,0,0)">Best,<p target="_blank" style="color:rgb(0,0,0);text-decoration:none;text-decoration-line:none">The <strong>${companyName}</strong> Team</p></p>
+                          <p style="font-size:14px;line-height:24px;margin:16px 0;color:rgb(0,0,0)">Best,</p><p target="_blank" style="color:rgb(0,0,0);text-decoration:none;text-decoration-line:none">The <strong>${companyName}</strong> Team</p>
                           </td>
                       </tr>
                     </table>
@@ -266,7 +276,7 @@ const Signup = () => {
                   type='standard'
                   width="100%"
                   onSuccess={async (credentialResponse) => {
-                    const decoded = jwtDecode(credentialResponse.credential);
+                    const decoded = jwtDecode<GoogleJwtPayload>(credentialResponse.credential);
                     const email = decoded.email;
                     const name = decoded.name;
                     const postURL = serverURL + '/api/social';
@@ -279,12 +289,12 @@ const Signup = () => {
                           description: "Welcome back to " + appName,
                         });
                         setIsLoading(false);
-                        sessionStorage.setItem('email', (decoded as any).email);
-                        sessionStorage.setItem('mName', (decoded as any).name);
+                        sessionStorage.setItem('email', decoded.email);
+                        sessionStorage.setItem('mName', decoded.name);
                         sessionStorage.setItem('auth', 'true');
                         sessionStorage.setItem('uid', response.data.userData._id);
                         sessionStorage.setItem('type', response.data.userData.type);
-                        sendEmail((decoded as any).email, (decoded as any).name);
+                        sendEmail(decoded.email, decoded.name);
                       } else {
                         setIsLoading(false);
                         setError(response.data.message);
@@ -325,8 +335,9 @@ const Signup = () => {
                     setError('Internal Server Error');
                   }}
                   onProfileSuccess={async (response) => {
-                    const email = response.email;
-                    const name = response.name;
+                    const profile = response as FacebookProfileResponse;
+                    const email = profile.email;
+                    const name = profile.name;
                     const postURL = serverURL + '/api/social';
                     try {
                       setIsLoading(true);
@@ -337,12 +348,12 @@ const Signup = () => {
                           description: "Welcome back to " + appName,
                         });
                         setIsLoading(false);
-                        sessionStorage.setItem('email', (response as any).email);
-                        sessionStorage.setItem('mName', (response as any).name);
+                        sessionStorage.setItem('email', profile.email);
+                        sessionStorage.setItem('mName', profile.name);
                         sessionStorage.setItem('auth', 'true');
                         sessionStorage.setItem('uid', response.data.userData._id);
                         sessionStorage.setItem('type', response.data.userData.type);
-                        sendEmail((response as any).email, (response as any).name);
+                        sendEmail(profile.email, profile.name);
                       } else {
                         setIsLoading(false);
                         setError(response.data.message);
