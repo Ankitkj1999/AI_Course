@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowRight, Mail, Lock, AlertTriangle } from 'lucide-react';
 import { appName, facebookClientId, serverURL } from '@/constants';
+import { useSettings } from '@/hooks/useSettings';
 import Logo from '../res/logo.svg';
 import axios from 'axios';
 import { GoogleLogin } from '@react-oauth/google';
@@ -22,6 +23,13 @@ const Login = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { settings } = useSettings();
+
+  // Get dynamic values from settings
+  const googleClientId = settings.GOOGLE_CLIENT_ID?.value || facebookClientId;
+  const facebookClientIdDynamic = settings.FACEBOOK_CLIENT_ID?.value || facebookClientId;
+  const googleLoginEnabled = settings.GOOGLE_LOGIN_ENABLED?.value === 'true';
+  const facebookLoginEnabled = settings.FACEBOOK_LOGIN_ENABLED?.value === 'true';
 
   useEffect(() => {
     const auth = sessionStorage.getItem('auth');
@@ -178,107 +186,111 @@ const Login = () => {
             </form>
 
             <div className="space-y-4">
-              <GoogleLogin
-                theme='outline'
-                type='standard'
-                width="100%"
-                onSuccess={async (credentialResponse) => {
-                  const decoded = jwtDecode(credentialResponse.credential);
-                  const email = decoded.email;
-                  const name = decoded.name;
-                  const postURL = serverURL + '/api/social';
-                  try {
-                    setIsLoading(true);
-                    const response = await axios.post(postURL, { email, name });
-                    if (response.data.success) {
-                      // Store JWT token
-                      if (response.data.token) {
-                        localStorage.setItem('token', response.data.token);
+              {googleLoginEnabled && (
+                <GoogleLogin
+                  theme='outline'
+                  type='standard'
+                  width="100%"
+                  onSuccess={async (credentialResponse) => {
+                    const decoded = jwtDecode(credentialResponse.credential) as any;
+                    const email = decoded.email;
+                    const name = decoded.name;
+                    const postURL = serverURL + '/api/social';
+                    try {
+                      setIsLoading(true);
+                      const response = await axios.post(postURL, { email, name });
+                      if (response.data.success) {
+                        // Store JWT token
+                        if (response.data.token) {
+                          localStorage.setItem('token', response.data.token);
+                        }
+
+                        toast({
+                          title: "Login successful",
+                          description: "Welcome back to " + appName,
+                        });
+                        setIsLoading(false);
+                        sessionStorage.setItem('email', decoded.email);
+                        sessionStorage.setItem('mName', decoded.name);
+                        sessionStorage.setItem('auth', 'true');
+                        sessionStorage.setItem('uid', response.data.userData._id);
+                        sessionStorage.setItem('type', response.data.userData.type);
+                        redirectHome();
+                      } else {
+                        setIsLoading(false);
+                        setError(response.data.message);
                       }
-                      
-                      toast({
-                        title: "Login successful",
-                        description: "Welcome back to " + appName,
-                      });
+                    } catch (error) {
+                      console.error(error);
                       setIsLoading(false);
-                      sessionStorage.setItem('email', decoded.email);
-                      sessionStorage.setItem('mName', decoded.name);
-                      sessionStorage.setItem('auth', 'true');
-                      sessionStorage.setItem('uid', response.data.userData._id);
-                      sessionStorage.setItem('type', response.data.userData.type);
-                      redirectHome();
-                    } else {
-                      setIsLoading(false);
-                      setError(response.data.message);
+                      setError('Internal Server Error');
                     }
-                  } catch (error) {
+
+                  }}
+                  onError={() => {
+                    setIsLoading(false);
+                    setError('Internal Server Error');
+                  }}
+                />
+              )}
+
+              {facebookLoginEnabled && (
+                <FacebookLogin
+                  appId={facebookClientIdDynamic}
+                  style={{
+                    backgroundColor: '#1877F2',
+                    color: '#fff',
+                    fontSize: '14px',
+                    padding: '10px 24px',
+                    width: '100%',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  onFail={(error) => {
                     console.error(error);
                     setIsLoading(false);
                     setError('Internal Server Error');
-                  }
+                  }}
+                  onProfileSuccess={async (response) => {
+                    const email = response.email;
+                    const name = response.name;
+                    const postURL = serverURL + '/api/social';
+                    try {
+                      setIsLoading(true);
+                      const response = await axios.post(postURL, { email, name });
+                      if (response.data.success) {
+                        // Store JWT token
+                        if (response.data.token) {
+                          localStorage.setItem('token', response.data.token);
+                        }
 
-                }}
-                onError={() => {
-                  setIsLoading(false);
-                  setError('Internal Server Error');
-                }}
-              />
-
-              <FacebookLogin
-                appId={facebookClientId}
-                style={{
-                  backgroundColor: '#1877F2',
-                  color: '#fff',
-                  fontSize: '14px',
-                  padding: '10px 24px',
-                  width: '100%',
-                  border: 'none',
-                  borderRadius: '0.375rem',
-                  fontWeight: 500,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-                onFail={(error) => {
-                  console.error(error);
-                  setIsLoading(false);
-                  setError('Internal Server Error');
-                }}
-                onProfileSuccess={async (response) => {
-                  const email = response.email;
-                  const name = response.name;
-                  const postURL = serverURL + '/api/social';
-                  try {
-                    setIsLoading(true);
-                    const response = await axios.post(postURL, { email, name });
-                    if (response.data.success) {
-                      // Store JWT token
-                      if (response.data.token) {
-                        localStorage.setItem('token', response.data.token);
+                        toast({
+                          title: "Login successful",
+                          description: "Welcome back to " + appName,
+                        });
+                        setIsLoading(false);
+                        sessionStorage.setItem('email', email);
+                        sessionStorage.setItem('mName', name);
+                        sessionStorage.setItem('auth', 'true');
+                        sessionStorage.setItem('uid', response.data.userData._id);
+                        sessionStorage.setItem('type', response.data.userData.type);
+                        redirectHome();
+                      } else {
+                        setIsLoading(false);
+                        setError(response.data.message);
                       }
-                      
-                      toast({
-                        title: "Login successful",
-                        description: "Welcome back to " + appName,
-                      });
+                    } catch (error) {
+                      console.error(error);
                       setIsLoading(false);
-                      sessionStorage.setItem('email', response.email);
-                      sessionStorage.setItem('mName', response.name);
-                      sessionStorage.setItem('auth', 'true');
-                      sessionStorage.setItem('uid', response.data.userData._id);
-                      sessionStorage.setItem('type', response.data.userData.type);
-                      redirectHome();
-                    } else {
-                      setIsLoading(false);
-                      setError(response.data.message);
+                      setError('Internal Server Error');
                     }
-                  } catch (error) {
-                    console.error(error);
-                    setIsLoading(false);
-                    setError('Internal Server Error');
-                  }
-                }}
-              />
+                  }}
+                />
+              )}
             </div>
           </CardContent>
 

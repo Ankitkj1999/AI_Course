@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowRight, Mail, Lock, User, AlertTriangle } from 'lucide-react';
 import { appLogo, appName, companyName, facebookClientId, serverURL, websiteURL } from '@/constants';
+import { useSettings } from '@/hooks/useSettings';
 import Logo from '../res/logo.svg';
 import axios from 'axios';
 import { GoogleLogin } from '@react-oauth/google';
@@ -25,6 +26,13 @@ const Signup = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { settings } = useSettings();
+
+  // Get dynamic values from settings
+  const googleClientId = settings.GOOGLE_CLIENT_ID?.value || facebookClientId;
+  const facebookClientIdDynamic = settings.FACEBOOK_CLIENT_ID?.value || facebookClientId;
+  const googleLoginEnabled = settings.GOOGLE_LOGIN_ENABLED?.value === 'true';
+  const facebookLoginEnabled = settings.FACEBOOK_LOGIN_ENABLED?.value === 'true';
 
   useEffect(() => {
     const auth = sessionStorage.getItem('auth');
@@ -81,7 +89,7 @@ const Signup = () => {
         setIsLoading(false);
       }
 
-      sendEmail(email);
+      sendEmail(email, name);
 
     } catch (err) {
       setError('Failed to create account. Please try again.');
@@ -91,7 +99,7 @@ const Signup = () => {
     }
   };
 
-  async function sendEmail(mEmail: string) {
+  async function sendEmail(mEmail: string, mName?: string) {
 
     try {
       const dataToSend = {
@@ -252,97 +260,101 @@ const Signup = () => {
             </form>
 
             <div className="space-y-4">
-              <GoogleLogin
-                theme='outline'
-                type='standard'
-                width="100%"
-                onSuccess={async (credentialResponse) => {
-                  const decoded = jwtDecode(credentialResponse.credential);
-                  const email = decoded.email;
-                  const name = decoded.name;
-                  const postURL = serverURL + '/api/social';
-                  try {
-                    setIsLoading(true);
-                    const response = await axios.post(postURL, { email, name });
-                    if (response.data.success) {
-                      toast({
-                        title: "Login successful",
-                        description: "Welcome back to " + appName,
-                      });
+              {googleLoginEnabled && (
+                <GoogleLogin
+                  theme='outline'
+                  type='standard'
+                  width="100%"
+                  onSuccess={async (credentialResponse) => {
+                    const decoded = jwtDecode(credentialResponse.credential);
+                    const email = decoded.email;
+                    const name = decoded.name;
+                    const postURL = serverURL + '/api/social';
+                    try {
+                      setIsLoading(true);
+                      const response = await axios.post(postURL, { email, name });
+                      if (response.data.success) {
+                        toast({
+                          title: "Login successful",
+                          description: "Welcome back to " + appName,
+                        });
+                        setIsLoading(false);
+                        sessionStorage.setItem('email', (decoded as any).email);
+                        sessionStorage.setItem('mName', (decoded as any).name);
+                        sessionStorage.setItem('auth', 'true');
+                        sessionStorage.setItem('uid', response.data.userData._id);
+                        sessionStorage.setItem('type', response.data.userData.type);
+                        sendEmail((decoded as any).email, (decoded as any).name);
+                      } else {
+                        setIsLoading(false);
+                        setError(response.data.message);
+                      }
+                    } catch (error) {
+                      console.error(error);
                       setIsLoading(false);
-                      sessionStorage.setItem('email', decoded.email);
-                      sessionStorage.setItem('mName', decoded.name);
-                      sessionStorage.setItem('auth', 'true');
-                      sessionStorage.setItem('uid', response.data.userData._id);
-                      sessionStorage.setItem('type', response.data.userData.type);
-                      sendEmail(decoded.email, decoded.name);
-                    } else {
-                      setIsLoading(false);
-                      setError(response.data.message);
+                      setError('Internal Server Error');
                     }
-                  } catch (error) {
+
+                  }}
+                  onError={() => {
+                    setIsLoading(false);
+                    setError('Internal Server Error');
+                  }}
+                />
+              )}
+
+              {facebookLoginEnabled && (
+                <FacebookLogin
+                  appId={facebookClientIdDynamic}
+                  style={{
+                    backgroundColor: '#1877F2',
+                    color: '#fff',
+                    fontSize: '14px',
+                    padding: '10px 24px',
+                    width: '100%',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  onFail={(error) => {
                     console.error(error);
                     setIsLoading(false);
                     setError('Internal Server Error');
-                  }
-
-                }}
-                onError={() => {
-                  setIsLoading(false);
-                  setError('Internal Server Error');
-                }}
-              />
-
-              <FacebookLogin
-                appId={facebookClientId}
-                style={{
-                  backgroundColor: '#1877F2',
-                  color: '#fff',
-                  fontSize: '14px',
-                  padding: '10px 24px',
-                  width: '100%',
-                  border: 'none',
-                  borderRadius: '0.375rem',
-                  fontWeight: 500,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-                onFail={(error) => {
-                  console.error(error);
-                  setIsLoading(false);
-                  setError('Internal Server Error');
-                }}
-                onProfileSuccess={async (response) => {
-                  const email = response.email;
-                  const name = response.name;
-                  const postURL = serverURL + '/api/social';
-                  try {
-                    setIsLoading(true);
-                    const response = await axios.post(postURL, { email, name });
-                    if (response.data.success) {
-                      toast({
-                        title: "Login successful",
-                        description: "Welcome back to " + appName,
-                      });
+                  }}
+                  onProfileSuccess={async (response) => {
+                    const email = response.email;
+                    const name = response.name;
+                    const postURL = serverURL + '/api/social';
+                    try {
+                      setIsLoading(true);
+                      const response = await axios.post(postURL, { email, name });
+                      if (response.data.success) {
+                        toast({
+                          title: "Login successful",
+                          description: "Welcome back to " + appName,
+                        });
+                        setIsLoading(false);
+                        sessionStorage.setItem('email', (response as any).email);
+                        sessionStorage.setItem('mName', (response as any).name);
+                        sessionStorage.setItem('auth', 'true');
+                        sessionStorage.setItem('uid', response.data.userData._id);
+                        sessionStorage.setItem('type', response.data.userData.type);
+                        sendEmail((response as any).email, (response as any).name);
+                      } else {
+                        setIsLoading(false);
+                        setError(response.data.message);
+                      }
+                    } catch (error) {
+                      console.error(error);
                       setIsLoading(false);
-                      sessionStorage.setItem('email', response.email);
-                      sessionStorage.setItem('mName', response.name);
-                      sessionStorage.setItem('auth', 'true');
-                      sessionStorage.setItem('uid', response.data.userData._id);
-                      sessionStorage.setItem('type', response.data.userData.type);
-                      sendEmail(response.email, response.name);
-                    } else {
-                      setIsLoading(false);
-                      setError(response.data.message);
+                      setError('Internal Server Error');
                     }
-                  } catch (error) {
-                    console.error(error);
-                    setIsLoading(false);
-                    setError('Internal Server Error');
-                  }
-                }}
-              />
+                  }}
+                />
+              )}
             </div>
           </CardContent>
 
