@@ -274,7 +274,7 @@ const DashboardLayout = () => {
           <SidebarRail />
         </Sidebar>
 
-        <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
+        <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8 pb-20 md:pb-8">
           {isMobile && (
             <div className="flex items-center justify-between mb-6 py-2">
               <SidebarTrigger>
@@ -289,6 +289,35 @@ const DashboardLayout = () => {
           )}
           <Outlet />
         </main>
+
+        {isMobile && (
+          <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border p-3 flex justify-around items-center">
+            <Button variant="ghost" size="sm" asChild className="flex flex-col items-center gap-1 h-auto py-2">
+              <Link to="/dashboard">
+                <Home className="h-5 w-5" />
+                <span className="text-xs">Home</span>
+              </Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild className="flex flex-col items-center gap-1 h-auto py-2">
+              <Link to="/dashboard/generate-course">
+                <Sparkles className="h-5 w-5" />
+                <span className="text-xs">Create</span>
+              </Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild className="flex flex-col items-center gap-1 h-auto py-2">
+              <Link to="/dashboard/profile">
+                <User className="h-5 w-5" />
+                <span className="text-xs">Profile</span>
+              </Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild className="flex flex-col items-center gap-1 h-auto py-2">
+              <Link to="/dashboard/quizzes">
+                <Brain className="h-5 w-5" />
+                <span className="text-xs">Quizzes</span>
+              </Link>
+            </Button>
+          </div>
+        )}
       </div>
     </SidebarProvider>
   );
