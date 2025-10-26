@@ -3141,7 +3141,7 @@ app.post('/api/createblog', requireAdmin, async (req, res) => {
 });
 
 //DELETE Blog
-app.post('/api/deleteblogs', async (req, res) => {
+app.post('/api/deleteblogs', requireAdmin, async (req, res) => {
     try {
         const { id } = req.body;
         await BlogSchema.findOneAndDelete({ _id: id });
@@ -3154,7 +3154,7 @@ app.post('/api/deleteblogs', async (req, res) => {
 
 
 //UPDATE Blog
-app.post('/api/updateblogs', async (req, res) => {
+app.post('/api/updateblogs', requireAdmin, async (req, res) => {
     try {
         const { id, type, value } = req.body;
         const booleanValue = value === 'true' ? true : false;
