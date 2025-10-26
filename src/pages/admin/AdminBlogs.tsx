@@ -1,12 +1,23 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, FileText, Calendar, Tag, Star } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Search, FileText, Calendar, Tag, Star, Trash2, MoreHorizontal, TrendingUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Pagination, PaginationInfo } from '@/components/ui/pagination';
 import { useAdminPagination } from '@/hooks/useAdminPagination';
+import axios from 'axios';
+import { serverURL } from '@/constants';
+import { toast } from 'sonner';
 
 interface Blog {
   _id: string;
@@ -28,7 +39,8 @@ const AdminBlogs = () => {
     searchQuery,
     setSearchQuery,
     currentPage,
-    setCurrentPage
+    setCurrentPage,
+    refetch
   } = useAdminPagination<Blog>({
     endpoint: 'getblogs',
     initialLimit: 10
@@ -40,6 +52,36 @@ const AdminBlogs = () => {
       month: 'short',
       day: 'numeric'
     });
+  };
+
+  const handleToggle = async (id: string, type: 'popular' | 'featured', value: boolean) => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(`${serverURL}/api/updateblogs`, { id, type, value }, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      toast.success(`Blog post ${type} status updated`);
+      refetch();
+    } catch (error) {
+      toast.error('Failed to update blog post');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(`${serverURL}/api/deleteblogs`, { id }, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      toast.success('Blog post deleted successfully');
+      refetch();
+    } catch (error) {
+      toast.error('Failed to delete blog post');
+    }
   };
 
   if (error) {
@@ -99,6 +141,7 @@ const AdminBlogs = () => {
                 <TableHead>Tags</TableHead>
                 <TableHead>Published</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             {loading ? (
@@ -119,6 +162,9 @@ const AdminBlogs = () => {
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-5 w-16" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-8 w-24" />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -172,12 +218,37 @@ const AdminBlogs = () => {
                         )}
                       </div>
                     </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleToggle(blog._id, 'featured', !blog.featured)}>
+                            <Star className="h-4 w-4 mr-2" />
+                            Toggle Featured
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleToggle(blog._id, 'popular', !blog.popular)}>
+                            <TrendingUp className="h-4 w-4 mr-2" />
+                            Toggle Popular
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleDelete(blog._id)} className="text-red-600">
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
                   </TableRow>
                 ))}
 
                 {blogs.length === 0 && !loading && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8">
+                    <TableCell colSpan={6} className="text-center py-8">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <FileText className="h-8 w-8 mb-2" />
                         <p>No blog posts found</p>
