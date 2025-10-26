@@ -3117,11 +3117,20 @@ app.post('/api/deleteuser', async (req, res) => {
 });
 
 //CREATE Blog
-app.post('/api/createblog', async (req, res) => {
+app.post('/api/createblog', requireAdmin, async (req, res) => {
     try {
-        const { title, excerpt, content, image, category, tags } = req.body;
+        const { title, excerpt, content, image, category, tags, popular, featured } = req.body;
         const buffer = Buffer.from(image.split(',')[1], 'base64');
-        const blogs = new BlogSchema({ title: title, excerpt: excerpt, content: content, image: buffer, category: category, tags: tags });
+        const blogs = new BlogSchema({ 
+            title, 
+            excerpt, 
+            content, 
+            image: buffer, 
+            category, 
+            tags,
+            popular,
+            featured 
+        });
         await blogs.save();
         res.json({ success: true, message: 'Blog created successfully' });
 

@@ -9,6 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { FileEdit, Save, Upload } from 'lucide-react';
 import { toast } from 'sonner';
+import axios from 'axios';
+import { serverURL } from '@/constants';
 
 const AdminCreateBlog = () => {
   const [content, setContent] = useState<Content>('');
@@ -46,33 +48,56 @@ const AdminCreateBlog = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.title || !content || !image) {
-      toast.error('Please fill in all required fields and upload an image');
+      toast.error("Please fill in all required fields and upload an image");
       return;
     }
 
     setIsLoading(true);
+
+    const toBase64 = (file: File): Promise<string | ArrayBuffer | null> =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = (error) => reject(error);
+      });
+
     try {
-      // Here you would typically make an API call to create the blog
-      // For now, we'll just simulate success
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      toast.success('Blog post created successfully');
-      
+      const base64Image = await toBase64(image);
+      const token = localStorage.getItem("token");
+
+      await axios.post(
+        `${serverURL}/api/createblog`,
+        {
+          ...formData,
+          content,
+          image: base64Image,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      toast.success("Blog post created successfully");
+
       // Reset form
       setFormData({
-        title: '',
-        excerpt: '',
-        category: '',
-        tags: '',
+        title: "",
+        excerpt: "",
+        category: "",
+        tags: "",
         popular: false,
-        featured: false
+        featured: false,
       });
-      setContent('');
+      setContent("");
       setImage(null);
     } catch (error) {
-      toast.error('Failed to create blog post');
+      console.error("Failed to create blog post:", error);
+      toast.error("Failed to create blog post");
     } finally {
       setIsLoading(false);
     }
