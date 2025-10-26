@@ -43,7 +43,7 @@ class SettingsCache {
 
     // Preload critical settings
     async preload() {
-        const criticalKeys = ['API_KEY', 'EMAIL', 'PASSWORD', 'LOGO', 'COMPANY'];
+        const criticalKeys = ['API_KEY', 'EMAIL', 'PASSWORD', 'LOGO', 'COMPANY', 'GOOGLE_CLIENT_ID', 'FACEBOOK_CLIENT_ID', 'GOOGLE_LOGIN_ENABLED', 'FACEBOOK_LOGIN_ENABLED'];
         await Promise.all(criticalKeys.map(key => this.get(key)));
         console.log('Settings cache preloaded');
     }

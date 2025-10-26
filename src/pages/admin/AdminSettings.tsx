@@ -164,6 +164,26 @@ const AdminSettings = () => {
           ))}
         </CardContent>
       </Card>
+
+      {/* Social Login */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Social Login</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {getSettingsByCategory('social').map(([key, setting]) => (
+            <SettingField
+              key={key}
+              settingKey={key}
+              setting={setting}
+              onUpdate={updateSetting}
+              saving={saving === key}
+              showSecret={showSecrets[key]}
+              onToggleSecret={() => toggleSecretVisibility(key)}
+            />
+          ))}
+        </CardContent>
+      </Card>
     </div>
   );
 };

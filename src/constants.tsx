@@ -89,9 +89,9 @@ export const flutterwavePlanIdOne = "67960";
 export const flutterwavePlanIdTwo = "67961";
 export const flutterwavePublicKey = "FLWPUBK_TEST-6ee1faf6460ea587f510a024ac4c2b23-X";
 
-//SOCIAL SIGNIN
-export const googleClientId = "976697008167-t77ctqg0jbamsik99qv3m0hesnnoenfu.apps.googleusercontent.com";
-export const facebookClientId = "818765030524259";
+//SOCIAL SIGNIN - Dynamic values will be fetched from settings
+export const googleClientId = "976697008167-t77ctqg0jbamsik99qv3m0hesnnoenfu.apps.googleusercontent.com"; // Fallback
+export const facebookClientId = "818765030524259"; // Fallback
 
 //SOCIAL MEDIA
 export const facebookSocialLink = "https://www.youtube.com/@spacester-codecanyon";

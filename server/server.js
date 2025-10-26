@@ -2118,7 +2118,11 @@ app.get('/api/admin/settings', requireMainAdmin, async (req, res) => {
             EMAIL: { value: process.env.EMAIL || '', category: 'email', isSecret: false },
             PASSWORD: { value: '••••••••', category: 'email', isSecret: true },
             LOGO: { value: process.env.LOGO || '', category: 'branding', isSecret: false },
-            COMPANY: { value: process.env.COMPANY || '', category: 'branding', isSecret: false }
+            COMPANY: { value: process.env.COMPANY || '', category: 'branding', isSecret: false },
+            GOOGLE_CLIENT_ID: { value: process.env.GOOGLE_CLIENT_ID || '', category: 'social', isSecret: true },
+            FACEBOOK_CLIENT_ID: { value: process.env.FACEBOOK_CLIENT_ID || '', category: 'social', isSecret: true },
+            GOOGLE_LOGIN_ENABLED: { value: process.env.GOOGLE_LOGIN_ENABLED || 'true', category: 'social', isSecret: false },
+            FACEBOOK_LOGIN_ENABLED: { value: process.env.FACEBOOK_LOGIN_ENABLED || 'true', category: 'social', isSecret: false }
         };
 
         // Merge with defaults
@@ -2142,7 +2146,7 @@ app.put('/api/admin/settings/:key', requireMainAdmin, async (req, res) => {
         const { value } = req.body;
 
         // Validate allowed keys
-        const allowedKeys = ['API_KEY', 'EMAIL', 'PASSWORD', 'LOGO', 'COMPANY'];
+        const allowedKeys = ['API_KEY', 'EMAIL', 'PASSWORD', 'LOGO', 'COMPANY', 'GOOGLE_CLIENT_ID', 'FACEBOOK_CLIENT_ID', 'GOOGLE_LOGIN_ENABLED', 'FACEBOOK_LOGIN_ENABLED'];
         if (!allowedKeys.includes(key)) {
             return res.status(400).json({ error: 'Invalid setting key' });
         }
@@ -2153,12 +2157,18 @@ app.put('/api/admin/settings/:key', requireMainAdmin, async (req, res) => {
         }
 
         // Update or create setting
-        const isSecret = ['API_KEY', 'PASSWORD'].includes(key);
+        const isSecret = ['API_KEY', 'PASSWORD', 'GOOGLE_CLIENT_ID', 'FACEBOOK_CLIENT_ID'].includes(key);
+        let category = 'general';
+        if (key === 'API_KEY') category = 'ai';
+        else if (key.includes('EMAIL') || key.includes('PASSWORD')) category = 'email';
+        else if (key.includes('LOGO') || key.includes('COMPANY')) category = 'branding';
+        else if (key.includes('GOOGLE') || key.includes('FACEBOOK')) category = 'social';
+
         await Settings.findOneAndUpdate(
             { key },
-            { 
+            {
                 value: value.trim(),
-                category: key === 'API_KEY' ? 'ai' : key.includes('EMAIL') || key.includes('PASSWORD') ? 'email' : 'branding',
+                category,
                 isSecret,
                 updatedBy: req.user._id,
                 updatedAt: new Date()
@@ -2391,6 +2401,27 @@ app.get('/api/policies', async (req, res) => {
         res.json(admins);
     } catch (error) {
         console.log('Error', error);
+    }
+});
+
+//GET PUBLIC SETTINGS (for client-side use)
+app.get('/api/public/settings', async (req, res) => {
+    try {
+        const settings = await Settings.find({ isSecret: false });
+        const publicSettings = {};
+
+        settings.forEach(setting => {
+            publicSettings[setting.key] = {
+                value: setting.value,
+                category: setting.category,
+                isSecret: setting.isSecret
+            };
+        });
+
+        res.json(publicSettings);
+    } catch (error) {
+        console.error('Public settings fetch error:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
