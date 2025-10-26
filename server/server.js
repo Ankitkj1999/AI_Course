@@ -3263,16 +3263,6 @@ app.get('/api/blogs/public', async (req, res) => {
 // Serve static files from the dist directory
 app.use(express.static('dist'));
 
-// Catch-all handler: send back React's index.html file for client-side routing
-app.get('*', (req, res) => {
-    // Skip API routes
-    if (req.path.startsWith('/api/')) {
-        return res.status(404).json({ error: 'API endpoint not found' });
-    }
-    
-    res.sendFile('index.html', { root: 'dist' });
-});
-
 //LISTEN
 // Error handling middleware (must be last)
 app.use(errorHandler);
@@ -4136,13 +4126,23 @@ app.delete('/api/guide/:slug', async (req, res) => {
     }
 });
 
+// Catch-all handler: send back React's index.html file for client-side routing
+app.get('*', (req, res) => {
+    // Skip API routes - return 404 for API routes that don't exist
+    if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ error: 'API endpoint not found' });
+    }
+
+    res.sendFile('index.html', { root: 'dist' });
+});
+
 // Graceful shutdown
 const gracefulShutdown = (signal) => {
     logger.info(`Received ${signal}. Starting graceful shutdown...`);
-    
+
     server.close(() => {
         logger.info('HTTP server closed.');
-        
+
         // Close database connection
         mongoose.connection.close(false, () => {
             logger.info('MongoDB connection closed.');
