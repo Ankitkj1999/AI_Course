@@ -1,3 +1,5 @@
+import { MinimalTiptapEditor } from '@/minimal-tiptap';
+import { Content } from '@tiptap/react';
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,12 +11,12 @@ import { FileEdit, Save, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
 const AdminCreateBlog = () => {
+  const [content, setContent] = useState<Content>('');
   const [formData, setFormData] = useState({
     title: '',
     excerpt: '',
     category: '',
     tags: '',
-    content: '',
     popular: false,
     featured: false
   });
@@ -45,7 +47,7 @@ const AdminCreateBlog = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.title || !formData.content || !image) {
+    if (!formData.title || !content || !image) {
       toast.error('Please fill in all required fields and upload an image');
       return;
     }
@@ -64,10 +66,10 @@ const AdminCreateBlog = () => {
         excerpt: '',
         category: '',
         tags: '',
-        content: '',
         popular: false,
         featured: false
       });
+      setContent('');
       setImage(null);
     } catch (error) {
       toast.error('Failed to create blog post');
@@ -167,14 +169,15 @@ const AdminCreateBlog = () => {
             {/* Content */}
             <div className="space-y-2">
               <Label htmlFor="content">Content *</Label>
-              <Textarea
-                id="content"
-                name="content"
-                value={formData.content}
-                onChange={handleInputChange}
+              <MinimalTiptapEditor
+                value={content}
+                onChange={setContent}
+                className="w-full"
+                editorContentClassName="p-5"
+                output="html"
                 placeholder="Write your blog post content here..."
-                rows={12}
-                required
+                editable={true}
+                editorClassName="focus:outline-none"
               />
             </div>
 
