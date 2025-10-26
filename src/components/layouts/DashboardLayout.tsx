@@ -248,7 +248,7 @@ const DashboardLayout = () => {
                   className="w-full justify-start"
                 >
                   <DownloadIcon className="mr-2 h-4 w-4" />
-                  Install Desktop App
+                  {isMobile ? 'Install Mobile App' : 'Install Desktop App'}
                 </Button>
               )}
 
