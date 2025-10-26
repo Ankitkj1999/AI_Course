@@ -251,95 +251,99 @@ const Signup = () => {
               </Button>
             </form>
 
-            <GoogleLogin
-              theme='outline'
-              type='standard'
-              width={400}
-              onSuccess={async (credentialResponse) => {
-                const decoded = jwtDecode(credentialResponse.credential);
-                const email = decoded.email;
-                const name = decoded.name;
-                const postURL = serverURL + '/api/social';
-                try {
-                  setIsLoading(true);
-                  const response = await axios.post(postURL, { email, name });
-                  if (response.data.success) {
-                    toast({
-                      title: "Login successful",
-                      description: "Welcome back to " + appName,
-                    });
+            <div className="space-y-4">
+              <GoogleLogin
+                theme='outline'
+                type='standard'
+                width="100%"
+                onSuccess={async (credentialResponse) => {
+                  const decoded = jwtDecode(credentialResponse.credential);
+                  const email = decoded.email;
+                  const name = decoded.name;
+                  const postURL = serverURL + '/api/social';
+                  try {
+                    setIsLoading(true);
+                    const response = await axios.post(postURL, { email, name });
+                    if (response.data.success) {
+                      toast({
+                        title: "Login successful",
+                        description: "Welcome back to " + appName,
+                      });
+                      setIsLoading(false);
+                      sessionStorage.setItem('email', decoded.email);
+                      sessionStorage.setItem('mName', decoded.name);
+                      sessionStorage.setItem('auth', 'true');
+                      sessionStorage.setItem('uid', response.data.userData._id);
+                      sessionStorage.setItem('type', response.data.userData.type);
+                      sendEmail(decoded.email, decoded.name);
+                    } else {
+                      setIsLoading(false);
+                      setError(response.data.message);
+                    }
+                  } catch (error) {
+                    console.error(error);
                     setIsLoading(false);
-                    sessionStorage.setItem('email', decoded.email);
-                    sessionStorage.setItem('mName', decoded.name);
-                    sessionStorage.setItem('auth', 'true');
-                    sessionStorage.setItem('uid', response.data.userData._id);
-                    sessionStorage.setItem('type', response.data.userData.type);
-                    sendEmail(decoded.email, decoded.name);
-                  } else {
-                    setIsLoading(false);
-                    setError(response.data.message);
+                    setError('Internal Server Error');
                   }
-                } catch (error) {
+
+                }}
+                onError={() => {
+                  setIsLoading(false);
+                  setError('Internal Server Error');
+                }}
+              />
+
+              <FacebookLogin
+                appId={facebookClientId}
+                style={{
+                  backgroundColor: '#1877F2',
+                  color: '#fff',
+                  fontSize: '14px',
+                  padding: '10px 24px',
+                  width: '100%',
+                  border: 'none',
+                  borderRadius: '0.375rem',
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                onFail={(error) => {
                   console.error(error);
                   setIsLoading(false);
                   setError('Internal Server Error');
-                }
-
-              }}
-              onError={() => {
-                setIsLoading(false);
-                setError('Internal Server Error');
-              }}
-            />
-
-            <FacebookLogin
-              appId={facebookClientId}
-              style={{
-                backgroundColor: '#4267b2',
-                color: '#fff',
-                fontSize: '15px',
-                padding: '8px 24px',
-                width: '100%',
-                border: 'none',
-                marginTop: '16px',
-                borderRadius: '0px',
-              }}
-              onFail={(error) => {
-                console.error(error);
-                setIsLoading(false);
-                setError('Internal Server Error');
-              }}
-              onProfileSuccess={async (response) => {
-                const email = response.email;
-                const name = response.name;
-                const postURL = serverURL + '/api/social';
-                try {
-                  setIsLoading(true);
-                  const response = await axios.post(postURL, { email, name });
-                  if (response.data.success) {
-                    toast({
-                      title: "Login successful",
-                      description: "Welcome back to " + appName,
-                    });
+                }}
+                onProfileSuccess={async (response) => {
+                  const email = response.email;
+                  const name = response.name;
+                  const postURL = serverURL + '/api/social';
+                  try {
+                    setIsLoading(true);
+                    const response = await axios.post(postURL, { email, name });
+                    if (response.data.success) {
+                      toast({
+                        title: "Login successful",
+                        description: "Welcome back to " + appName,
+                      });
+                      setIsLoading(false);
+                      sessionStorage.setItem('email', response.email);
+                      sessionStorage.setItem('mName', response.name);
+                      sessionStorage.setItem('auth', 'true');
+                      sessionStorage.setItem('uid', response.data.userData._id);
+                      sessionStorage.setItem('type', response.data.userData.type);
+                      sendEmail(response.email, response.name);
+                    } else {
+                      setIsLoading(false);
+                      setError(response.data.message);
+                    }
+                  } catch (error) {
+                    console.error(error);
                     setIsLoading(false);
-                    sessionStorage.setItem('email', response.email);
-                    sessionStorage.setItem('mName', response.name);
-                    sessionStorage.setItem('auth', 'true');
-                    sessionStorage.setItem('uid', response.data.userData._id);
-                    sessionStorage.setItem('type', response.data.userData.type);
-                    sendEmail(response.email, response.name);
-                  } else {
-                    setIsLoading(false);
-                    setError(response.data.message);
+                    setError('Internal Server Error');
                   }
-                } catch (error) {
-                  console.error(error);
-                  setIsLoading(false);
-                  setError('Internal Server Error');
-                }
-              }}
-            />
-
+                }}
+              />
+            </div>
           </CardContent>
 
           <CardFooter className="flex flex-col space-y-4 border-t p-6">
