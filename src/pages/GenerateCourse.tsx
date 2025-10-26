@@ -292,7 +292,7 @@ const GenerateCourse = () => {
                       <Button
                         type="button"
                         onClick={addSubtopic}
-                        className="bg-black text-white hover:bg-gray-800"
+                        size="sm"
                       >
                         <Plus className="mr-2 h-4 w-4" />
                         Add Sub-Topic
@@ -417,7 +417,7 @@ const GenerateCourse = () => {
                   <Button
                     onClick={() => onSubmit}
                     type="submit"
-                    className="w-full bg-black text-white hover:bg-gray-800"
+                    className="w-full"
                   >
                     <Sparkles className="mr-2 h-4 w-4" />
                     Submit
