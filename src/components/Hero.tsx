@@ -1,9 +1,8 @@
-
-import React, { useEffect, useRef } from 'react';
-import { Button } from '@/components/ui/button';
-import { ArrowRight, Sparkles } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import Logo from '../res/screenshot.png';
+import React, { useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { ArrowRight, Sparkles } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import Logo from "../res/screenshot.png";
 
 const Hero = () => {
   const textRef = useRef<HTMLDivElement>(null);
@@ -12,27 +11,27 @@ const Hero = () => {
   useEffect(() => {
     const observerOptions = {
       root: null,
-      rootMargin: '0px',
+      rootMargin: "0px",
       threshold: 0.1,
     };
 
     const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
+      entries.forEach((entry) => {
         if (entry.isIntersecting) {
-          entry.target.classList.add('animate-fade-up');
-          entry.target.classList.remove('opacity-0');
+          entry.target.classList.add("animate-fade-up");
+          entry.target.classList.remove("opacity-0");
           observer.unobserve(entry.target);
         }
       });
     }, observerOptions);
 
-    const elements = textRef.current?.querySelectorAll('.animate-on-scroll');
-    elements?.forEach(el => {
+    const elements = textRef.current?.querySelectorAll(".animate-on-scroll");
+    elements?.forEach((el) => {
       observer.observe(el);
     });
 
     return () => {
-      elements?.forEach(el => {
+      elements?.forEach((el) => {
         observer.unobserve(el);
       });
     };
@@ -53,17 +52,26 @@ const Hero = () => {
 
           <h1 className="animate-on-scroll opacity-0 font-display text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight">
             Transform Text into
-            <span className="block md:mt-2 text-primary"> Complete Courses</span>
+            <span className="block md:mt-2 text-primary">
+              {" "}
+              Complete Courses
+            </span>
           </h1>
 
           <p className="animate-on-scroll opacity-0 text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto">
-            Easily create personalized courses tailored to your needs.
-            Interact with an AI teacher chat, generate courses in 23+ languages, and test your knowledge with AI-generated quizzes.
-            Download courses for offline access and take notes as you go. Transform your learning experience today!
+            Easily create personalized courses tailored to your needs. Interact
+            with an AI teacher chat, generate courses in 23+ languages, and test
+            your knowledge with AI-generated quizzes. Download courses for
+            offline access and take notes as you go. Transform your learning
+            experience today!
           </p>
 
           <div className="animate-on-scroll opacity-0 flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Button onClick={() => navigate("/dashboard")} size="lg" className="w-full sm:w-auto font-medium">
+            <Button
+              onClick={() => navigate("/dashboard")}
+              size="lg"
+              className="w-full sm:w-auto font-medium"
+            >
               Start Creating Now
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
@@ -74,9 +82,19 @@ const Hero = () => {
         <div className="mt-16 md:mt-20 relative max-w-5xl mx-auto rounded-xl overflow-hidden shadow-xl">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 z-0"></div>
           <div className="relative z-10 aspect-video bg-white rounded-xl overflow-hidden">
-            <div className="flex gap-6">
-              <img src={Logo} alt="Screenshot" />
-            </div>
+            <video
+              className="w-full h-full object-cover"
+              autoPlay
+              muted
+              loop
+              playsInline
+            >
+              <source
+                src="https://zalon-prod-image-processing-bkt.s3.ap-south-1.amazonaws.com/TEST/AI+Course.mp4"
+                type="video/mp4"
+              />
+              Your browser does not support the video tag.
+            </video>
           </div>
         </div>
 
