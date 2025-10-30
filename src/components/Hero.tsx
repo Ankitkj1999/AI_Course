@@ -1,12 +1,18 @@
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import Logo from "../res/screenshot.png";
 
 const Hero = () => {
   const textRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    // Check authentication status
+    const auth = sessionStorage.getItem('auth');
+    setIsAuthenticated(auth === 'true');
+  }, []);
 
   useEffect(() => {
     const observerOptions = {
@@ -68,13 +74,23 @@ const Hero = () => {
 
           <div className="animate-on-scroll opacity-0 flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
             <Button
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate(isAuthenticated ? "/dashboard" : "/signup")}
               size="lg"
               className="w-full sm:w-auto font-medium"
             >
-              Start Creating Now
+              {isAuthenticated ? "Go to Dashboard" : "Start Creating Now"}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
+            {!isAuthenticated && (
+              <Button
+                onClick={() => navigate("/login")}
+                variant="outline"
+                size="lg"
+                className="w-full sm:w-auto font-medium"
+              >
+                Sign In
+              </Button>
+            )}
           </div>
         </div>
 

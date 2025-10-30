@@ -7,12 +7,14 @@ An intelligent course generation platform that uses AI to create comprehensive e
 ## ✨ Features
 
 ### 🤖 AI-Powered Content Generation
+
 - **Automated Course Creation**: Generate complete courses using Google's Gemini AI
 - **Smart Content Structure**: AI creates organized lessons, topics, and subtopics
 - **Multi-Language Support**: Generate courses in different languages
 - **Rich Media Integration**: Automatic image and video suggestions
 
 ### 📚 Course Management
+
 - **Interactive Course Builder**: Create, edit, and manage courses
 - **Progress Tracking**: Monitor learning progress and completion
 - **Certificate Generation**: Automated certificate creation upon completion
@@ -20,17 +22,20 @@ An intelligent course generation platform that uses AI to create comprehensive e
 - **Notes & Annotations**: Take and save notes during learning
 
 ### 💳 Payment Integration
+
 - **Multiple Payment Gateways**: Stripe, PayPal, Razorpay, Paystack, Flutterwave
 - **Subscription Management**: Monthly and yearly plans
 - **Free Tier Available**: Basic features without payment
 
 ### 🔐 Authentication & Security
+
 - **Social Login**: Google and Facebook authentication
 - **Email Authentication**: Traditional email/password login
 - **Password Recovery**: Secure password reset functionality
 - **User Profiles**: Customizable user profiles and preferences
 
 ### 🎨 Modern UI/UX
+
 - **Responsive Design**: Works on desktop, tablet, and mobile
 - **Dark/Light Mode**: Theme switching capability
 - **Rich Text Editor**: TipTap-based content editor
@@ -39,6 +44,7 @@ An intelligent course generation platform that uses AI to create comprehensive e
 ## 🚀 Tech Stack
 
 ### Frontend
+
 - **React 18** - Modern React with hooks
 - **TypeScript** - Type-safe development
 - **Vite** - Fast build tool and dev server
@@ -48,6 +54,7 @@ An intelligent course generation platform that uses AI to create comprehensive e
 - **React Router** - Client-side routing
 
 ### Backend
+
 - **Node.js** - JavaScript runtime
 - **Express.js** - Web application framework
 - **MongoDB** - NoSQL database with Mongoose ODM
@@ -56,6 +63,7 @@ An intelligent course generation platform that uses AI to create comprehensive e
 - **JWT** - Authentication tokens
 
 ### APIs & Services
+
 - **Google Gemini AI** - Course content generation
 - **Unsplash API** - Course cover images
 - **YouTube API** - Video content integration
@@ -73,55 +81,64 @@ An intelligent course generation platform that uses AI to create comprehensive e
 ### 🚀 Quick Start (Recommended)
 
 #### Option 1: Local Development
+
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/yourusername/aicourse.git
    cd aicourse
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Set up environment variables**
+
    ```bash
    cp server/.env.example server/.env
    ```
-   
+
    Fill in your API keys and configuration in `server/.env`. See [Environment Variables](#-environment-variables) section below.
 
 4. **Start the application**
+
    ```bash
    npm run dev:full
    ```
 
 5. **Access the application**
-   - Frontend: http://localhost:8080
-   - Backend API: http://localhost:5010
+   - Frontend: <http://localhost:8080>
+   - Backend API: <http://localhost:5010>
 
 #### Option 2: Docker Deployment
+
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/yourusername/aicourse.git
    cd aicourse
    ```
 
 2. **Set up environment variables**
+
    ```bash
    cp server/.env.example server/.env
    ```
-   
+
    Fill in your API keys and configuration in `server/.env`.
 
 3. **Start with Docker**
+
    ```bash
    npm run docker:up
    ```
 
 4. **Access the application**
-   - Application: http://localhost:5010
-   - Health Check: http://localhost:5010/health
+   - Application: <http://localhost:5010>
+   - Health Check: <http://localhost:5010/health>
 
 ## 📁 Project Structure
 
@@ -147,6 +164,7 @@ aicourse/
 ## 🎯 Available Scripts
 
 ### Local Development
+
 - `npm run dev:full` - Start both frontend and backend concurrently
 - `npm run dev:clean` - Clean ports and start development (recommended)
 - `npm run dev` - Start frontend only (Vite dev server)
@@ -159,17 +177,20 @@ aicourse/
 ### Docker Commands
 
 #### Local Development
-- `npm run docker:up` - Build and start (foreground) → http://localhost:5010
+
+- `npm run docker:up` - Build and start (foreground) → <http://localhost:5010>
 - `npm run docker:up:detached` - Build and start (background)
 - `npm run docker:down` - Stop and remove containers
 
 #### Docker Hub Deployment
+
 - `npm run docker:build:push` - Build and push to Docker Hub
 - `npm run docker:build:production` - Build production image
 - `npm run docker:deploy:production` - Deploy on server from Docker Hub
 - `npm run docker:up:hub` - Run from Docker Hub image
 
 #### General Commands
+
 - `npm run docker:build` - Build Docker images only
 - `npm run docker:logs` - View container logs
 - `npm run docker:restart` - Restart containers
@@ -178,6 +199,7 @@ aicourse/
 ## 🐳 Docker Deployment
 
 ### Prerequisites for Docker
+
 - **Docker** (v20.0 or higher)
 - **Docker Compose** (v2.0 or higher)
 
@@ -204,6 +226,7 @@ npm run health
 ```
 
 ### Docker Configuration
+
 - **Single container** for simplicity
 - **Multi-stage build** for optimized production images
 - **Health checks** for container monitoring
@@ -212,6 +235,7 @@ npm run health
 - **Docker Hub integration** for easy deployment
 
 ### Docker Environment
+
 - **Base Image**: `node:20-alpine`
 - **Working Directory**: `/app`
 - **Exposed Port**: `5010`
@@ -221,7 +245,9 @@ npm run health
 ## 🔧 Configuration
 
 ### Frontend Configuration
+
 Edit `src/constants.tsx` to configure:
+
 - API endpoints
 - Payment gateway settings
 - Social login credentials
@@ -229,7 +255,9 @@ Edit `src/constants.tsx` to configure:
 - Branding elements
 
 ### Backend Configuration
+
 Edit `server/.env` to configure:
+
 - Database connection
 - API keys
 - Email settings
@@ -280,7 +308,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🆘 Support
 
-- 📧 Email: spacester.app@gmail.com
+- 📧 Email: <spacester.app@gmail.com>
 - 🐛 Issues: [GitHub Issues](https://github.com/yourusername/aicourse/issues)
 - 📖 Documentation: See guides above
 
