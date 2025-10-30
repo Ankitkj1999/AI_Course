@@ -282,13 +282,14 @@ const Signup = () => {
               )}
 
               {googleLoginEnabled && (
-                <div className="w-full">
-                  <GoogleLogin
-                    theme='outline'
-                    type='standard'
-                    size='large'
-                    width="384"
-                    logo_alignment='left'
+                <div className="w-full overflow-hidden">
+                  <div className="w-full max-w-full">
+                    <GoogleLogin
+                      theme='outline'
+                      type='standard'
+                      size='large'
+                      width="100%"
+                      logo_alignment='left'
                     onSuccess={async (credentialResponse) => {
                       const decoded = jwtDecode<GoogleJwtPayload>(credentialResponse.credential);
                       const email = decoded.email;
@@ -325,6 +326,7 @@ const Signup = () => {
                       setError('Internal Server Error');
                     }}
                   />
+                  </div>
                 </div>
               )}
 
