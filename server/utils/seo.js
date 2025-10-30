@@ -16,7 +16,7 @@ export const generateCourseSEO = (course, baseUrl = 'http://localhost:8080') => 
         url,
         image,
         type: 'article',
-        siteName: 'AiCourse',
+        siteName: 'AICourse',
         // Open Graph tags
         og: {
             title: `${title} - AI Generated Course`,
@@ -24,7 +24,7 @@ export const generateCourseSEO = (course, baseUrl = 'http://localhost:8080') => 
             url,
             image,
             type: 'article',
-            siteName: 'AiCourse'
+            siteName: 'AICourse'
         },
         // Twitter Card tags
         twitter: {

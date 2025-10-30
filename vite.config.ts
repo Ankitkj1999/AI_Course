@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => ({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
-        name: 'AiCourse - AI-Powered Course Generator',
+        name: 'AICourse - AI-Powered Course Generator',
         short_name: 'AICourse',
         description: 'Generate comprehensive courses on any topic using AI. Learn at your own pace with structured lessons.',
         theme_color: '#007BFF',
