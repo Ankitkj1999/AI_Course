@@ -2,14 +2,18 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ThemeToggle } from './ThemeToggle';
 import { appName } from '@/constants';
+import { User, LogOut } from 'lucide-react';
 import Logo from '../res/logo.svg';
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userName, setUserName] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -19,6 +23,32 @@ const Header = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    // Check authentication status
+    const checkAuth = () => {
+      const auth = sessionStorage.getItem('auth');
+      const name = sessionStorage.getItem('mName');
+      setIsAuthenticated(auth === 'true');
+      setUserName(name || '');
+    };
+
+    checkAuth();
+    
+    // Listen for storage changes (when user logs in/out in another tab)
+    window.addEventListener('storage', checkAuth);
+    
+    return () => window.removeEventListener('storage', checkAuth);
+  }, []);
+
+  const handleLogout = () => {
+    // Clear session storage
+    sessionStorage.clear();
+    localStorage.removeItem('token');
+    setIsAuthenticated(false);
+    setUserName('');
+    navigate('/');
+  };
 
   return (
     <header
@@ -45,12 +75,35 @@ const Header = () => {
         {/* Call to Actions */}
         <div className="hidden md:flex items-center space-x-4">
           <ThemeToggle />
-          <Link to="/login">
-            <Button variant="ghost" size="sm">Login</Button>
-          </Link>
-          <Link to="/signup">
-            <Button size="sm" className="bg-primary hover:bg-primary/90 transition-colors">Get Started</Button>
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <div className="flex items-center space-x-2 text-sm">
+                <User className="h-4 w-4" />
+                <span className="font-medium">Hi, {userName}</span>
+              </div>
+              <Link to="/dashboard">
+                <Button variant="ghost" size="sm">Dashboard</Button>
+              </Link>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleLogout}
+                className="flex items-center space-x-1"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Logout</span>
+              </Button>
+            </>
+          ) : (
+            <>
+              <Link to="/login">
+                <Button variant="ghost" size="sm">Login</Button>
+              </Link>
+              <Link to="/signup">
+                <Button size="sm" className="bg-primary hover:bg-primary/90 transition-colors">Get Started</Button>
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
@@ -86,12 +139,35 @@ const Header = () => {
           <a href="#how-it-works" className="text-base font-medium py-2">How It Works</a>
           <a href="#pricing" className="text-base font-medium py-2">Pricing</a>
           <div className="flex flex-col space-y-2 pt-2">
-            <Link to="/login">
-              <Button variant="outline" size="sm" className="w-full">Login</Button>
-            </Link>
-            <Link to="/signup">
-              <Button size="sm" className="w-full">Get Started</Button>
-            </Link>
+            {isAuthenticated ? (
+              <>
+                <div className="flex items-center space-x-2 text-sm py-2">
+                  <User className="h-4 w-4" />
+                  <span className="font-medium">Hi, {userName}</span>
+                </div>
+                <Link to="/dashboard">
+                  <Button variant="outline" size="sm" className="w-full">Dashboard</Button>
+                </Link>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleLogout}
+                  className="w-full flex items-center justify-center space-x-1"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Logout</span>
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link to="/login">
+                  <Button variant="outline" size="sm" className="w-full">Login</Button>
+                </Link>
+                <Link to="/signup">
+                  <Button size="sm" className="w-full">Get Started</Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>
