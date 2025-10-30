@@ -1,77 +1,106 @@
-
-import React, { useEffect, useRef } from 'react';
-import { cn } from '@/lib/utils';
-import { Zap, Book, Layers, BarChart, PenLine, RotateCw } from 'lucide-react';
+import React, { useEffect, useRef } from "react";
+import { cn } from "@/lib/utils";
+import {
+  Zap,
+  Book,
+  Layers,
+  BarChart,
+  PenLine,
+  RotateCw,
+  CreditCard,
+  FileText,
+} from "lucide-react";
 
 const features = [
   {
     icon: <Zap className="h-6 w-6" />,
     title: "AI-Powered Generation",
-    description: "Our advanced AI algorithms analyze your inputs to generate comprehensive courses."
+    description:
+      "Advanced AI algorithms analyze your inputs to generate comprehensive, structured courses instantly.",
   },
   {
     icon: <Book className="h-6 w-6" />,
-    title: "Course Type Preferences",
-    description: "Choose between Image + Theory or Video + Theory formats for a personalized learning journey."
+    title: "Multiple Course Formats",
+    description:
+      "Choose between Image + Theory, Video + Theory, or Text-only formats for personalized learning.",
+  },
+  {
+    icon: <CreditCard className="h-6 w-6" />,
+    title: "Smart Flash Cards",
+    description:
+      "Auto-generate interactive flash cards from course content for effective memorization and review.",
+  },
+  {
+    icon: <FileText className="h-6 w-6" />,
+    title: "Study Guides",
+    description:
+      "Create comprehensive study guides with key concepts, summaries, and learning objectives.",
   },
   {
     icon: <PenLine className="h-6 w-6" />,
-    title: "Quiz Creation",
-    description: "Generate relevant quizzes, assessments, and interactive elements to reinforce learning outcomes."
-  },
-  {
-    icon: <Layers className="h-6 w-6" />,
-    title: "Multilanguage Coursesn",
-    description: "Generate Ai images, videos, or textual courses in 23+ multiple languages."
+    title: "Interactive Quizzes",
+    description:
+      "Generate relevant quizzes, assessments, and practice tests to reinforce learning outcomes.",
   },
   {
     icon: <RotateCw className="h-6 w-6" />,
     title: "AI Teacher Chat",
-    description: "Chat with Ai teacher to get answers to your questions while learning."
+    description:
+      "Get instant answers and explanations from your personal AI tutor while studying.",
+  },
+  {
+    icon: <Layers className="h-6 w-6" />,
+    title: "23+ Languages",
+    description:
+      "Generate courses in multiple languages with AI-powered translation and localization.",
   },
   {
     icon: <BarChart className="h-6 w-6" />,
-    title: "Export Course",
-    description: "Download your generated course in various formats for offline access."
-  }
+    title: "PWA & Offline Access",
+    description:
+      "Install as a mobile app and access your courses offline. Export to PDF for easy sharing and printing.",
+  },
 ];
 
 const Features = () => {
   const featuresRef = useRef<HTMLDivElement>(null);
-  
+
   useEffect(() => {
     const observerOptions = {
       root: null,
-      rootMargin: '0px',
+      rootMargin: "0px",
       threshold: 0.1,
     };
-    
+
     const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
+      entries.forEach((entry) => {
         if (entry.isIntersecting) {
-          entry.target.classList.add('animate-fade-up');
-          entry.target.classList.remove('opacity-0');
+          entry.target.classList.add("animate-fade-up");
+          entry.target.classList.remove("opacity-0");
           observer.unobserve(entry.target);
         }
       });
     }, observerOptions);
-    
-    const elements = featuresRef.current?.querySelectorAll('.feature-item');
+
+    const elements = featuresRef.current?.querySelectorAll(".feature-item");
     elements?.forEach((el, index) => {
       // Add staggered delay
       el.classList.add(`delay-[${index * 100}ms]`);
       observer.observe(el);
     });
-    
+
     return () => {
-      elements?.forEach(el => {
+      elements?.forEach((el) => {
         observer.unobserve(el);
       });
     };
   }, []);
 
   return (
-    <section id="features" className="py-20 md:py-32 px-6 md:px-10 bg-secondary/50 relative">
+    <section
+      id="features"
+      className="py-20 md:py-32 px-6 md:px-10 bg-secondary/50 relative"
+    >
       <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16 md:mb-24">
@@ -83,17 +112,22 @@ const Features = () => {
             <span className="text-primary">Exceptional Courses</span>
           </h2>
         </div>
-        
-        <div ref={featuresRef} className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+
+        <div
+          ref={featuresRef}
+          className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
+        >
           {features.map((feature, index) => (
-            <div 
-              key={index} 
+            <div
+              key={index}
               className="feature-item opacity-0 bg-card shadow-sm hover:shadow-md transition-all duration-300 rounded-xl p-8 border border-border/50"
             >
               <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-5 text-primary">
                 {feature.icon}
               </div>
-              <h3 className="font-display text-xl font-semibold mb-3">{feature.title}</h3>
+              <h3 className="font-display text-xl font-semibold mb-3">
+                {feature.title}
+              </h3>
               <p className="text-muted-foreground">{feature.description}</p>
             </div>
           ))}
