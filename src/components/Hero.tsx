@@ -3,15 +3,82 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+const useTypewriter = (
+  words: string[],
+  typeSpeed = 150,
+  deleteSpeed = 100,
+  pauseTime = 2000
+) => {
+  const [currentWordIndex, setCurrentWordIndex] = useState(0);
+  const [currentText, setCurrentText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+
+  useEffect(() => {
+    const currentWord = words[currentWordIndex];
+
+    const timeout = setTimeout(
+      () => {
+        if (isPaused) {
+          setIsPaused(false);
+          setIsDeleting(true);
+          return;
+        }
+
+        if (isDeleting) {
+          if (currentText === "") {
+            setIsDeleting(false);
+            setCurrentWordIndex((prev) => (prev + 1) % words.length);
+          } else {
+            setCurrentText(currentWord.substring(0, currentText.length - 1));
+          }
+        } else {
+          if (currentText === currentWord) {
+            setIsPaused(true);
+          } else {
+            setCurrentText(currentWord.substring(0, currentText.length + 1));
+          }
+        }
+      },
+      isPaused ? pauseTime : isDeleting ? deleteSpeed : typeSpeed
+    );
+
+    return () => clearTimeout(timeout);
+  }, [
+    currentText,
+    currentWordIndex,
+    isDeleting,
+    isPaused,
+    words,
+    typeSpeed,
+    deleteSpeed,
+    pauseTime,
+  ]);
+
+  return currentText;
+};
+
 const Hero = () => {
   const textRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Words to cycle through in the typewriter effect
+  const typewriterWords = [
+    "Complete Courses",
+    "Interactive Quizzes",
+    "Smart Flash Cards",
+    "Study Guides",
+    "Learning Paths",
+    "Practice Tests",
+  ];
+
+  const animatedText = useTypewriter(typewriterWords, 120, 80, 1500);
+
   useEffect(() => {
     // Check authentication status
-    const auth = sessionStorage.getItem('auth');
-    setIsAuthenticated(auth === 'true');
+    const auth = sessionStorage.getItem("auth");
+    setIsAuthenticated(auth === "true");
   }, []);
 
   useEffect(() => {
@@ -58,9 +125,11 @@ const Hero = () => {
 
           <h1 className="animate-on-scroll opacity-0 font-display text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight">
             Transform Text into
-            <span className="block md:mt-2 text-primary">
-              {" "}
-              Complete Courses
+            <span className="block md:mt-2 text-primary min-h-[1.2em] flex items-center justify-center">
+              <span className="relative flex items-center">
+                {animatedText}
+                <span className="inline-block w-1 h-[1.1em] bg-primary ml-1 animate-[blink_1s_ease-in-out_infinite] align-middle"></span>
+              </span>
             </span>
           </h1>
 
@@ -74,7 +143,9 @@ const Hero = () => {
 
           <div className="animate-on-scroll opacity-0 flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
             <Button
-              onClick={() => navigate(isAuthenticated ? "/dashboard" : "/signup")}
+              onClick={() =>
+                navigate(isAuthenticated ? "/dashboard" : "/signup")
+              }
               size="lg"
               className="w-full sm:w-auto font-medium"
             >

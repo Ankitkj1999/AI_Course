@@ -120,6 +120,16 @@
   }
 }
 
+/* Typewriter cursor animation */
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
 /* Smooth Scroll */
 html {
   scroll-behavior: smooth;
