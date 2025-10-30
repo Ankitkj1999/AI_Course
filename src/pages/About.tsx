@@ -64,10 +64,10 @@ const About = () => {
           </h2>
           <div className="relative">
             <p className="mt-4 text-lg text-muted-foreground">
-              At {companyName}, we believe in the transformative power of education and the endless possibilities that Artificial Intelligence unlocks. That's why we've developed AiCourse, a revolutionary SaaS product designed to make course creation seamless, efficient, and intelligent.
+              At {companyName}, we believe in the transformative power of education and the endless possibilities that Artificial Intelligence unlocks. That's why we've developed AI Course, a revolutionary SaaS product designed to make course creation seamless, efficient, and intelligent.
             </p>
             <p className="mt-4 text-lg text-muted-foreground">
-              Empowering educators, professionals, and organizations to create exceptional learning experiences effortlessly is at the heart of what we do. AiCourse embodies our commitment to leveraging AI technology to simplify the course development process and unlock new realms of educational excellence. Founded with a passion for innovation, Spacester has been on a journey to redefine the intersection of education and technology. Our team of experts, driven by a shared vision, has dedicated years to create AiCourse as a testament to our commitment to advancing the field of online learning. At Spacester, quality is non-negotiable. AiCourse is the result of meticulous development, incorporating the latest advancements in AI technology to provide you with a tool that exceeds expectations.
+              Empowering educators, professionals, and organizations to create exceptional learning experiences effortlessly is at the heart of what we do. AI Course embodies our commitment to leveraging AI technology to simplify the course development process and unlock new realms of educational excellence. Founded with a passion for innovation, Spacester has been on a journey to redefine the intersection of education and technology. Our team of experts, driven by a shared vision, has dedicated years to create AI Course as a testament to our commitment to advancing the field of online learning. At Spacester, quality is non-negotiable. AI Course is the result of meticulous development, incorporating the latest advancements in AI technology to provide you with a tool that exceeds expectations.
             </p>
           </div>
         </div>
@@ -80,7 +80,7 @@ const About = () => {
             Join Us on the Learning Journey
           </h2>
           <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">
-            Embark on a journey of innovation and educational excellence with AiCourse. Whether you're an educator, a professional, or an organization looking to elevate your learning programs, {companyName} is here to support you every step of the way.
+            Embark on a journey of innovation and educational excellence with AI Course. Whether you're an educator, a professional, or an organization looking to elevate your learning programs, {companyName} is here to support you every step of the way.
           </p>
 
         </div>

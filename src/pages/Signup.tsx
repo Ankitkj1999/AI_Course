@@ -269,48 +269,63 @@ const Signup = () => {
               </Button>
             </form>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
+              {(googleLoginEnabled || facebookLoginEnabled) && (
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+                  </div>
+                </div>
+              )}
+
               {googleLoginEnabled && (
-                <GoogleLogin
-                  theme='outline'
-                  type='standard'
-                  width="100%"
-                  onSuccess={async (credentialResponse) => {
-                    const decoded = jwtDecode<GoogleJwtPayload>(credentialResponse.credential);
-                    const email = decoded.email;
-                    const name = decoded.name;
-                    const postURL = serverURL + '/api/social';
-                    try {
-                      setIsLoading(true);
-                      const response = await axios.post(postURL, { email, name });
-                      if (response.data.success) {
-                        toast({
-                          title: "Login successful",
-                          description: "Welcome back to " + appName,
-                        });
+                <div className="w-full">
+                  <GoogleLogin
+                    theme='outline'
+                    type='standard'
+                    size='large'
+                    width="384"
+                    logo_alignment='left'
+                    onSuccess={async (credentialResponse) => {
+                      const decoded = jwtDecode<GoogleJwtPayload>(credentialResponse.credential);
+                      const email = decoded.email;
+                      const name = decoded.name;
+                      const postURL = serverURL + '/api/social';
+                      try {
+                        setIsLoading(true);
+                        const response = await axios.post(postURL, { email, name });
+                        if (response.data.success) {
+                          toast({
+                            title: "Login successful",
+                            description: "Welcome back to " + appName,
+                          });
+                          setIsLoading(false);
+                          sessionStorage.setItem('email', decoded.email);
+                          sessionStorage.setItem('mName', decoded.name);
+                          sessionStorage.setItem('auth', 'true');
+                          sessionStorage.setItem('uid', response.data.userData._id);
+                          sessionStorage.setItem('type', response.data.userData.type);
+                          sendEmail(decoded.email, decoded.name);
+                        } else {
+                          setIsLoading(false);
+                          setError(response.data.message);
+                        }
+                      } catch (error) {
+                        console.error(error);
                         setIsLoading(false);
-                        sessionStorage.setItem('email', decoded.email);
-                        sessionStorage.setItem('mName', decoded.name);
-                        sessionStorage.setItem('auth', 'true');
-                        sessionStorage.setItem('uid', response.data.userData._id);
-                        sessionStorage.setItem('type', response.data.userData.type);
-                        sendEmail(decoded.email, decoded.name);
-                      } else {
-                        setIsLoading(false);
-                        setError(response.data.message);
+                        setError('Internal Server Error');
                       }
-                    } catch (error) {
-                      console.error(error);
+
+                    }}
+                    onError={() => {
                       setIsLoading(false);
                       setError('Internal Server Error');
-                    }
-
-                  }}
-                  onError={() => {
-                    setIsLoading(false);
-                    setError('Internal Server Error');
-                  }}
-                />
+                    }}
+                  />
+                </div>
               )}
 
               {facebookLoginEnabled && (
@@ -320,14 +335,17 @@ const Signup = () => {
                     backgroundColor: '#1877F2',
                     color: '#fff',
                     fontSize: '14px',
-                    padding: '10px 24px',
+                    padding: '12px 24px',
                     width: '100%',
+                    height: '40px',
                     border: 'none',
                     borderRadius: '0.375rem',
                     fontWeight: 500,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s',
                   }}
                   onFail={(error) => {
                     console.error(error);

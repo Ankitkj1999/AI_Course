@@ -1,20 +1,19 @@
-
-import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useToast } from '@/hooks/use-toast';
-import { ArrowRight, Mail, Lock, AlertTriangle } from 'lucide-react';
-import { appName, facebookClientId, serverURL } from '@/constants';
-import { useSettings } from '@/hooks/useSettings';
-import Logo from '../res/logo.svg';
-import axios from 'axios';
-import { GoogleLogin } from '@react-oauth/google';
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+import { ArrowRight, Mail, Lock, AlertTriangle } from "lucide-react";
+import { appName, facebookClientId, serverURL } from "@/constants";
+import { useSettings } from "@/hooks/useSettings";
+import Logo from "../res/logo.svg";
+import axios from "axios";
+import { GoogleLogin } from "@react-oauth/google";
 import { jwtDecode } from "jwt-decode";
-import FacebookLogin from '@greatsumini/react-facebook-login';
+import FacebookLogin from "@greatsumini/react-facebook-login";
 
 interface DecodedToken {
   email: string;
@@ -22,22 +21,24 @@ interface DecodedToken {
 }
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
   const { settings } = useSettings();
 
   // Get dynamic values from settings
   const googleClientId = settings.GOOGLE_CLIENT_ID?.value || facebookClientId;
-  const facebookClientIdDynamic = settings.FACEBOOK_CLIENT_ID?.value || facebookClientId;
-  const googleLoginEnabled = settings.GOOGLE_LOGIN_ENABLED?.value === 'true';
-  const facebookLoginEnabled = settings.FACEBOOK_LOGIN_ENABLED?.value === 'true';
+  const facebookClientIdDynamic =
+    settings.FACEBOOK_CLIENT_ID?.value || facebookClientId;
+  const googleLoginEnabled = settings.GOOGLE_LOGIN_ENABLED?.value === "true";
+  const facebookLoginEnabled =
+    settings.FACEBOOK_LOGIN_ENABLED?.value === "true";
 
   useEffect(() => {
-    const auth = sessionStorage.getItem('auth');
+    const auth = sessionStorage.getItem("auth");
     if (auth) {
       redirectHome();
     }
@@ -49,12 +50,12 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setIsLoading(true);
 
     // Simple validation
     if (!email || !password) {
-      setError('Please enter both email and password');
+      setError("Please enter both email and password");
       setIsLoading(false);
       return;
     }
@@ -62,36 +63,35 @@ const Login = () => {
     // This is where you would integrate authentication logic
     try {
       // Simulate authentication delay
-      const postURL = serverURL + '/api/signin';
+      const postURL = serverURL + "/api/signin";
       const response = await axios.post(postURL, { email, password });
       if (response.data.success) {
         // Store JWT token
         if (response.data.token) {
-          localStorage.setItem('token', response.data.token);
+          localStorage.setItem("token", response.data.token);
         }
-        
-        sessionStorage.setItem('email', response.data.userData.email);
-        sessionStorage.setItem('mName', response.data.userData.mName);
-        sessionStorage.setItem('auth', 'true');
-        sessionStorage.setItem('uid', response.data.userData._id);
-        sessionStorage.setItem('type', response.data.userData.type);
-        sessionStorage.setItem('isAdmin', response.data.userData.isAdmin);
+
+        sessionStorage.setItem("email", response.data.userData.email);
+        sessionStorage.setItem("mName", response.data.userData.mName);
+        sessionStorage.setItem("auth", "true");
+        sessionStorage.setItem("uid", response.data.userData._id);
+        sessionStorage.setItem("type", response.data.userData.type);
+        sessionStorage.setItem("isAdmin", response.data.userData.isAdmin);
         toast({
           title: "Login successful",
           description: "Welcome back to " + appName,
         });
-        if (sessionStorage.getItem('shared') === null) {
+        if (sessionStorage.getItem("shared") === null) {
           redirectHome();
         } else {
-          getDataFromDatabase(sessionStorage.getItem('shared'));
+          getDataFromDatabase(sessionStorage.getItem("shared"));
         }
       } else {
         setError(response.data.message);
         setIsLoading(false);
       }
-
     } catch (err) {
-      setError('Failed to login. Please check your credentials.');
+      setError("Failed to login. Please check your credentials.");
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -106,13 +106,18 @@ const Login = () => {
       const jsonData = JSON.parse(dat);
       const type = response.data[0].type.toLowerCase();
       const mainTopic = response.data[0].mainTopic;
-      const user = sessionStorage.getItem('uid');
+      const user = sessionStorage.getItem("uid");
       const content = JSON.stringify(jsonData);
 
-      const postURLs = serverURL + '/api/courseshared';
-      const responses = await axios.post(postURLs, { user, content, type, mainTopic });
+      const postURLs = serverURL + "/api/courseshared";
+      const responses = await axios.post(postURLs, {
+        user,
+        content,
+        type,
+        mainTopic,
+      });
       if (responses.data.success) {
-        sessionStorage.removeItem('shared');
+        sessionStorage.removeItem("shared");
         redirectHome();
       } else {
         redirectHome();
@@ -129,12 +134,14 @@ const Login = () => {
         <div className="text-center">
           <Link to="/" className="inline-flex items-center space-x-2">
             <div className="h-10 w-10 rounded-md bg-primary flex items-center justify-center">
-              <img src={Logo} alt="Logo" className='h-6 w-6' />
+              <img src={Logo} alt="Logo" className="h-6 w-6" />
             </div>
             <span className="font-display font-medium text-lg">{appName}</span>
           </Link>
           <h1 className="mt-6 text-3xl font-bold">Welcome back</h1>
-          <p className="mt-2 text-muted-foreground">Sign in to your account to continue</p>
+          <p className="mt-2 text-muted-foreground">
+            Sign in to your account to continue
+          </p>
         </div>
 
         <Card>
@@ -166,7 +173,10 @@ const Login = () => {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Password</Label>
-                  <Link to="/forgot-password" className="text-sm font-medium text-primary hover:underline">
+                  <Link
+                    to="/forgot-password"
+                    className="text-sm font-medium text-primary hover:underline"
+                  >
                     Forgot password?
                   </Link>
                 </div>
@@ -185,92 +195,125 @@ const Login = () => {
               </div>
 
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Signing in...' : 'Sign in'}
+                {isLoading ? "Signing in..." : "Sign in"}
                 {!isLoading && <ArrowRight className="ml-2 h-4 w-4" />}
               </Button>
             </form>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
+              {(googleLoginEnabled || facebookLoginEnabled) && (
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      Or continue with
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {googleLoginEnabled && (
-                <GoogleLogin
-                  theme='outline'
-                  type='standard'
-                  width="100%"
-                  onSuccess={async (credentialResponse) => {
-                    const decoded = jwtDecode<DecodedToken>(credentialResponse.credential);
-                    const email = decoded.email;
-                    const name = decoded.name;
-                    const postURL = serverURL + '/api/social';
-                    try {
-                      setIsLoading(true);
-                      const response = await axios.post(postURL, { email, name });
-                      if (response.data.success) {
-                        // Store JWT token
-                        if (response.data.token) {
-                          localStorage.setItem('token', response.data.token);
-                        }
-
-                        toast({
-                          title: "Login successful",
-                          description: "Welcome back to " + appName,
+                <div className="w-full">
+                  <GoogleLogin
+                    theme="outline"
+                    type="standard"
+                    size="large"
+                    width="384"
+                    logo_alignment="left"
+                    onSuccess={async (credentialResponse) => {
+                      const decoded = jwtDecode<DecodedToken>(
+                        credentialResponse.credential
+                      );
+                      const email = decoded.email;
+                      const name = decoded.name;
+                      const postURL = serverURL + "/api/social";
+                      try {
+                        setIsLoading(true);
+                        const response = await axios.post(postURL, {
+                          email,
+                          name,
                         });
-                        setIsLoading(false);
-                        sessionStorage.setItem('email', decoded.email);
-                        sessionStorage.setItem('mName', decoded.name);
-                        sessionStorage.setItem('auth', 'true');
-                        sessionStorage.setItem('uid', response.data.userData._id);
-                        sessionStorage.setItem('type', response.data.userData.type);
-                        redirectHome();
-                      } else {
-                        setIsLoading(false);
-                        setError(response.data.message);
-                      }
-                    } catch (error) {
-                      console.error(error);
-                      setIsLoading(false);
-                      setError('Internal Server Error');
-                    }
+                        if (response.data.success) {
+                          // Store JWT token
+                          if (response.data.token) {
+                            localStorage.setItem("token", response.data.token);
+                          }
 
-                  }}
-                  onError={() => {
-                    setIsLoading(false);
-                    setError('Internal Server Error');
-                  }}
-                />
+                          toast({
+                            title: "Login successful",
+                            description: "Welcome back to " + appName,
+                          });
+                          setIsLoading(false);
+                          sessionStorage.setItem("email", decoded.email);
+                          sessionStorage.setItem("mName", decoded.name);
+                          sessionStorage.setItem("auth", "true");
+                          sessionStorage.setItem(
+                            "uid",
+                            response.data.userData._id
+                          );
+                          sessionStorage.setItem(
+                            "type",
+                            response.data.userData.type
+                          );
+                          redirectHome();
+                        } else {
+                          setIsLoading(false);
+                          setError(response.data.message);
+                        }
+                      } catch (error) {
+                        console.error(error);
+                        setIsLoading(false);
+                        setError("Internal Server Error");
+                      }
+                    }}
+                    onError={() => {
+                      setIsLoading(false);
+                      setError("Internal Server Error");
+                    }}
+                  />
+                </div>
               )}
 
               {facebookLoginEnabled && (
                 <FacebookLogin
                   appId={facebookClientIdDynamic}
                   style={{
-                    backgroundColor: '#1877F2',
-                    color: '#fff',
-                    fontSize: '14px',
-                    padding: '10px 24px',
-                    width: '100%',
-                    border: 'none',
-                    borderRadius: '0.375rem',
+                    backgroundColor: "#1877F2",
+                    color: "#fff",
+                    fontSize: "14px",
+                    padding: "12px 24px",
+                    width: "100%",
+                    height: "40px",
+                    border: "none",
+                    borderRadius: "0.375rem",
                     fontWeight: 500,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    transition: "background-color 0.2s",
                   }}
                   onFail={(error) => {
                     console.error(error);
                     setIsLoading(false);
-                    setError('Internal Server Error');
+                    setError("Internal Server Error");
                   }}
                   onProfileSuccess={async (response) => {
                     const email = response.email;
                     const name = response.name;
-                    const postURL = serverURL + '/api/social';
+                    const postURL = serverURL + "/api/social";
                     try {
                       setIsLoading(true);
-                      const response = await axios.post(postURL, { email, name });
+                      const response = await axios.post(postURL, {
+                        email,
+                        name,
+                      });
                       if (response.data.success) {
                         // Store JWT token
                         if (response.data.token) {
-                          localStorage.setItem('token', response.data.token);
+                          localStorage.setItem("token", response.data.token);
                         }
 
                         toast({
@@ -278,11 +321,17 @@ const Login = () => {
                           description: "Welcome back to " + appName,
                         });
                         setIsLoading(false);
-                        sessionStorage.setItem('email', email);
-                        sessionStorage.setItem('mName', name);
-                        sessionStorage.setItem('auth', 'true');
-                        sessionStorage.setItem('uid', response.data.userData._id);
-                        sessionStorage.setItem('type', response.data.userData.type);
+                        sessionStorage.setItem("email", email);
+                        sessionStorage.setItem("mName", name);
+                        sessionStorage.setItem("auth", "true");
+                        sessionStorage.setItem(
+                          "uid",
+                          response.data.userData._id
+                        );
+                        sessionStorage.setItem(
+                          "type",
+                          response.data.userData.type
+                        );
                         redirectHome();
                       } else {
                         setIsLoading(false);
@@ -291,7 +340,7 @@ const Login = () => {
                     } catch (error) {
                       console.error(error);
                       setIsLoading(false);
-                      setError('Internal Server Error');
+                      setError("Internal Server Error");
                     }
                   }}
                 />
@@ -301,8 +350,11 @@ const Login = () => {
 
           <CardFooter className="flex flex-col space-y-4 border-t p-6">
             <div className="text-center text-sm">
-              Don't have an account?{' '}
-              <Link to="/signup" className="font-medium text-primary hover:underline">
+              Don't have an account?{" "}
+              <Link
+                to="/signup"
+                className="font-medium text-primary hover:underline"
+              >
                 Sign up
               </Link>
             </div>

@@ -1,5 +1,5 @@
 //BRAND
-export const appName = import.meta.env.VITE_APP_NAME || 'AiCourse';
+export const appName = import.meta.env.VITE_APP_NAME || 'AI Course';
 export const companyName = import.meta.env.VITE_COMPANY_NAME || 'Spacester';
 
 // Dynamic URL detection based on environment

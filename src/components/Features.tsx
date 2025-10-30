@@ -26,7 +26,7 @@ const features = [
   },
   {
     icon: <RotateCw className="h-6 w-6" />,
-    title: "Ai Teacher Chat",
+    title: "AI Teacher Chat",
     description: "Chat with Ai teacher to get answers to your questions while learning."
   },
   {

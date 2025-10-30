@@ -116,7 +116,7 @@ const DashboardLayout = () => {
             {/* Learning Content */}
             <SidebarGroup>
               <div className="px-3 py-2">
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <h4 className="text-xs font-semibold text-muted-foreground tracking-wider">
                   Learning Content
                 </h4>
               </div>
@@ -155,7 +155,7 @@ const DashboardLayout = () => {
             {/* Quick Create Actions */}
             <SidebarGroup>
               <div className="px-3 py-2">
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <h4 className="text-xs font-semibold text-muted-foreground tracking-wider">
                   Quick Create
                 </h4>
               </div>
@@ -198,7 +198,7 @@ const DashboardLayout = () => {
             {/* Account & Settings */}
             <SidebarGroup>
               <div className="px-3 py-2">
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <h4 className="text-xs font-semibold text-muted-foreground tracking-wider">
                   Account
                 </h4>
               </div>

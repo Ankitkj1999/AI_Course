@@ -95,7 +95,7 @@ const AdminLayout = () => {
             {/* User Management */}
             <SidebarGroup>
               <div className="px-3 py-2">
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <h4 className="text-xs font-semibold text-muted-foreground tracking-wider">
                   User Management
                 </h4>
               </div>
@@ -134,7 +134,7 @@ const AdminLayout = () => {
             {/* Content Management */}
             <SidebarGroup>
               <div className="px-3 py-2">
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <h4 className="text-xs font-semibold text-muted-foreground tracking-wider">
                   Content Management
                 </h4>
               </div>
@@ -182,7 +182,7 @@ const AdminLayout = () => {
             {/* Legal & Policies */}
             <SidebarGroup>
               <div className="px-3 py-2">
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <h4 className="text-xs font-semibold text-muted-foreground tracking-wider">
                   Legal & Policies
                 </h4>
               </div>
@@ -239,7 +239,7 @@ const AdminLayout = () => {
             {/* System Configuration */}
             <SidebarGroup>
               <div className="px-3 py-2">
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <h4 className="text-xs font-semibold text-muted-foreground tracking-wider">
                   System
                 </h4>
               </div>

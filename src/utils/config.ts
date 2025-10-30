@@ -1,5 +1,5 @@
 /**
- * Dynamic configuration utility for AiCourse
+ * Dynamic configuration utility for AI Course
  * Handles environment-based configuration and runtime detection
  */
 
@@ -122,7 +122,7 @@ export const getAPIBaseURL = () => {
 // Configuration object
 export const config = {
   app: {
-    name: import.meta.env.VITE_APP_NAME || 'AiCourse',
+    name: import.meta.env.VITE_APP_NAME || 'AI Course',
     company: import.meta.env.VITE_COMPANY_NAME || 'Spacester',
     logo: import.meta.env.VITE_APP_LOGO || 'https://firebasestorage.googleapis.com/v0/b/aicourse-81b42.appspot.com/o/aicouse.png?alt=media&token=7175cdbe-64b4-4fe4-bb6d-b519347ad8af',
   },
@@ -174,5 +174,5 @@ export const getQuizShareURL = (quiz: { slug?: string; _id: string; title?: stri
 
 // Log configuration in development
 if (isDevelopment()) {
-  console.log('🔧 AiCourse Configuration:', config);
+  console.log('🔧 AI Course Configuration:', config);
 }

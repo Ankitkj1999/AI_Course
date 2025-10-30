@@ -44,7 +44,7 @@ export const generateCourseSEO = (course, baseUrl = 'http://localhost:8080') => 
             "image": image,
             "provider": {
                 "@type": "Organization",
-                "name": "AiCourse",
+                "name": "AI Course",
                 "url": baseUrl
             },
             "educationalLevel": "Beginner to Advanced",
