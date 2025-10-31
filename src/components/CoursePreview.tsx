@@ -322,7 +322,7 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
             <>
                 {topicss.map((topic, index) => (
                     <div key={index} className="space-y-2">
-                        <Card className="bg-black text-white">
+                        <Card className="bg-primary text-primary-foreground">
                             <CardContent className="p-4 font-bold">
                                 {topic.title}
                             </CardContent>
@@ -370,7 +370,7 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
                 <Button
                     disabled={isLoadingCourse}
                     onClick={handleCreateCourse}
-                    className="w-40 bg-black text-white hover:bg-gray-800"
+                    className="w-40"
                 >
                     {isLoadingCourse ?
                         <Loader className="animate-spin mr-2 h-4 w-4" />
