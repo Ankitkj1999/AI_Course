@@ -1,32 +1,43 @@
 
 import React, { useEffect, useRef } from 'react';
-import { Upload, Cpu, Layout, CheckCircle } from 'lucide-react';
+import { PenTool, Sparkles, Globe, Rocket, CreditCard, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const steps = [
   {
-    icon: <Upload className="h-6 w-6 text-primary" />,
-    title: "Enter Topics",
-    description: "Begin the course creation journey by entering your desired topics and a list of subtopics.",
-    color: "from-primary/20 to-primary/5"
+    icon: <PenTool className="h-7 w-7" />,
+    title: "Define Your Learning Path",
+    description: "Enter your topic and subtopics. Our AI understands your learning goals and creates a structured curriculum tailored to your needs.",
+    features: ["Custom topics", "Subtopic planning", "Learning objectives"],
+    gradient: "from-blue-500/20 to-primary/10"
   },
   {
-    icon: <Cpu className="h-6 w-6 text-primary" />,
-    title: "Choose Preferences",
-    description: "Choose between Image + Theory or Video + Theory formats for a personalized learning journey.",
-    color: "from-primary/30 to-primary/10"
+    icon: <Sparkles className="h-7 w-7" />,
+    title: "AI Content Generation",
+    description: "Choose your preferred format and watch our AI create comprehensive courses with theory, visuals, and interactive elements.",
+    features: ["Text & Image courses", "Video & Theory courses", "Interactive quizzes"],
+    gradient: "from-primary/20 to-purple-500/10"
   },
   {
-    icon: <Layout className="h-6 w-6 text-primary" />,
-    title: "Choose Course Language",
-    description: "Choose from 23+ languages in which you want to create a course.",
-    color: "from-primary/40 to-primary/20"
+    icon: <Globe className="h-7 w-7" />,
+    title: "Global Accessibility",
+    description: "Generate courses in 23+ languages with AI-powered translation, making learning accessible to a global audience.",
+    features: ["23+ languages", "Cultural adaptation", "Localized content"],
+    gradient: "from-green-500/20 to-primary/10"
   },
   {
-    icon: <CheckCircle className="h-6 w-6 text-primary" />,
-    title: "AI Magic",
-    description: "Watch as our AI processes your inputs to generate a customized course.",
-    color: "from-primary/50 to-primary/30"
+    icon: <CreditCard className="h-7 w-7" />,
+    title: "Enhanced Learning Tools",
+    description: "Access advanced features like flashcards, study guides, and AI teacher chat for a complete learning experience.",
+    features: ["Smart flashcards", "Study guides", "AI teacher chat"],
+    gradient: "from-orange-500/20 to-primary/10"
+  },
+  {
+    icon: <Rocket className="h-7 w-7" />,
+    title: "Launch & Learn",
+    description: "Your course is ready! Study online, download for offline access, or install as a PWA for the ultimate learning experience.",
+    features: ["PWA support", "Offline access", "Progress tracking"],
+    gradient: "from-primary/20 to-pink-500/10"
   }
 ];
 
@@ -73,54 +84,72 @@ const HowItWorks = () => {
       <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16 md:mb-20">
-          <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary mb-4">
-            Process
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary mb-4">
+            <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+            How It Works
           </span>
           <h2 className="how-it-works-title opacity-0 font-display text-3xl md:text-4xl lg:text-5xl font-bold">
-            Simple <span className="text-primary">4-Step</span> Course Creation
+            From Idea to <br className="hidden md:block" />
+            <span className="text-primary">Complete Course</span> in Minutes
           </h2>
+          <p className="mt-4 text-muted-foreground text-lg max-w-2xl mx-auto">
+            Our AI-powered platform transforms your learning goals into comprehensive, interactive courses with just a few clicks.
+          </p>
         </div>
         
         <div ref={stepsRef} className="relative">
-          {/* Desktop connector line */}
-          <div className="hidden lg:block absolute left-1/2 top-0 bottom-0 w-0.5 bg-border -translate-x-1/2 z-0"></div>
+          {/* Modern flowing connector */}
+          <div className="hidden lg:block absolute left-8 top-20 bottom-20 w-0.5 bg-gradient-to-b from-primary/50 via-primary/20 to-primary/50 z-0"></div>
           
-          <div className="space-y-12 lg:space-y-0">
+          <div className="grid gap-8 lg:gap-12">
             {steps.map((step, index) => (
-              <div key={index} className={cn(
-                "step-item opacity-0 flex flex-col lg:flex-row lg:items-center gap-8 lg:gap-12",
-                index % 2 === 1 ? "lg:flex-row-reverse" : ""
-              )}>
-                {/* Step number for mobile */}
-                <div className="lg:hidden flex items-center gap-4 mb-4">
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
-                    {index + 1}
-                  </div>
-                  <div className="h-px flex-1 bg-border"></div>
-                </div>
-                
-                {/* Content */}
-                <div className="lg:w-1/2 space-y-4">
-                  <h3 className="font-display text-2xl font-semibold">{step.title}</h3>
-                  <p className="text-muted-foreground text-lg">{step.description}</p>
-                </div>
-                
-                {/* Illustration */}
-                <div className="lg:w-1/2 flex justify-center relative">
-                  {/* Step number for desktop */}
-                  <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 h-12 w-12 rounded-full bg-background border-4 border-primary items-center justify-center">
-                    <span className="font-display font-bold text-primary">{index + 1}</span>
-                  </div>
-                  
-                  <div className={cn(
-                    "h-48 w-48 rounded-2xl bg-gradient-to-br p-px",
-                    step.color
-                  )}>
-                    <div className="h-full w-full rounded-2xl bg-background flex items-center justify-center">
-                      <div className="h-16 w-16 rounded-xl bg-primary/10 flex items-center justify-center">
+              <div key={index} className="step-item opacity-0 group relative">
+                <div className="flex flex-col lg:flex-row lg:items-start gap-6 lg:gap-8">
+                  {/* Step indicator */}
+                  <div className="flex-shrink-0 relative">
+                    <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 group-hover:from-primary/25 group-hover:to-primary/15 flex items-center justify-center transition-all duration-500 group-hover:scale-110 shadow-lg group-hover:shadow-xl group-hover:shadow-primary/25">
+                      <div className="text-primary transition-transform duration-500 group-hover:scale-110">
                         {step.icon}
                       </div>
                     </div>
+                    {/* Step number badge */}
+                    <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
+                      {index + 1}
+                    </div>
+                  </div>
+                  
+                  {/* Content card */}
+                  <div className="flex-1 group relative bg-card rounded-2xl p-6 lg:p-8 border border-border/50 transition-all duration-300 hover:shadow-lg overflow-hidden">
+                    {/* Subtle edge glow on hover */}
+                    <div className="absolute -inset-px bg-gradient-to-r from-primary/20 via-primary/5 to-primary/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10" />
+                    
+                    <div className="space-y-4">
+                      <h3 className="font-display text-xl lg:text-2xl font-semibold group-hover:text-primary transition-colors duration-300">
+                        {step.title}
+                      </h3>
+                      
+                      <p className="text-muted-foreground group-hover:text-foreground/80 transition-colors duration-300 leading-relaxed">
+                        {step.description}
+                      </p>
+                      
+                      {/* Feature highlights */}
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        {step.features.map((feature, idx) => (
+                          <span 
+                            key={idx}
+                            className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20"
+                          >
+                            {feature}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Gradient accent */}
+                    <div className={cn(
+                      "absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl opacity-20 group-hover:opacity-30 transition-opacity duration-500 rounded-2xl",
+                      step.gradient
+                    )} />
                   </div>
                 </div>
               </div>
