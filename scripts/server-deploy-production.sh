@@ -32,6 +32,11 @@ echo "🧹 Cleaning up existing container..."
 docker stop $CONTAINER_NAME 2>/dev/null || true
 docker rm $CONTAINER_NAME 2>/dev/null || true
 
+# Clean up old images (safer than full system prune)
+echo "🧹 Cleaning up old Docker images..."
+docker image prune -f
+docker rmi $(docker images "$DOCKER_USERNAME/$IMAGE_NAME" -q | tail -n +3) 2>/dev/null || true
+
 # Pull the production image
 echo "📥 Pulling production image: $FULL_IMAGE_NAME"
 docker pull $FULL_IMAGE_NAME

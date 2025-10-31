@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => ({
         name: 'AI Course - AI-Powered Course Generator',
         short_name: 'AI Course',
         description: 'Generate comprehensive courses on any topic using AI. Learn at your own pace with structured lessons.',
-        theme_color: '#007BFF',
+        theme_color: '#a855f7',
         background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait-primary',

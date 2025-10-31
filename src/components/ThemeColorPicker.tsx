@@ -12,7 +12,7 @@ interface ThemeColor {
 
 const themeColors: ThemeColor[] = [
   { name: 'Blue', value: '211 100% 50%', preview: 'bg-blue-500' },
-  { name: 'Purple', value: '262.1 83.3% 57.8%', preview: 'bg-purple-500' },
+  { name: 'Purple', value: '268 83.3% 57.8%', preview: 'bg-purple-500' },
   { name: 'Green', value: '142.1 76.2% 36.3%', preview: 'bg-green-500' },
   { name: 'Orange', value: '24.6 95% 53.1%', preview: 'bg-orange-500' },
   { name: 'Teal', value: '173.4 80.4% 40%', preview: 'bg-teal-500' },
@@ -23,7 +23,7 @@ const themeColors: ThemeColor[] = [
 ];
 
 export function ThemeColorPicker() {
-  const [selectedColor, setSelectedColor] = useState<string>('262.1 83.3% 57.8%'); // Default to purple
+  const [selectedColor, setSelectedColor] = useState<string>('268 83.3% 57.8%'); // Default to purple
 
   useEffect(() => {
     // Load saved theme color from localStorage
