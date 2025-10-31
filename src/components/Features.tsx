@@ -120,15 +120,18 @@ const Features = () => {
           {features.map((feature, index) => (
             <div
               key={index}
-              className="feature-item opacity-0 bg-card shadow-sm hover:shadow-md transition-all duration-300 rounded-xl p-8 border border-border/50"
+              className="feature-item opacity-0 bg-card shadow-sm hover:shadow-lg hover:shadow-primary/10 transition-all duration-500 rounded-xl p-8 border border-border/50 hover:border-primary/20 group relative overflow-hidden"
             >
-              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-5 text-primary">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-primary/0 via-primary/50 to-primary/0 group-hover:h-1 transition-all duration-500" />
+              <div className="absolute bottom-0 right-0 w-0 h-0.5 bg-gradient-to-l from-primary/0 via-primary/50 to-primary/0 group-hover:w-full transition-all duration-500" />
+              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-5 text-primary group-hover:bg-primary/20 group-hover:scale-110 transition-all duration-500">
                 {feature.icon}
               </div>
-              <h3 className="font-display text-xl font-semibold mb-3">
+              <h3 className="font-display text-xl font-semibold mb-3 group-hover:text-primary transition-colors duration-300">
                 {feature.title}
               </h3>
-              <p className="text-muted-foreground">{feature.description}</p>
+              <p className="text-muted-foreground group-hover:text-foreground/80 transition-colors duration-300">{feature.description}</p>
             </div>
           ))}
         </div>
