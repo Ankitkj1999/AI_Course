@@ -98,58 +98,90 @@ const HowItWorks = () => {
         </div>
         
         <div ref={stepsRef} className="relative">
-          {/* Modern flowing connector */}
-          <div className="hidden lg:block absolute left-8 top-20 bottom-20 w-0.5 bg-gradient-to-b from-primary/50 via-primary/20 to-primary/50 z-0"></div>
+          {/* Central flowing connector */}
+          <div className="hidden lg:block absolute left-1/2 top-20 bottom-20 w-0.5 bg-gradient-to-b from-primary/50 via-primary/20 to-primary/50 -translate-x-1/2 z-0"></div>
           
-          <div className="grid gap-8 lg:gap-12">
+          <div className="space-y-16 lg:space-y-24">
             {steps.map((step, index) => (
-              <div key={index} className="step-item opacity-0 group relative">
-                <div className="flex flex-col lg:flex-row lg:items-start gap-6 lg:gap-8">
+              <div key={index} className={cn(
+                "step-item opacity-0 group relative",
+                "lg:flex lg:items-center lg:gap-12",
+                index % 2 === 1 ? "lg:flex-row-reverse" : ""
+              )}>
+                {/* Content side */}
+                <div className="lg:w-1/2 space-y-6">
                   {/* Step indicator */}
-                  <div className="flex-shrink-0 relative">
-                    <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 group-hover:from-primary/25 group-hover:to-primary/15 flex items-center justify-center transition-all duration-500 group-hover:scale-110 shadow-lg group-hover:shadow-xl group-hover:shadow-primary/25">
-                      <div className="text-primary transition-transform duration-500 group-hover:scale-110">
-                        {step.icon}
+                  <div className="flex items-center gap-4">
+                    <div className="flex-shrink-0 relative">
+                      <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 group-hover:from-primary/25 group-hover:to-primary/15 flex items-center justify-center transition-all duration-500 group-hover:scale-110 shadow-lg group-hover:shadow-xl group-hover:shadow-primary/25">
+                        <div className="text-primary transition-transform duration-500 group-hover:scale-110">
+                          {step.icon}
+                        </div>
+                      </div>
+                      {/* Step number badge */}
+                      <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
+                        {index + 1}
                       </div>
                     </div>
-                    {/* Step number badge */}
-                    <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
-                      {index + 1}
+                    
+                    {/* Mobile connector line */}
+                    <div className="lg:hidden h-px flex-1 bg-gradient-to-r from-primary/30 to-transparent"></div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <h3 className="font-display text-2xl lg:text-3xl font-semibold group-hover:text-primary transition-colors duration-300">
+                      {step.title}
+                    </h3>
+                    
+                    <p className="text-muted-foreground group-hover:text-foreground/80 transition-colors duration-300 leading-relaxed text-lg">
+                      {step.description}
+                    </p>
+                    
+                    {/* Feature highlights */}
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {step.features.map((feature, idx) => (
+                        <span 
+                          key={idx}
+                          className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-primary/10 text-primary border border-primary/20 hover:bg-primary/15 transition-colors duration-200"
+                        >
+                          {feature}
+                        </span>
+                      ))}
                     </div>
+                  </div>
+                </div>
+                
+                {/* Visual side */}
+                <div className="lg:w-1/2 flex justify-center relative mt-8 lg:mt-0">
+                  {/* Desktop step connector */}
+                  <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 h-12 w-12 rounded-full bg-background border-4 border-primary items-center justify-center shadow-lg">
+                    <span className="font-display font-bold text-primary text-sm">{index + 1}</span>
                   </div>
                   
                   {/* Content card */}
-                  <div className="flex-1 group relative bg-card rounded-2xl p-6 lg:p-8 border border-border/50 transition-all duration-300 hover:shadow-lg overflow-hidden">
+                  <div className="relative bg-card rounded-3xl p-8 lg:p-10 border border-border/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-2 overflow-hidden max-w-md w-full">
                     {/* Subtle edge glow on hover */}
-                    <div className="absolute -inset-px bg-gradient-to-r from-primary/20 via-primary/5 to-primary/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10" />
-                    
-                    <div className="space-y-4">
-                      <h3 className="font-display text-xl lg:text-2xl font-semibold group-hover:text-primary transition-colors duration-300">
-                        {step.title}
-                      </h3>
-                      
-                      <p className="text-muted-foreground group-hover:text-foreground/80 transition-colors duration-300 leading-relaxed">
-                        {step.description}
-                      </p>
-                      
-                      {/* Feature highlights */}
-                      <div className="flex flex-wrap gap-2 pt-2">
-                        {step.features.map((feature, idx) => (
-                          <span 
-                            key={idx}
-                            className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20"
-                          >
-                            {feature}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
+                    <div className="absolute -inset-px bg-gradient-to-r from-primary/20 via-primary/5 to-primary/20 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10" />
                     
                     {/* Gradient accent */}
                     <div className={cn(
-                      "absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl opacity-20 group-hover:opacity-30 transition-opacity duration-500 rounded-2xl",
+                      "absolute inset-0 bg-gradient-to-br opacity-10 group-hover:opacity-20 transition-opacity duration-500 rounded-3xl",
                       step.gradient
                     )} />
+                    
+                    {/* Content preview */}
+                    <div className="relative z-10 space-y-4">
+                      <div className="h-3 bg-primary/20 rounded-full w-3/4"></div>
+                      <div className="space-y-2">
+                        <div className="h-2 bg-muted rounded w-full"></div>
+                        <div className="h-2 bg-muted rounded w-5/6"></div>
+                        <div className="h-2 bg-muted rounded w-4/6"></div>
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <div className="h-6 bg-primary/10 rounded-full w-16"></div>
+                        <div className="h-6 bg-primary/10 rounded-full w-20"></div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
