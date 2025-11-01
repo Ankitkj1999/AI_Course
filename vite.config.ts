@@ -10,6 +10,13 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: parseInt(process.env.VITE_PORT || '8080'),
     strictPort: false, // Allow Vite to use next available port if specified port is busy
+    proxy: {
+      '/api': {
+        target: process.env.VITE_SERVER_URL || 'http://localhost:5010',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
   },
   plugins: [
     react(),

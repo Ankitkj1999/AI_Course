@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Home, User, DollarSign, LogOut, Sparkles, PanelLeftOpen, Settings2Icon, Brain, List, Plus, CreditCard, Layers, BookOpen, FileText, Moon, Sun } from 'lucide-react';
+import { Home, User, DollarSign, LogOut, Sparkles, PanelLeftOpen, Settings2Icon, Brain, List, Plus, CreditCard, Layers, BookOpen, FileText, Moon, Sun, TestTube } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -194,6 +194,29 @@ const DashboardLayout = () => {
                 </div>
               </SidebarGroupContent>
             </SidebarGroup>
+
+            {/* Development Tools (only show in development) */}
+            {process.env.NODE_ENV === 'development' && (
+              <SidebarGroup>
+                <div className="px-3 py-2">
+                  <h4 className="text-xs font-semibold text-muted-foreground tracking-wider">
+                    Development
+                  </h4>
+                </div>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild tooltip="LLM Test Screen" isActive={isActive('/dashboard/test-llm')}>
+                        <Link to="/dashboard/test-llm" className={cn(isActive('/dashboard/test-llm') && "text-primary")}>
+                          <TestTube />
+                          <span>Test LLM</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
 
             {/* Account & Settings */}
             <SidebarGroup>

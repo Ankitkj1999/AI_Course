@@ -23,6 +23,7 @@ import Settings from './models/Settings.js';
 import settingsCache from './services/settingsCache.js';
 import { generateCourseSEO } from './utils/seo.js';
 import { getServerPort, getServerURL, validateConfig } from './utils/config.js';
+import llmService from './services/llmService.js';
 
 // Load environment variables
 dotenv.config();
@@ -665,90 +666,293 @@ app.post('/api/reset-password', async (req, res) => {
     }
 });
 
-//GET DATA FROM MODEL
+//GET DATA FROM MODEL (Enhanced with multi-LLM support)
 app.post('/api/prompt', requireAuth, async (req, res) => {
     const receivedData = req.body;
-
     const promptString = receivedData.prompt;
+    const { provider, model, temperature } = receivedData;
 
-    const safetySettings = [
-        {
-            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-        {
-            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-        {
-            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-        {
-            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-    ];
+    try {
+        // If provider is specified, use new LLM service
+        if (provider) {
+            const result = await llmService.generateContent(promptString, {
+                provider,
+                model,
+                temperature
+            });
 
-    const genAI = await getAI();
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
+            if (result.success) {
+                // Maintain backward compatibility with existing response format
+                res.status(200).json({ 
+                    generatedText: result.data.content,
+                    // Add metadata for enhanced clients
+                    metadata: {
+                        provider: result.data.provider,
+                        providerName: result.data.providerName,
+                        model: result.data.model,
+                        responseTime: result.data.responseTime,
+                        timestamp: result.timestamp
+                    }
+                });
+            } else {
+                res.status(500).json({ 
+                    success: false, 
+                    message: result.error.message || 'Content generation failed'
+                });
+            }
+            return;
+        }
 
-    const prompt = promptString;
+        // Fallback to original Gemini implementation for backward compatibility
+        const safetySettings = [
+            {
+                category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+            {
+                category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+            {
+                category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+            {
+                category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+        ];
 
-    await model.generateContent(prompt).then(result => {
+        const genAI = await getAI();
+        const genModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
+
+        const result = await genModel.generateContent(promptString);
         const response = result.response;
         const generatedText = response.text();
-        res.status(200).json({ generatedText });
-    }).catch(error => {
-        console.log(error);
+        
+        res.status(200).json({ 
+            generatedText,
+            // Add metadata to indicate this used legacy path
+            metadata: {
+                provider: 'gemini',
+                providerName: 'Google Gemini (Legacy)',
+                model: 'gemini-2.0-flash',
+                legacy: true
+            }
+        });
+        
+    } catch (error) {
+        logger.error(`Prompt generation error: ${error.message}`, { 
+            error: error.stack, 
+            prompt: promptString?.substring(0, 100),
+            provider 
+        });
         res.status(500).json({ success: false, message: 'Internal server error' });
-    })
+    }
 });
 
-//GET GENERATE THEORY
+// NEW MULTI-LLM ENDPOINTS
+
+//GET LLM PROVIDERS LIST
+app.get('/api/llm/providers', async (req, res) => {
+    try {
+        const providers = llmService.getProviders();
+        const status = llmService.getStatus();
+        
+        res.status(200).json({
+            success: true,
+            providers: providers,
+            status: status.status,
+            summary: {
+                total: status.total,
+                available: status.available,
+                free: status.free,
+                paid: status.paid
+            }
+        });
+    } catch (error) {
+        logger.error(`Get providers error: ${error.message}`, { error: error.stack });
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to get providers',
+            error: error.message 
+        });
+    }
+});
+
+//GENERATE CONTENT WITH MULTI-LLM SUPPORT
+app.post('/api/llm/generate', requireAuth, async (req, res) => {
+    try {
+        const { prompt, provider, model, temperature, preferFree } = req.body;
+        
+        // Validate request
+        if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Prompt is required and must be a non-empty string'
+            });
+        }
+
+        // Generate content using LLM service
+        const result = await llmService.generateContentAuto(prompt, {
+            provider,
+            model,
+            temperature,
+            preferFree
+        });
+
+        res.status(200).json(result);
+        
+    } catch (error) {
+        logger.error(`LLM generation error: ${error.message}`, { 
+            error: error.stack, 
+            prompt: req.body.prompt?.substring(0, 100),
+            provider: req.body.provider 
+        });
+        
+        res.status(500).json({
+            success: false,
+            error: {
+                message: 'Content generation failed',
+                code: 'GENERATION_ERROR',
+                details: error.message
+            }
+        });
+    }
+});
+
+//HEALTH CHECK FOR SPECIFIC PROVIDER
+app.get('/api/llm/health/:providerId', async (req, res) => {
+    try {
+        const { providerId } = req.params;
+        const healthResult = await llmService.checkProviderHealth(providerId);
+        
+        res.status(200).json({
+            success: true,
+            health: healthResult
+        });
+        
+    } catch (error) {
+        logger.error(`Provider health check error: ${error.message}`, { 
+            error: error.stack, 
+            providerId: req.params.providerId 
+        });
+        
+        res.status(500).json({
+            success: false,
+            message: 'Health check failed',
+            error: error.message
+        });
+    }
+});
+
+//HEALTH CHECK FOR ALL PROVIDERS
+app.get('/api/llm/health', async (req, res) => {
+    try {
+        const healthResults = await llmService.checkAllProvidersHealth();
+        
+        res.status(200).json({
+            success: true,
+            health: healthResults,
+            timestamp: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        logger.error(`All providers health check error: ${error.message}`, { error: error.stack });
+        
+        res.status(500).json({
+            success: false,
+            message: 'Health check failed',
+            error: error.message
+        });
+    }
+});
+
+//GET GENERATE THEORY (Enhanced with multi-LLM support)
 app.post('/api/generate', requireAuth, async (req, res) => {
     const receivedData = req.body;
-
     const promptString = receivedData.prompt;
+    const { provider, model, temperature } = receivedData;
 
-    const safetySettings = [
-        {
-            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-        {
-            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-        {
-            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-        {
-            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-    ];
+    try {
+        // If provider is specified, use new LLM service
+        if (provider) {
+            const result = await llmService.generateContent(promptString, {
+                provider,
+                model,
+                temperature
+            });
 
-    const genAI = await getAI();
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
+            if (result.success) {
+                // Maintain backward compatibility with existing response format
+                res.status(200).json({ 
+                    text: result.data.content,
+                    contentType: 'markdown',
+                    // Add metadata for enhanced clients
+                    metadata: {
+                        provider: result.data.provider,
+                        providerName: result.data.providerName,
+                        model: result.data.model,
+                        responseTime: result.data.responseTime,
+                        timestamp: result.timestamp
+                    }
+                });
+            } else {
+                res.status(500).json({ 
+                    success: false, 
+                    message: result.error.message || 'Content generation failed'
+                });
+            }
+            return;
+        }
 
-    const prompt = promptString
+        // Fallback to original Gemini implementation for backward compatibility
+        const safetySettings = [
+            {
+                category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+            {
+                category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+            {
+                category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+            {
+                category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+        ];
 
-    await model.generateContent(prompt).then(result => {
+        const genAI = await getAI();
+        const genModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
+
+        const result = await genModel.generateContent(promptString);
         const response = result.response;
         const txt = response.text();
-        // Store raw markdown instead of converting to HTML for better formatting
-        const text = txt;
+        
         res.status(200).json({ 
-            text,
-            contentType: 'markdown' // Add content type for frontend detection
+            text: txt,
+            contentType: 'markdown',
+            // Add metadata to indicate this used legacy path
+            metadata: {
+                provider: 'gemini',
+                providerName: 'Google Gemini (Legacy)',
+                model: 'gemini-2.0-flash',
+                legacy: true
+            }
         });
-    }).catch(error => {
-        console.log('Error', error);
+        
+    } catch (error) {
+        logger.error(`Generate theory error: ${error.message}`, { 
+            error: error.stack, 
+            prompt: promptString?.substring(0, 100),
+            provider 
+        });
         res.status(500).json({ success: false, message: 'Internal server error' });
-    })
-
+    }
 });
 
 //GET IMAGE

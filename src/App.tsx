@@ -45,6 +45,9 @@ import GuideListPage from "./pages/GuideList";
 import CreateGuidePage from "./pages/CreateGuide";
 import GuideViewerPage from "./pages/GuideViewer";
 
+// LLM Test imports
+import TestLLM from "./pages/TestLLM";
+
 // Admin imports
 import AdminLayout from "./components/layouts/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -118,6 +121,7 @@ const App = () => {
                   <Route path="create-flashcard" element={<CreateFlashcardPage />} />
                   <Route path="guides" element={<GuideListPage />} />
                   <Route path="create-guide" element={<CreateGuidePage />} />
+                  <Route path="test-llm" element={<TestLLM />} />
                 </Route>
 
                 {/* Course Routes */}
