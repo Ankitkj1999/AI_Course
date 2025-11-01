@@ -25,7 +25,7 @@ const PROVIDER_CONFIGS = {
     isFree: true,
     defaultModel: 'llama-3.1-8b-instant',
     envKeyName: 'GROQ_API_KEY',
-    availableModels: ['llama-3.1-8b-instant', 'mixtral-8x7b-32768', 'llama-3.2-90b-text-preview']
+    availableModels: ['llama-3.1-8b-instant', 'llama-3.2-90b-text-preview', 'llama-3.2-11b-text-preview']
   },
   openai: {
     id: 'openai',
@@ -42,6 +42,28 @@ const PROVIDER_CONFIGS = {
     defaultModel: 'claude-3-5-sonnet-20241022',
     envKeyName: 'ANTHROPIC_API_KEY',
     availableModels: ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-haiku-20240307']
+  },
+  openrouter: {
+    id: 'openrouter',
+    name: 'OpenRouter (Multi-Model)',
+    isFree: false,
+    defaultModel: 'meta-llama/llama-3.1-8b-instruct:free',
+    envKeyName: 'OPENROUTER_API_KEY',
+    availableModels: [
+      // Free models
+      'meta-llama/llama-3.1-8b-instruct:free',
+      'microsoft/phi-3-mini-128k-instruct:free',
+      'google/gemma-2-9b-it:free',
+      'minimax/minimax-m2:free',
+      // Popular paid models
+      'openai/gpt-4o-mini',
+      'openai/gpt-4o',
+      'anthropic/claude-3.5-sonnet',
+      'anthropic/claude-3-haiku',
+      'meta-llama/llama-3.1-70b-instruct',
+      'google/gemini-pro-1.5',
+      'mistralai/mixtral-8x7b-instruct'
+    ]
   }
 };
 
@@ -124,6 +146,19 @@ class LangChainFactory {
           apiKey,
           model: config.defaultModel,
           temperature: 0.7
+        });
+      
+      case 'openrouter':
+        return new ChatOpenAI({
+          apiKey,
+          model: config.defaultModel,
+          temperature: 0.7
+        }, {
+          baseURL: 'https://openrouter.ai/api/v1',
+          defaultHeaders: {
+            'HTTP-Referer': process.env.WEBSITE_URL || 'http://localhost:8080',
+            'X-Title': 'AI Course Generator'
+          }
         });
       
       default:

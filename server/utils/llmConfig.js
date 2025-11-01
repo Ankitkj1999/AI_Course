@@ -33,6 +33,10 @@ class LLMConfig {
         anthropic: {
           apiKey: process.env.ANTHROPIC_API_KEY,
           enabled: !!process.env.ANTHROPIC_API_KEY
+        },
+        openrouter: {
+          apiKey: process.env.OPENROUTER_API_KEY,
+          enabled: !!process.env.OPENROUTER_API_KEY
         }
       },
       

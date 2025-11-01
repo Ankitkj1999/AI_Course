@@ -23,19 +23,20 @@ class LLMService {
   async generateContent(prompt, options = {}) {
     const startTime = Date.now();
     
-    try {
-      // Determine which provider to use
-      const providerId = options.provider || this.factory.getDefaultProvider();
-      
-      if (!providerId) {
-        throw new Error('No LLM providers are available');
-      }
+    // Determine which provider to use (declare outside try block)
+    const providerId = options.provider || this.factory.getDefaultProvider();
+    
+    if (!providerId) {
+      throw new Error('No LLM providers are available');
+    }
 
-      // Validate provider
-      const validation = this.factory.validateProvider(providerId);
-      if (!validation.valid) {
-        throw new Error(`Provider validation failed: ${validation.error}`);
-      }
+    // Validate provider
+    const validation = this.factory.validateProvider(providerId);
+    if (!validation.valid) {
+      throw new Error(`Provider validation failed: ${validation.error}`);
+    }
+    
+    try {
 
       // Get LLM instance
       const llm = this.factory.getLLM(providerId, {
@@ -65,18 +66,31 @@ class LLMService {
     } catch (error) {
       const responseTime = Date.now() - startTime;
       
-      console.error('LLM Generation Error:', error.message);
+      console.error(`LLM Generation Error for provider ${providerId}:`, error.message);
+      console.error('Error details:', {
+        provider: providerId,
+        model: options.model,
+        temperature: options.temperature,
+        errorType: error.constructor.name
+      });
       
       // Try fallback if enabled and not already using fallback
       if (this.config.isFallbackEnabled() && options.provider && !options.isFallback) {
-        console.log('Attempting fallback to default provider...');
+        console.log(`Provider ${options.provider} failed, attempting fallback...`);
         
         try {
-          return await this.generateContent(prompt, {
-            ...options,
-            provider: undefined, // Use default provider
-            isFallback: true
-          });
+          const fallbackProvider = this.factory.getDefaultProvider();
+          if (fallbackProvider && fallbackProvider !== options.provider) {
+            console.log(`Using fallback provider: ${fallbackProvider}`);
+            return await this.generateContent(prompt, {
+              provider: fallbackProvider,
+              model: undefined, // Use default model for fallback provider
+              temperature: options.temperature,
+              isFallback: true
+            });
+          } else {
+            console.log('No suitable fallback provider available');
+          }
         } catch (fallbackError) {
           console.error('Fallback also failed:', fallbackError.message);
         }
