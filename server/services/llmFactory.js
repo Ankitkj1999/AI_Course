@@ -55,6 +55,10 @@ const PROVIDER_CONFIGS = {
       'microsoft/phi-3-mini-128k-instruct:free',
       'google/gemma-2-9b-it:free',
       'minimax/minimax-m2:free',
+      'google/gemma-3-27b-it:free',
+      'tngtech/deepseek-r1t2-chimera:free',
+      'nvidia/nemotron-nano-9b-v2:free',
+      'agentica-org/deepcoder-14b-preview:free',
       // Popular paid models
       'openai/gpt-4o-mini',
       'openai/gpt-4o',
@@ -152,12 +156,13 @@ class LangChainFactory {
         return new ChatOpenAI({
           apiKey,
           model: config.defaultModel,
-          temperature: 0.7
-        }, {
-          baseURL: 'https://openrouter.ai/api/v1',
-          defaultHeaders: {
-            'HTTP-Referer': process.env.WEBSITE_URL || 'http://localhost:8080',
-            'X-Title': 'AI Course Generator'
+          temperature: 0.7,
+          configuration: {
+            baseURL: 'https://openrouter.ai/api/v1',
+            defaultHeaders: {
+              'HTTP-Referer': process.env.WEBSITE_URL || 'http://localhost:8080',
+              'X-Title': 'AI Course Generator'
+            }
           }
         });
       

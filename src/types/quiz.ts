@@ -45,6 +45,8 @@ export interface CreateQuizRequest {
   keyword: string;
   title: string;
   format?: string;
+  provider?: string;
+  model?: string;
   questionAndAnswers?: QuestionAnswer[];
 }
 

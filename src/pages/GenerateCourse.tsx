@@ -26,6 +26,8 @@ import SEO from "@/components/SEO";
 import { useToast } from "@/hooks/use-toast";
 import { serverURL } from "@/constants";
 import axios from "axios";
+import ProviderSelector from "@/components/ProviderSelector";
+import { useProviderPreferences, setGlobalProviderPreferences } from "@/hooks/useProviderPreferences";
 
 const courseFormSchema = z.object({
   topic: z.string().min(3, { message: "Topic must be at least 3 characters" }),
@@ -49,6 +51,25 @@ const GenerateCourse = () => {
   const [paidMember, setPaidMember] = useState(false);
   const [lang, setLang] = useState("English");
   const { toast } = useToast();
+  
+  // Use provider preferences hook for course generation
+  const {
+    selectedProvider,
+    selectedModel,
+    setSelectedProvider: setSelectedProviderInternal,
+    setSelectedModel: setSelectedModelInternal
+  } = useProviderPreferences('course');
+
+  // Wrapper functions that also sync to global preferences
+  const setSelectedProvider = (provider: string) => {
+    setSelectedProviderInternal(provider);
+    setGlobalProviderPreferences({ provider });
+  };
+
+  const setSelectedModel = (model: string) => {
+    setSelectedModelInternal(model);
+    setGlobalProviderPreferences({ model });
+  };
 
   const languages = [
     { code: "en", name: "English" },
@@ -195,14 +216,25 @@ const GenerateCourse = () => {
   async function sendPrompt(prompt: string) {
     const dataToSend = {
       prompt: prompt,
+      provider: selectedProvider || undefined, // Include provider if selected
+      model: selectedModel || undefined, // Include model if selected
+      temperature: 0.7 // Default temperature for course generation
     };
+    
     try {
       const postURL = serverURL + "/api/prompt";
       const token = localStorage.getItem("token");
       const res = await axios.post(postURL, dataToSend, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      
       const generatedText = res.data.generatedText;
+      
+      // Log provider metadata if available (for debugging)
+      if (res.data.metadata) {
+        console.log("Course generated using:", res.data.metadata);
+      }
+      
       const cleanedJsonString = generatedText
         .replace(/```json/g, "")
         .replace(/```/g, "");
@@ -211,19 +243,22 @@ const GenerateCourse = () => {
         setGeneratedTopics(parsedJson);
         setIsLoading(false);
       } catch (error) {
-        console.error(error);
+        console.error("JSON parsing error:", error);
         setIsLoading(false);
         toast({
           title: "Error",
-          description: "Internal Server Error",
+          description: "Failed to parse course content. Please try again.",
         });
       }
     } catch (error) {
-      console.error(error);
+      console.error("API request error:", error);
       setIsLoading(false);
+      
+      // Provide more specific error messages
+      const errorMessage = error.response?.data?.message || "Internal Server Error";
       toast({
         title: "Error",
-        description: "Internal Server Error",
+        description: errorMessage,
       });
     }
   }
@@ -247,6 +282,8 @@ const GenerateCourse = () => {
           type={selectedType}
           lang={lang.toLowerCase()}
           onClose={handleEditTopics}
+          selectedProvider={selectedProvider}
+          selectedModel={selectedModel}
         />
       </>
     );
@@ -471,6 +508,25 @@ const GenerateCourse = () => {
                       </FormItem>
                     )}
                   />
+
+                  {/* Provider Selection */}
+                  <div className="space-y-2">
+                    <FormLabel>AI Provider (Optional)</FormLabel>
+                    <ProviderSelector
+                      selectedProvider={selectedProvider}
+                      selectedModel={selectedModel}
+                      onProviderChange={setSelectedProvider}
+                      onModelChange={setSelectedModel}
+                      showHealthStatus={false}
+                      showModelSelector={true}
+                      showPerformanceIndicators={true}
+                      showCostInfo={true}
+                      className="border-0 shadow-none"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Choose your preferred AI provider for course generation. Performance and cost information is shown to help you decide.
+                    </p>
+                  </div>
 
                   <Button
                     onClick={() => onSubmit}

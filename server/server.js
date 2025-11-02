@@ -25,6 +25,10 @@ import { generateCourseSEO } from './utils/seo.js';
 import { getServerPort, getServerURL, validateConfig } from './utils/config.js';
 import llmService from './services/llmService.js';
 
+// NOTE: Google Generative AI SDK is still available for future advanced features
+// such as Gemini Live APIs, Deep Research, Google Search integration, etc.
+// Currently using LangChain for standardized multi-model support.
+
 // Load environment variables
 dotenv.config();
 
@@ -703,43 +707,30 @@ app.post('/api/prompt', requireAuth, async (req, res) => {
             return;
         }
 
-        // Fallback to original Gemini implementation for backward compatibility
-        const safetySettings = [
-            {
-                category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            },
-            {
-                category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            },
-            {
-                category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            },
-            {
-                category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            },
-        ];
-
-        const genAI = await getAI();
-        const genModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
-
-        const result = await genModel.generateContent(promptString);
-        const response = result.response;
-        const generatedText = response.text();
-        
-        res.status(200).json({ 
-            generatedText,
-            // Add metadata to indicate this used legacy path
-            metadata: {
-                provider: 'gemini',
-                providerName: 'Google Gemini (Legacy)',
-                model: 'gemini-2.0-flash',
-                legacy: true
-            }
+        // Fallback to LangChain Gemini for backward compatibility
+        const result = await llmService.generateContent(promptString, {
+          provider: 'gemini',
+          temperature: 0.7
         });
+
+        if (result.success) {
+          res.status(200).json({ 
+            generatedText: result.data.content,
+            // Add metadata to indicate this used fallback path
+            metadata: {
+              provider: result.data.provider,
+              providerName: result.data.providerName + ' (Fallback)',
+              model: result.data.model,
+              responseTime: result.data.responseTime,
+              legacy: true
+            }
+          });
+        } else {
+          res.status(500).json({ 
+            success: false, 
+            message: result.error.message || 'Content generation failed'
+          });
+        }
         
     } catch (error) {
         logger.error(`Prompt generation error: ${error.message}`, { 
@@ -926,24 +917,31 @@ app.post('/api/generate', requireAuth, async (req, res) => {
             },
         ];
 
-        const genAI = await getAI();
-        const genModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
-
-        const result = await genModel.generateContent(promptString);
-        const response = result.response;
-        const txt = response.text();
-        
-        res.status(200).json({ 
-            text: txt,
-            contentType: 'markdown',
-            // Add metadata to indicate this used legacy path
-            metadata: {
-                provider: 'gemini',
-                providerName: 'Google Gemini (Legacy)',
-                model: 'gemini-2.0-flash',
-                legacy: true
-            }
+        // Use LangChain Gemini for backward compatibility
+        const result = await llmService.generateContent(promptString, {
+          provider: 'gemini',
+          temperature: 0.7
         });
+
+        if (result.success) {
+          res.status(200).json({ 
+            text: result.data.content,
+            contentType: 'markdown',
+            // Add metadata to indicate this used fallback path
+            metadata: {
+              provider: result.data.provider,
+              providerName: result.data.providerName + ' (Fallback)',
+              model: result.data.model,
+              responseTime: result.data.responseTime,
+              legacy: true
+            }
+          });
+        } else {
+          res.status(500).json({ 
+            success: false, 
+            message: result.error.message || 'Content generation failed'
+          });
+        }
         
     } catch (error) {
         logger.error(`Generate theory error: ${error.message}`, { 
@@ -3039,50 +3037,49 @@ app.post('/api/flutterwavecancel', async (req, res) => {
 });
 
 
-//CHAT
+//CHAT (Enhanced with multi-LLM support)
 app.post('/api/chat', requireAuth, async (req, res) => {
     const receivedData = req.body;
-
     const promptString = receivedData.prompt;
+    const { provider, model, temperature } = receivedData;
 
-    const safetySettings = [
-        {
-            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-        {
-            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-        {
-            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-        {
-            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-    ];
-
-    const genAI = await getAI();
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
-
-    const prompt = promptString;
-
-    await model.generateContent(prompt).then(result => {
-        const response = result.response;
-        const txt = response.text();
-        // Store raw markdown instead of converting to HTML for better formatting
-        const text = txt;
-        res.status(200).json({ 
-            text,
-            contentType: 'markdown' // Add content type for frontend detection
+    try {
+        // Use new LLM service with provider support
+        const result = await llmService.generateContent(promptString, {
+            provider,
+            model,
+            temperature: temperature || 0.7
         });
-    }).catch(error => {
-        console.log('Error', error);
-        res.status(500).json({ success: false, message: 'Internal server error' });
-    })
 
+        if (result.success) {
+            // Maintain backward compatibility with existing response format
+            res.status(200).json({ 
+                text: result.data.content,
+                contentType: 'markdown',
+                // Add metadata for enhanced clients
+                metadata: {
+                    provider: result.data.provider,
+                    providerName: result.data.providerName,
+                    model: result.data.model,
+                    responseTime: result.data.responseTime,
+                    timestamp: result.timestamp
+                }
+            });
+        } else {
+            res.status(500).json({ 
+                success: false, 
+                message: result.error.message || 'Chat generation failed'
+            });
+        }
+        
+    } catch (error) {
+        logger.error(`Chat generation error: ${error.message}`, { 
+            error: error.stack, 
+            prompt: promptString?.substring(0, 100),
+            provider 
+        });
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
 });
 
 
@@ -3517,7 +3514,7 @@ const server = await startServer();
 //CREATE QUIZ
 app.post('/api/quiz/create', requireAuth, async (req, res) => {
     try {
-        const { userId, keyword, title, format, questionAndAnswers } = req.body;
+        const { userId, keyword, title, format, provider, model, questionAndAnswers } = req.body;
         
         if (!userId || !keyword || !title) {
             return res.status(400).json({
@@ -3540,10 +3537,19 @@ app.post('/api/quiz/create', requireAuth, async (req, res) => {
         
         Make the questions challenging and cover various aspects of the topic.`;
 
-        const genAI = await getAI();
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-        const result = await model.generateContent(quizPrompt);
-        const quizContent = result.response.text();
+        // Use LLM factory with provider selection
+        const llmService = require('./services/llmService');
+        const result = await llmService.generateContent({
+            prompt: quizPrompt,
+            provider: provider,
+            model: model
+        });
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to generate quiz content');
+        }
+        
+        const quizContent = result.content;
 
         // Generate unique slug
         const baseSlug = generateSlug(`${title}-${Date.now()}`);
@@ -3753,7 +3759,7 @@ app.delete('/api/quiz/:slug', async (req, res) => {
 //CREATE FLASHCARD
 app.post('/api/flashcard/create', requireAuth, async (req, res) => {
     try {
-        const { userId, keyword, title } = req.body;
+        const { userId, keyword, title, provider, model } = req.body;
 
         if (!userId || !keyword || !title) {
             return res.status(400).json({
@@ -3763,28 +3769,6 @@ app.post('/api/flashcard/create', requireAuth, async (req, res) => {
         }
 
         // Generate flashcard content using AI
-        const safetySettings = [
-            {
-                category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            },
-            {
-                category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            },
-            {
-                category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            },
-            {
-                category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            },
-        ];
-
-        const genAI = await getAI();
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
-
         const prompt = `Create a comprehensive set of flashcards for the topic: "${keyword}". 
         
         Generate 15-20 flashcards that cover the key concepts, definitions, and important facts about this topic.
@@ -3809,9 +3793,19 @@ app.post('/api/flashcard/create', requireAuth, async (req, res) => {
         
         Return only the JSON array, no additional text.`;
 
-        const result = await model.generateContent(prompt);
-        const response = result.response;
-        const generatedText = response.text();
+        // Use LLM factory with provider selection
+        const llmService = require('./services/llmService');
+        const result = await llmService.generateContent({
+            prompt: prompt,
+            provider: provider,
+            model: model
+        });
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to generate flashcard content');
+        }
+        
+        const generatedText = result.content;
 
         // Parse the generated flashcards
         let cards = [];
@@ -3843,9 +3837,9 @@ app.post('/api/flashcard/create', requireAuth, async (req, res) => {
             content: generatedText,
             cards,
             tokens: {
-                prompt: result.response.usageMetadata?.promptTokenCount || 0,
-                completion: result.response.usageMetadata?.candidatesTokenCount || 0,
-                total: result.response.usageMetadata?.totalTokenCount || 0
+                prompt: prompt.length,
+                completion: generatedText.length,
+                total: prompt.length + generatedText.length
             }
         });
 
@@ -3993,7 +3987,7 @@ app.delete('/api/flashcard/:slug', async (req, res) => {
 //CREATE GUIDE
 app.post('/api/guide/create', requireAuth, async (req, res) => {
     try {
-        const { userId, keyword, title, customization } = req.body;
+        const { userId, keyword, title, customization, provider, model } = req.body;
 
         if (!userId || !keyword || !title) {
             return res.status(400).json({
@@ -4003,28 +3997,6 @@ app.post('/api/guide/create', requireAuth, async (req, res) => {
         }
 
         // Generate guide content using AI
-        const safetySettings = [
-            {
-                category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            },
-            {
-                category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            },
-            {
-                category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            },
-            {
-                category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            },
-        ];
-
-        const genAI = await getAI();
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
-
         const prompt = `Create a comprehensive study guide for the topic: "${keyword}".
 
         Title: ${title}
@@ -4067,9 +4039,19 @@ app.post('/api/guide/create', requireAuth, async (req, res) => {
         
         Write the complete guide following this exact structure.`;
 
-        const result = await model.generateContent(prompt);
-        const response = result.response;
-        const generatedText = response.text();
+        // Use LLM factory with provider selection
+        const llmService = require('./services/llmService');
+        const result = await llmService.generateContent({
+            prompt: prompt,
+            provider: provider,
+            model: model
+        });
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to generate guide content');
+        }
+        
+        const generatedText = result.content;
         
         // Log the raw response for debugging (first 500 chars)
         logger.info(`AI Response preview: ${generatedText.substring(0, 500)}...`);
@@ -4174,9 +4156,9 @@ app.post('/api/guide/create', requireAuth, async (req, res) => {
             deepDiveTopics: guideData.deepDiveTopics || [],
             questions: guideData.questions || [],
             tokens: {
-                prompt: result.response.usageMetadata?.promptTokenCount || 0,
-                completion: result.response.usageMetadata?.candidatesTokenCount || 0,
-                total: result.response.usageMetadata?.totalTokenCount || 0
+                prompt: prompt.length,
+                completion: generatedText.length,
+                total: prompt.length + generatedText.length
             }
         });
 

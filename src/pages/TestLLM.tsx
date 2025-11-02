@@ -6,6 +6,7 @@ import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Send, 
   Loader2, 
@@ -18,6 +19,7 @@ import {
   Settings
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import ProviderComparison from '@/components/ProviderComparison';
 import ProviderSelector from '@/components/ProviderSelector';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
@@ -51,7 +53,21 @@ const TestLLM: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<GenerationResult[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [compareMode, setCompareMode] = useState(false);
   const responseRef = useRef<HTMLDivElement>(null);
+
+  // Load user preferences from localStorage on component mount
+  useEffect(() => {
+    const savedProvider = localStorage.getItem('llm-test-provider');
+    const savedModel = localStorage.getItem('llm-test-model');
+    const savedTemperature = localStorage.getItem('llm-test-temperature');
+    const savedAdvanced = localStorage.getItem('llm-test-advanced');
+
+    if (savedProvider) setSelectedProvider(savedProvider);
+    if (savedModel) setSelectedModel(savedModel);
+    if (savedTemperature) setTemperature([parseFloat(savedTemperature)]);
+    if (savedAdvanced) setShowAdvanced(savedAdvanced === 'true');
+  }, []);
 
   // Sample prompts for quick testing
   const samplePrompts = [
@@ -69,7 +85,7 @@ const TestLLM: React.FC = () => {
     }
   }, [results]);
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (retryCount = 0) => {
     if (!prompt.trim()) {
       toast({
         title: "Error",
@@ -115,6 +131,10 @@ const TestLLM: React.FC = () => {
         })
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
       const result: GenerationResult = await response.json();
       
       setResults(prev => [result, ...prev]);
@@ -134,9 +154,34 @@ const TestLLM: React.FC = () => {
 
     } catch (error) {
       console.error('Generation error:', error);
+      
+      // Retry logic for network errors (max 2 retries)
+      if (retryCount < 2 && (error instanceof TypeError || error.message.includes('fetch'))) {
+        console.log(`Retrying request (attempt ${retryCount + 1}/2)...`);
+        setTimeout(() => {
+          handleGenerate(retryCount + 1);
+        }, 1000 * (retryCount + 1)); // Exponential backoff
+        return;
+      }
+      
+      // Add the failed request to results for debugging
+      const failedResult: GenerationResult = {
+        success: false,
+        error: {
+          message: error instanceof Error ? error.message : "Network error occurred",
+          code: "NETWORK_ERROR",
+          details: retryCount > 0 ? `Failed after ${retryCount + 1} attempts` : "Failed to connect to the server"
+        },
+        timestamp: new Date().toISOString()
+      };
+      
+      setResults(prev => [failedResult, ...prev]);
+      
       toast({
         title: "Network Error",
-        description: "Failed to connect to the server",
+        description: retryCount > 0 
+          ? `Failed after ${retryCount + 1} attempts. Please check your connection.`
+          : "Failed to connect to the server. Check your connection and try again.",
         variant: "destructive"
       });
     } finally {
@@ -154,6 +199,120 @@ const TestLLM: React.FC = () => {
 
   const handleUseSamplePrompt = (samplePrompt: string) => {
     setPrompt(samplePrompt);
+  };
+
+  // Save user preferences to localStorage
+  const handleProviderChange = (provider: string) => {
+    setSelectedProvider(provider);
+    localStorage.setItem('llm-test-provider', provider);
+  };
+
+  const handleModelChange = (model: string) => {
+    setSelectedModel(model);
+    localStorage.setItem('llm-test-model', model);
+  };
+
+  const handleTemperatureChange = (newTemperature: number[]) => {
+    setTemperature(newTemperature);
+    localStorage.setItem('llm-test-temperature', newTemperature[0].toString());
+  };
+
+  const handleAdvancedToggle = (show: boolean) => {
+    setShowAdvanced(show);
+    localStorage.setItem('llm-test-advanced', show.toString());
+  };
+
+  // Compare providers by generating with multiple providers
+  const handleCompareProviders = async () => {
+    if (!prompt.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a prompt to compare providers",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
+    setCompareMode(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to use the comparison feature",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Get available providers
+      const providersResponse = await fetch('/api/llm/providers');
+      const providersData = await providersResponse.json();
+      
+      if (!providersData.success) {
+        throw new Error('Failed to fetch providers');
+      }
+
+      const availableProviders = providersData.providers.filter((p: any) => p.isAvailable);
+      
+      // Generate with each available provider
+      const comparePromises = availableProviders.map(async (provider: any) => {
+        try {
+          const response = await fetch('/api/llm/generate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              prompt: prompt.trim(),
+              provider: provider.id,
+              temperature: temperature[0]
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          return await response.json();
+        } catch (error) {
+          return {
+            success: false,
+            error: {
+              message: error instanceof Error ? error.message : "Unknown error",
+              code: "COMPARISON_ERROR"
+            },
+            timestamp: new Date().toISOString(),
+            provider: provider.id
+          };
+        }
+      });
+
+      const compareResults = await Promise.all(comparePromises);
+      
+      // Add all results to the results list
+      setResults(prev => [...compareResults.reverse(), ...prev]);
+
+      const successCount = compareResults.filter(r => r.success).length;
+      toast({
+        title: "Comparison Complete",
+        description: `Generated responses from ${successCount}/${compareResults.length} providers`
+      });
+
+    } catch (error) {
+      console.error('Comparison error:', error);
+      toast({
+        title: "Comparison Failed",
+        description: "Failed to compare providers. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+      setCompareMode(false);
+    }
   };
 
   const clearResults = () => {
@@ -177,15 +336,22 @@ const TestLLM: React.FC = () => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <Tabs defaultValue="single" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="single">Single Provider Test</TabsTrigger>
+          <TabsTrigger value="comparison">Provider Comparison</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="single" className="mt-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Input and Controls */}
         <div className="lg:col-span-1 space-y-6">
           {/* Provider Selection */}
           <ProviderSelector
             selectedProvider={selectedProvider}
             selectedModel={selectedModel}
-            onProviderChange={setSelectedProvider}
-            onModelChange={setSelectedModel}
+            onProviderChange={handleProviderChange}
+            onModelChange={handleModelChange}
             showHealthStatus={true}
             showModelSelector={true}
           />
@@ -226,7 +392,7 @@ const TestLLM: React.FC = () => {
               </div>
 
               {/* Advanced Settings */}
-              <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+              <Collapsible open={showAdvanced} onOpenChange={handleAdvancedToggle}>
                 <CollapsibleTrigger asChild>
                   <Button variant="ghost" size="sm" className="w-full">
                     <Settings className="w-4 h-4 mr-2" />
@@ -240,7 +406,7 @@ const TestLLM: React.FC = () => {
                     </label>
                     <Slider
                       value={temperature}
-                      onValueChange={setTemperature}
+                      onValueChange={handleTemperatureChange}
                       max={1}
                       min={0}
                       step={0.1}
@@ -253,25 +419,47 @@ const TestLLM: React.FC = () => {
                 </CollapsibleContent>
               </Collapsible>
 
-              {/* Generate Button */}
-              <Button
-                onClick={handleGenerate}
-                disabled={loading || !prompt.trim() || !selectedProvider}
-                className="w-full"
-                size="lg"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4 mr-2" />
-                    Generate Response
-                  </>
-                )}
-              </Button>
+              {/* Generate Buttons */}
+              <div className="space-y-2">
+                <Button
+                  onClick={handleGenerate}
+                  disabled={loading || !prompt.trim() || !selectedProvider}
+                  className="w-full"
+                  size="lg"
+                >
+                  {loading && !compareMode ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 mr-2" />
+                      Generate Response
+                    </>
+                  )}
+                </Button>
+                
+                <Button
+                  onClick={handleCompareProviders}
+                  disabled={loading || !prompt.trim()}
+                  variant="outline"
+                  className="w-full"
+                  size="lg"
+                >
+                  {loading && compareMode ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Comparing...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Compare All Providers
+                    </>
+                  )}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -330,6 +518,7 @@ const TestLLM: React.FC = () => {
                         <span>⚡ {result.data.responseTime}ms</span>
                         <span>📝 {result.data.metadata.responseLength} chars</span>
                         <span>🌡️ {result.data.metadata.temperature}</span>
+                        <span>📊 {result.data.metadata.promptLength} → {result.data.metadata.responseLength}</span>
                       </div>
                     )}
                   </CardHeader>
@@ -373,6 +562,12 @@ const TestLLM: React.FC = () => {
           )}
         </div>
       </div>
+        </TabsContent>
+        
+        <TabsContent value="comparison" className="mt-6">
+          <ProviderComparison />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

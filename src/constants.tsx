@@ -19,19 +19,16 @@ const getServerURL = () => {
     return `${window.location.protocol}//${window.location.host}`;
   }
   
-  // In development, try to detect from browser
+  // In development, try common ports in order
   if (import.meta.env.DEV && typeof window !== 'undefined') {
     const protocol = window.location.protocol;
     const hostname = window.location.hostname;
     
-    // Check if there's a server running on common ports
-    const commonPorts = [5010, 5011, 5012, 5013];
-    
-    // For now, return the most likely port based on current setup
-    return `${protocol}//${hostname}:5010`;
+    // Try ports in order: 5011 (current), 5010 (default), 5012, 5013
+    return `${protocol}//${hostname}:5011`;
   }
   
-  return 'http://localhost:5010';
+  return 'http://localhost:5011';
 };
 
 export const serverURL = getServerURL();

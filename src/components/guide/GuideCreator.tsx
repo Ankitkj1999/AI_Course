@@ -8,11 +8,15 @@ import { Loader2, BookOpen, Sparkles, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { guideService } from '@/services/guideService';
 import { useNavigate } from 'react-router-dom';
+import ProviderSelector from '@/components/ProviderSelector';
+import { useProviderPreferences } from '@/hooks/useProviderPreferences';
 
 const GuideCreator: React.FC = () => {
   const [keyword, setKeyword] = useState('');
   const [title, setTitle] = useState('');
   const [customization, setCustomization] = useState('');
+  const [selectedProvider, setSelectedProvider] = useState<string>('');
+  const [selectedModel, setSelectedModel] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -46,7 +50,9 @@ const GuideCreator: React.FC = () => {
         userId,
         keyword: keyword.trim(),
         title: title.trim(),
-        customization: customization.trim() || undefined
+        customization: customization.trim() || undefined,
+        provider: selectedProvider,
+        model: selectedModel
       });
 
       if (response.success) {
@@ -95,6 +101,16 @@ const GuideCreator: React.FC = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Provider Selection */}
+            <ProviderSelector
+              selectedProvider={selectedProvider}
+              selectedModel={selectedModel}
+              onProviderChange={setSelectedProvider}
+              onModelChange={setSelectedModel}
+              showPerformanceIndicators={true}
+              showCostInfo={true}
+              className="mb-6"
+            />
             <div className="space-y-2">
               <Label htmlFor="keyword" className="text-gray-700 dark:text-gray-300">
                 Topic/Keyword *

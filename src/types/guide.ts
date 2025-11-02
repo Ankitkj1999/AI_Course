@@ -41,6 +41,8 @@ export interface CreateGuideRequest {
   keyword: string;
   title: string;
   customization?: string;
+  provider?: string;
+  model?: string;
 }
 
 export interface CreateGuideResponse {

@@ -1,6 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import {
   Accordion,
@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { getProviderPreferencesWithFallback } from '@/hooks/useProviderPreferences';
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -77,6 +78,7 @@ const CoursePage = () => {
   const [isChatOpen, setIsChatOpen] = useState(true);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const initializedRef = useRef(false);
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const mainContentRef = useRef<HTMLDivElement>(null);
@@ -122,7 +124,7 @@ const CoursePage = () => {
     return (doneCount / topic.subtopics.length) * 100;
   };
 
-  async function getNotes() {
+  const getNotes = useCallback(async () => {
     try {
       const postURL = serverURL + "/api/getnotes";
       const response = await axios.post(postURL, { course: courseId });
@@ -132,7 +134,7 @@ const CoursePage = () => {
     } catch (error) {
       console.error(error);
     }
-  }
+  }, [courseId]);
 
   const handleSaveNote = async () => {
     const postURL = serverURL + "/api/savenotes";
@@ -193,10 +195,38 @@ const CoursePage = () => {
     height: "250px",
     width: "100%",
   };
-  useEffect(() => {
-    if (isMobile) {
-      setIsChatOpen(false);
+
+  const storeLocal = useCallback(async (messages) => {
+    try {
+      sessionStorage.setItem(mainTopic, JSON.stringify(messages));
+    } catch (error) {
+      console.error(error);
     }
+  }, [mainTopic]);
+
+  const loadMessages = useCallback(async () => {
+    try {
+      const jsonValue = sessionStorage.getItem(mainTopic);
+      if (jsonValue !== null) {
+        setMessages(JSON.parse(jsonValue));
+      } else {
+        const newMessages = [
+          ...messages,
+          { text: defaultMessage, sender: "bot" },
+        ];
+        setMessages(newMessages);
+        await storeLocal(newMessages);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }, [mainTopic, messages, defaultMessage, storeLocal]);
+
+  // Initial setup effect - runs once on mount
+  useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
     loadMessages();
     getNotes();
 
@@ -205,6 +235,27 @@ const CoursePage = () => {
       mainContentRef.current.scrollTop = 0;
     }
     window.scrollTo(0, 0);
+  }, [loadMessages, getNotes]);
+
+  // Mobile effect
+  useEffect(() => {
+    if (isMobile) {
+      setIsChatOpen(false);
+    }
+  }, [isMobile]);
+
+  // Main topic validation effect
+  useEffect(() => {
+    if (!mainTopic) {
+      navigate("/create");
+    }
+  }, [mainTopic, navigate]);
+
+  // Data processing effect - runs when jsonData or related data changes
+  useEffect(() => {
+    if (!mainTopic || !jsonData || !jsonData[mainTopic.toLowerCase()]) {
+      return;
+    }
 
     const CountDoneTopics = () => {
       let doneCount = 0;
@@ -231,39 +282,42 @@ const CoursePage = () => {
       }
     };
 
-    if (!mainTopic) {
-      navigate("/create");
-    } else {
-      if (percentage >= 100) {
-        setIsCompleted(true);
-      }
-
-      const mainTopicData = jsonData[mainTopic.toLowerCase()][0];
-      const firstSubtopic = mainTopicData.subtopics[0];
-
-      setSelected(firstSubtopic.title);
-      setActiveAccordionItem(mainTopicData.title);
-
-      // Properly prepare content
-      const prepared = prepareContentForRendering(
-        firstSubtopic.theory,
-        firstSubtopic.contentType
-      );
-
-      setTheory(prepared.content);
-      setContentType(prepared.type);
-
-      if (type === "video & text course") {
-        setMedia(firstSubtopic.youtube);
-      } else {
-        setMedia(firstSubtopic.image);
-      }
-
-      setIsLoading(false);
-      sessionStorage.setItem("jsonData", JSON.stringify(jsonData));
-      CountDoneTopics();
+    const mainTopicData = jsonData[mainTopic.toLowerCase()][0];
+    if (!mainTopicData || !mainTopicData.subtopics || mainTopicData.subtopics.length === 0) {
+      return;
     }
-  }, [isMobile]);
+
+    const firstSubtopic = mainTopicData.subtopics[0];
+
+    setSelected(firstSubtopic.title);
+    setActiveAccordionItem(mainTopicData.title);
+
+    // Properly prepare content
+    const prepared = prepareContentForRendering(
+      firstSubtopic.theory,
+      firstSubtopic.contentType
+    );
+
+    setTheory(prepared.content);
+    setContentType(prepared.type);
+
+    if (type === "video & text course") {
+      setMedia(firstSubtopic.youtube);
+    } else {
+      setMedia(firstSubtopic.image);
+    }
+
+    setIsLoading(false);
+    sessionStorage.setItem("jsonData", JSON.stringify(jsonData));
+    CountDoneTopics();
+  }, [jsonData, mainTopic, pass, type]);
+
+  // Completion check effect
+  useEffect(() => {
+    if (percentage >= 100) {
+      setIsCompleted(true);
+    }
+  }, [percentage]);
 
   const toggleDoneState = (done) => {
     const { currentTopicIndex, currentSubtopicIndex } =
@@ -276,31 +330,9 @@ const CoursePage = () => {
     }
   };
 
-  const loadMessages = async () => {
-    try {
-      const jsonValue = sessionStorage.getItem(mainTopic);
-      if (jsonValue !== null) {
-        setMessages(JSON.parse(jsonValue));
-      } else {
-        const newMessages = [
-          ...messages,
-          { text: defaultMessage, sender: "bot" },
-        ];
-        setMessages(newMessages);
-        await storeLocal(newMessages);
-      }
-    } catch (error) {
-      console.error(error);
-    }
-  };
 
-  async function storeLocal(messages) {
-    try {
-      sessionStorage.setItem(mainTopic, JSON.stringify(messages));
-    } catch (error) {
-      console.error(error);
-    }
-  }
+
+
 
   const sendMessage = async () => {
     if (newMessage.trim() === "") return;
@@ -312,7 +344,13 @@ const CoursePage = () => {
     setNewMessage("");
 
     const mainPrompt = defaultPrompt + newMessage;
-    const dataToSend = { prompt: mainPrompt };
+    const preferences = getProviderPreferencesWithFallback('course');
+    const dataToSend = { 
+      prompt: mainPrompt,
+      provider: preferences.provider,
+      model: preferences.model,
+      temperature: 0.7
+    };
     const url = serverURL + "/api/chat";
 
     try {
@@ -529,8 +567,12 @@ const CoursePage = () => {
   };
 
   async function sendPrompt(prompt, promptImage, topics, sub) {
+    const preferences = getProviderPreferencesWithFallback('course');
     const dataToSend = {
       prompt: prompt,
+      provider: preferences.provider,
+      model: preferences.model,
+      temperature: 0.7
     };
     try {
       const postURL = serverURL + "/api/generate";
@@ -737,8 +779,12 @@ const CoursePage = () => {
   }
 
   async function sendSummery(prompt, url, mTopic, mSubTopic) {
+    const preferences = getProviderPreferencesWithFallback('course');
     const dataToSend = {
       prompt: prompt,
+      provider: preferences.provider,
+      model: preferences.model,
+      temperature: 0.7
     };
     try {
       const postURL = serverURL + "/api/generate";

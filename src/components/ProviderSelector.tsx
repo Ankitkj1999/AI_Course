@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, Zap, DollarSign, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Loader2, Zap, DollarSign, CheckCircle, XCircle, Clock, TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { getGlobalProviderPreferences } from '@/hooks/useProviderPreferences';
+import ProviderPerformanceIndicator from './ProviderPerformanceIndicator';
 
 interface Provider {
   id: string;
@@ -34,6 +36,9 @@ interface ProviderSelectorProps {
   className?: string;
   showHealthStatus?: boolean;
   showModelSelector?: boolean;
+  autoLoadPreferences?: boolean; // New prop to control auto-loading preferences
+  showPerformanceIndicators?: boolean; // New prop to show performance info
+  showCostInfo?: boolean; // New prop to show cost information
 }
 
 const ProviderSelector: React.FC<ProviderSelectorProps> = ({
@@ -43,7 +48,10 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
   onModelChange,
   className = '',
   showHealthStatus = true,
-  showModelSelector = true
+  showModelSelector = true,
+  autoLoadPreferences = true,
+  showPerformanceIndicators = false,
+  showCostInfo = false
 }) => {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [healthData, setHealthData] = useState<ProviderHealth[]>([]);
@@ -55,25 +63,45 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
     fetchProviders();
   }, []);
 
-  // Auto-select first available provider if none selected
+  // Auto-load preferences and select provider if none selected
   useEffect(() => {
-    if (!selectedProvider && providers.length > 0) {
+    if (!selectedProvider && providers.length > 0 && autoLoadPreferences) {
+      const preferences = getGlobalProviderPreferences();
+      
+      // First try to use saved preferences
+      if (preferences.provider) {
+        const savedProvider = providers.find(p => p.id === preferences.provider && p.isAvailable);
+        if (savedProvider) {
+          onProviderChange(savedProvider.id);
+          return;
+        }
+      }
+      
+      // Fallback to first available provider
       const availableProvider = providers.find(p => p.isAvailable);
       if (availableProvider) {
         onProviderChange(availableProvider.id);
       }
     }
-  }, [providers, selectedProvider, onProviderChange]);
+  }, [providers, selectedProvider, onProviderChange, autoLoadPreferences]);
 
-  // Auto-select first model when provider changes
+  // Auto-select model when provider changes
   useEffect(() => {
-    if (selectedProvider && !selectedModel) {
+    if (selectedProvider && !selectedModel && autoLoadPreferences) {
       const provider = providers.find(p => p.id === selectedProvider);
       if (provider && provider.models.length > 0) {
-        onModelChange(provider.models[0]);
+        const preferences = getGlobalProviderPreferences();
+        
+        // First try to use saved model if it's available for this provider
+        if (preferences.model && provider.models.includes(preferences.model)) {
+          onModelChange(preferences.model);
+        } else {
+          // Fallback to first available model
+          onModelChange(provider.models[0]);
+        }
       }
     }
-  }, [selectedProvider, selectedModel, providers, onModelChange]);
+  }, [selectedProvider, selectedModel, providers, onModelChange, autoLoadPreferences]);
 
   const fetchProviders = async () => {
     try {
@@ -287,6 +315,19 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
                 </span>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Performance Indicators */}
+        {showPerformanceIndicators && selectedProvider && selectedProviderData?.isAvailable && (
+          <div className="pt-2 border-t">
+            <ProviderPerformanceIndicator
+              providerId={selectedProvider}
+              showCostInfo={showCostInfo}
+              showSpeedInfo={true}
+              showHealthStatus={false} // Already shown above
+              compact={true}
+            />
           </div>
         )}
       </CardContent>

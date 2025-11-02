@@ -8,6 +8,8 @@ import { Loader2, Brain, Sparkles, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { flashcardService } from '@/services/flashcardService';
 import { useNavigate } from 'react-router-dom';
+import ProviderSelector from '@/components/ProviderSelector';
+import { useProviderPreferences } from '@/hooks/useProviderPreferences';
 
 const FlashcardCreator: React.FC = () => {
   const [keyword, setKeyword] = useState('');
@@ -15,6 +17,14 @@ const FlashcardCreator: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  
+  // Use provider preferences hook for flashcard generation
+  const {
+    selectedProvider,
+    selectedModel,
+    setSelectedProvider,
+    setSelectedModel
+  } = useProviderPreferences('flashcard');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,7 +54,9 @@ const FlashcardCreator: React.FC = () => {
       const response = await flashcardService.createFlashcardSet({
         userId,
         keyword: keyword.trim(),
-        title: title.trim()
+        title: title.trim(),
+        provider: selectedProvider,
+        model: selectedModel
       });
 
       if (response.success) {
@@ -93,6 +105,16 @@ const FlashcardCreator: React.FC = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Provider Selection */}
+            <ProviderSelector
+              selectedProvider={selectedProvider}
+              selectedModel={selectedModel}
+              onProviderChange={setSelectedProvider}
+              onModelChange={setSelectedModel}
+              showPerformanceIndicators={true}
+              showCostInfo={true}
+              className="mb-6"
+            />
             <div className="space-y-2">
               <Label htmlFor="keyword" className="text-gray-700 dark:text-gray-300">
                 Topic/Keyword *

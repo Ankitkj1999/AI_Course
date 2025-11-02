@@ -5,6 +5,8 @@ import { getQuizURL } from '@/utils/config';
 import { LoadingButton } from '@/components/ui/loading';
 import { useToast } from '@/hooks/use-toast';
 import { Brain, Sparkles } from 'lucide-react';
+import ProviderSelector from '@/components/ProviderSelector';
+import { useProviderPreferences } from '@/hooks/useProviderPreferences';
 
 interface QuizCreatorProps {
   userId: string;
@@ -20,6 +22,14 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
   });
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Use provider preferences hook for quiz generation
+  const {
+    selectedProvider,
+    selectedModel,
+    setSelectedProvider,
+    setSelectedModel
+  } = useProviderPreferences('quiz');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +47,9 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
         userId,
         keyword: formData.keyword.trim(),
         title: formData.title.trim(),
-        format: formData.format
+        format: formData.format,
+        provider: selectedProvider,
+        model: selectedModel
       });
 
       if (response.success) {
@@ -91,6 +103,16 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Provider Selection */}
+          <ProviderSelector
+            selectedProvider={selectedProvider}
+            selectedModel={selectedModel}
+            onProviderChange={setSelectedProvider}
+            onModelChange={setSelectedModel}
+            showPerformanceIndicators={true}
+            showCostInfo={true}
+            className="mb-6"
+          />
           {/* Topic/Keyword */}
           <div>
             <label htmlFor="keyword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

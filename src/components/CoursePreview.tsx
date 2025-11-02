@@ -18,6 +18,8 @@ interface CoursePreviewProps {
     type: string,
     lang: string,
     onClose?: () => void;
+    selectedProvider?: string;
+    selectedModel?: string;
 }
 
 const CoursePreview: React.FC<CoursePreviewProps> = ({
@@ -27,6 +29,8 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
     type,
     lang,
     onClose,
+    selectedProvider,
+    selectedModel,
 }) => {
     const navigate = useNavigate();
     const [isLoadingCourse, setIsLoadingCourse] = useState(false);
@@ -58,6 +62,9 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
     async function sendPrompt(prompt, promptImage) {
         const dataToSend = {
             prompt: prompt,
+            provider: selectedProvider,
+            model: selectedModel,
+            temperature: 0.7
         };
         try {
             const postURL = serverURL + '/api/generate';
@@ -251,6 +258,9 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
     async function sendSummery(prompt, url) {
         const dataToSend = {
             prompt: prompt,
+            provider: selectedProvider,
+            model: selectedModel,
+            temperature: 0.7
         };
         try {
             const postURL = serverURL + '/api/generate';

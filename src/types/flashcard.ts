@@ -46,6 +46,8 @@ export interface CreateFlashcardRequest {
   userId: string;
   keyword: string;
   title: string;
+  provider?: string;
+  model?: string;
 }
 
 export interface CreateFlashcardResponse {
