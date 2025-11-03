@@ -26,7 +26,15 @@ export const QuizViewer: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   
   // Quiz state
-  const [parsedQuiz, setParsedQuiz] = useState<any>(null);
+  const [parsedQuiz, setParsedQuiz] = useState<{
+    questions: Array<{
+      question: string;
+      options: string[];
+      correctAnswer: number;
+      explanation: string;
+    }>;
+    totalQuestions: number;
+  } | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [userAnswers, setUserAnswers] = useState<number[]>([]);
   const [showResults, setShowResults] = useState(false);
@@ -125,7 +133,7 @@ export const QuizViewer: React.FC = () => {
   const getQuizStats = () => {
     if (!parsedQuiz || !showResults) return null;
     
-    const correctAnswers = parsedQuiz.questions.map((q: any) => q.correctAnswer);
+    const correctAnswers = parsedQuiz.questions.map((q) => q.correctAnswer);
     return QuizParser.generateQuizStats(userAnswers, correctAnswers);
   };
 
@@ -154,6 +162,21 @@ export const QuizViewer: React.FC = () => {
 
   const stats = getQuizStats();
   const currentQ = parsedQuiz.questions[currentQuestion];
+
+  if (!currentQ) {
+    return (
+      <div className="max-w-4xl mx-auto p-6 text-center">
+        <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
+        <p className="text-gray-600 mb-4">Unable to load quiz question. The quiz content may be malformed.</p>
+        <button
+          onClick={() => navigate('/dashboard/quizzes')}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          Back to Quizzes
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -242,7 +265,7 @@ export const QuizViewer: React.FC = () => {
           {/* Question Review */}
           <div className="space-y-4 mb-8">
             <h3 className="text-lg font-semibold text-gray-900">Review Answers</h3>
-            {parsedQuiz.questions.map((question: any, index: number) => {
+            {parsedQuiz.questions.map((question, index: number) => {
               const userAnswer = userAnswers[index];
               const isCorrect = userAnswer === question.correctAnswer;
               

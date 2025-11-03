@@ -3538,18 +3538,16 @@ app.post('/api/quiz/create', requireAuth, async (req, res) => {
         Make the questions challenging and cover various aspects of the topic.`;
 
         // Use LLM factory with provider selection
-        const llmService = require('./services/llmService');
-        const result = await llmService.generateContent({
-            prompt: quizPrompt,
+        const result = await llmService.generateContent(quizPrompt, {
             provider: provider,
             model: model
         });
-        
+
         if (!result.success) {
             throw new Error(result.error || 'Failed to generate quiz content');
         }
-        
-        const quizContent = result.content;
+
+        const quizContent = result.data.content;
 
         // Generate unique slug
         const baseSlug = generateSlug(`${title}-${Date.now()}`);
@@ -3794,18 +3792,16 @@ app.post('/api/flashcard/create', requireAuth, async (req, res) => {
         Return only the JSON array, no additional text.`;
 
         // Use LLM factory with provider selection
-        const llmService = require('./services/llmService');
-        const result = await llmService.generateContent({
-            prompt: prompt,
+        const result = await llmService.generateContent(prompt, {
             provider: provider,
             model: model
         });
-        
+
         if (!result.success) {
             throw new Error(result.error || 'Failed to generate flashcard content');
         }
-        
-        const generatedText = result.content;
+
+        const generatedText = result.data.content;
 
         // Parse the generated flashcards
         let cards = [];
@@ -4040,18 +4036,16 @@ app.post('/api/guide/create', requireAuth, async (req, res) => {
         Write the complete guide following this exact structure.`;
 
         // Use LLM factory with provider selection
-        const llmService = require('./services/llmService');
-        const result = await llmService.generateContent({
-            prompt: prompt,
+        const result = await llmService.generateContent(prompt, {
             provider: provider,
             model: model
         });
-        
+
         if (!result.success) {
             throw new Error(result.error || 'Failed to generate guide content');
         }
-        
-        const generatedText = result.content;
+
+        const generatedText = result.data.content;
         
         // Log the raw response for debugging (first 500 chars)
         logger.info(`AI Response preview: ${generatedText.substring(0, 500)}...`);

@@ -62,8 +62,8 @@ export class QuizParser {
       explanation: string;
     }> = [];
 
-    // Split content by questions (lines starting with #)
-    const questionBlocks = content.split(/^# /gm).filter(block => block.trim());
+    // Split content by questions (lines starting with # or ##)
+    const questionBlocks = content.split(/^#{1,2} /gm).filter(block => block.trim());
 
     questionBlocks.forEach(block => {
       const lines = block.trim().split('\n');
