@@ -38,7 +38,7 @@ export class QuizService {
 
   // Delete quiz
   static async deleteQuiz(slug: string, userId: string): Promise<{ success: boolean; message: string }> {
-    const response = await apiDelete(`/quiz/${slug}`, { userId });
+    const response = await apiDelete(`/quiz/${slug}`, { body: JSON.stringify({ userId }) });
     return response.json();
   }
 }

@@ -24,22 +24,35 @@ export const flashcardService = {
 
   // Get user's flashcard sets with pagination
   async getUserFlashcards(userId: string, page: number = 1, limit: number = 10): Promise<FlashcardListResponse> {
+    const token = localStorage.getItem("token");
     const response = await axios.get(`${API_BASE}/flashcards`, {
-      params: { userId, page, limit }
+      params: { userId, page, limit },
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
     });
     return response.data;
   },
 
   // Get flashcard set by slug
   async getFlashcardBySlug(slug: string): Promise<FlashcardResponse> {
-    const response = await axios.get(`${API_BASE}/flashcard/${slug}`);
+    const token = localStorage.getItem("token");
+    const response = await axios.get(`${API_BASE}/flashcard/${slug}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
     return response.data;
   },
 
   // Delete flashcard set
   async deleteFlashcard(slug: string, userId: string): Promise<{ success: boolean; message: string }> {
+    const token = localStorage.getItem("token");
     const response = await axios.delete(`${API_BASE}/flashcard/${slug}`, {
-      data: { userId }
+      data: { userId },
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
     });
     return response.data;
   }
