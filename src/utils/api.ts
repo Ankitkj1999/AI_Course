@@ -35,13 +35,17 @@ export const resetServerURL = () => {
 export const apiFetch = async (endpoint: string, options: RequestInit = {}): Promise<Response> => {
   const serverURL = await getServerURL();
   const url = `${serverURL}/api${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
-  
+
+  // Get token from localStorage
+  const token = localStorage.getItem('token');
+
   console.log(`🌐 API Call: ${options.method || 'GET'} ${url}`);
-  
+
   try {
     const response = await fetch(url, {
       headers: {
         'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
         ...options.headers,
       },
       ...options,
@@ -50,23 +54,24 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}): Pro
     return response;
   } catch (error) {
     console.error(`❌ API Error for ${url}:`, error);
-    
+
     // If request fails, try to detect server URL again
     if (error instanceof TypeError && error.message.includes('fetch')) {
       console.log('🔄 Retrying with server detection...');
       resetServerURL();
       const newServerURL = await getServerURL();
       const retryUrl = `${newServerURL}/api${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
-      
+
       return fetch(retryUrl, {
         headers: {
           'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
           ...options.headers,
         },
         ...options,
       });
     }
-    
+
     throw error;
   }
 };

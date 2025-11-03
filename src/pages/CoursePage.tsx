@@ -251,7 +251,45 @@ const CoursePage = () => {
     }
   }, [mainTopic, navigate]);
 
-  // Data processing effect - runs when jsonData or related data changes
+  // Data processing effect - runs when jsonData changes initially
+  useEffect(() => {
+    if (!mainTopic || !jsonData || !jsonData[mainTopic.toLowerCase()]) {
+      return;
+    }
+
+    const mainTopicData = jsonData[mainTopic.toLowerCase()][0];
+    if (!mainTopicData || !mainTopicData.subtopics || mainTopicData.subtopics.length === 0) {
+      return;
+    }
+
+    // Only set initial selection and content if nothing is selected yet
+    if (!selected) {
+      const firstSubtopic = mainTopicData.subtopics[0];
+      
+      setSelected(firstSubtopic.title);
+      setActiveAccordionItem(mainTopicData.title);
+
+      // Properly prepare content
+      const prepared = prepareContentForRendering(
+        firstSubtopic.theory,
+        firstSubtopic.contentType
+      );
+
+      setTheory(prepared.content);
+      setContentType(prepared.type);
+
+      if (type === "video & text course") {
+        setMedia(firstSubtopic.youtube);
+      } else {
+        setMedia(firstSubtopic.image);
+      }
+    }
+
+    setIsLoading(false);
+    sessionStorage.setItem("jsonData", JSON.stringify(jsonData));
+  }, [jsonData, mainTopic, type, selected]);
+
+  // Separate effect for counting done topics
   useEffect(() => {
     if (!mainTopic || !jsonData || !jsonData[mainTopic.toLowerCase()]) {
       return;
@@ -282,35 +320,8 @@ const CoursePage = () => {
       }
     };
 
-    const mainTopicData = jsonData[mainTopic.toLowerCase()][0];
-    if (!mainTopicData || !mainTopicData.subtopics || mainTopicData.subtopics.length === 0) {
-      return;
-    }
-
-    const firstSubtopic = mainTopicData.subtopics[0];
-
-    setSelected(firstSubtopic.title);
-    setActiveAccordionItem(mainTopicData.title);
-
-    // Properly prepare content
-    const prepared = prepareContentForRendering(
-      firstSubtopic.theory,
-      firstSubtopic.contentType
-    );
-
-    setTheory(prepared.content);
-    setContentType(prepared.type);
-
-    if (type === "video & text course") {
-      setMedia(firstSubtopic.youtube);
-    } else {
-      setMedia(firstSubtopic.image);
-    }
-
-    setIsLoading(false);
-    sessionStorage.setItem("jsonData", JSON.stringify(jsonData));
     CountDoneTopics();
-  }, [jsonData, mainTopic, pass, type]);
+  }, [jsonData, mainTopic, pass]);
 
   // Completion check effect
   useEffect(() => {
