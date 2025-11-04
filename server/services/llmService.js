@@ -8,12 +8,27 @@ class LLMService {
   constructor() {
     this.factory = llmFactory;
     this.config = llmConfig;
-    
+
     // Validate configuration on startup
     try {
       this.config.validate();
     } catch (error) {
       console.error('LLM Configuration Error:', error.message);
+    }
+
+    // Ensure providers are initialized asynchronously
+    this.initializeProviders();
+  }
+
+  /**
+   * Initialize providers asynchronously
+   */
+  async initializeProviders() {
+    try {
+      await this.factory.initializeProviders();
+      console.log('LLM Service providers initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize LLM providers:', error.message);
     }
   }
 
@@ -22,12 +37,18 @@ class LLMService {
    */
   async generateContent(prompt, options = {}) {
     const startTime = Date.now();
-    
+
     // Determine which provider to use (declare outside try block)
     const providerId = options.provider || this.factory.getDefaultProvider();
-    
+
     if (!providerId) {
       throw new Error('No LLM providers are available');
+    }
+
+    // Wait for providers to be initialized if needed
+    if (this.factory.providers.size === 0) {
+      console.log('Waiting for provider initialization...');
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
     }
 
     // Validate provider

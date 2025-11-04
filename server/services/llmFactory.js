@@ -3,6 +3,7 @@ import { ChatAnthropic } from '@langchain/anthropic';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { ChatGroq } from '@langchain/groq';
 import dotenv from 'dotenv';
+import axios from 'axios';
 
 // Load environment variables
 dotenv.config();
@@ -47,27 +48,10 @@ const PROVIDER_CONFIGS = {
     id: 'openrouter',
     name: 'OpenRouter (Multi-Model)',
     isFree: false,
-    defaultModel: 'meta-llama/llama-3.1-8b-instruct:free',
+    defaultModel: null, // Will be set dynamically
     envKeyName: 'OPENROUTER_API_KEY',
-    availableModels: [
-      // Free models
-      'meta-llama/llama-3.1-8b-instruct:free',
-      'microsoft/phi-3-mini-128k-instruct:free',
-      'google/gemma-2-9b-it:free',
-      'minimax/minimax-m2:free',
-      'google/gemma-3-27b-it:free',
-      'tngtech/deepseek-r1t2-chimera:free',
-      'nvidia/nemotron-nano-9b-v2:free',
-      'agentica-org/deepcoder-14b-preview:free',
-      // Popular paid models
-      'openai/gpt-4o-mini',
-      'openai/gpt-4o',
-      'anthropic/claude-3.5-sonnet',
-      'anthropic/claude-3-haiku',
-      'meta-llama/llama-3.1-70b-instruct',
-      'google/gemini-pro-1.5',
-      'mistralai/mixtral-8x7b-instruct'
-    ]
+    availableModels: [], // Will be populated dynamically
+    dynamicModels: true
   }
 };
 
@@ -77,27 +61,34 @@ const PROVIDER_CONFIGS = {
 class LangChainFactory {
   constructor() {
     this.providers = new Map();
+    this.modelCache = new Map(); // Cache for OpenRouter models
+    this.cacheExpiry = 30 * 60 * 1000; // 30 minutes cache
     this.initializeProviders();
   }
 
   /**
    * Initialize available providers based on environment variables
    */
-  initializeProviders() {
+  async initializeProviders() {
     console.log('Initializing LLM providers...');
-    
+
     for (const [providerId, config] of Object.entries(PROVIDER_CONFIGS)) {
       const apiKey = process.env[config.envKeyName];
-      
+
       if (apiKey) {
         try {
-          const provider = this.createProvider(providerId, config, apiKey);
-          this.providers.set(providerId, {
-            config,
-            instance: provider,
-            isAvailable: true
-          });
-          console.log(`✓ ${config.name} provider initialized`);
+          // Handle dynamic models for OpenRouter
+          if (config.dynamicModels) {
+            await this.initializeDynamicProvider(providerId, config, apiKey);
+          } else {
+            const provider = this.createProvider(providerId, config, apiKey);
+            this.providers.set(providerId, {
+              config,
+              instance: provider,
+              isAvailable: true
+            });
+            console.log(`✓ ${config.name} provider initialized`);
+          }
         } catch (error) {
           console.error(`✗ Failed to initialize ${config.name}:`, error.message);
           this.providers.set(providerId, {
@@ -120,6 +111,130 @@ class LangChainFactory {
   }
 
   /**
+   * Initialize dynamic provider (OpenRouter)
+   */
+  async initializeDynamicProvider(providerId, config, apiKey) {
+    try {
+      const models = await this.fetchOpenRouterModels(apiKey);
+
+      if (models.length === 0) {
+        throw new Error('No models available from OpenRouter');
+      }
+
+      // Update config with dynamic models
+      const updatedConfig = {
+        ...config,
+        availableModels: models.map(m => m.id),
+        defaultModel: models[0].id // Use first available model as default
+      };
+
+      const provider = this.createProvider(providerId, updatedConfig, apiKey);
+      this.providers.set(providerId, {
+        config: updatedConfig,
+        instance: provider,
+        isAvailable: true
+      });
+
+      console.log(`✓ ${config.name} provider initialized with ${models.length} models`);
+    } catch (error) {
+      console.error(`✗ Failed to initialize ${config.name}:`, error.message);
+      this.providers.set(providerId, {
+        config,
+        instance: null,
+        isAvailable: false,
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Fetch available models from OpenRouter API
+   */
+  async fetchOpenRouterModels(apiKey, preferFree = true) {
+    const cacheKey = `openrouter_models_${preferFree}`;
+    const cached = this.modelCache.get(cacheKey);
+
+    // Check if cache is still valid
+    if (cached && (Date.now() - cached.timestamp) < this.cacheExpiry) {
+      return cached.models;
+    }
+
+    try {
+      const response = await axios.get('https://openrouter.ai/api/v1/models', {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 10000 // 10 second timeout
+      });
+
+      const allModels = response.data.data || [];
+
+      // Filter models based on pricing preference
+      let filteredModels = allModels;
+
+      if (preferFree) {
+        // Get free models (pricing.prompt = 0 and pricing.completion = 0)
+        filteredModels = allModels.filter(model =>
+          model.pricing &&
+          model.pricing.prompt === 0 &&
+          model.pricing.completion === 0
+        );
+
+        console.log(`Found ${filteredModels.length} truly free models`);
+
+        // If no free models, fall back to low-cost models
+        if (filteredModels.length === 0) {
+          filteredModels = allModels.filter(model =>
+            model.pricing &&
+            (model.pricing.prompt + model.pricing.completion) <= 0.0001 // Very low cost threshold
+          );
+          console.log(`No free models found, using ${filteredModels.length} low-cost models`);
+        }
+
+        // If still no models, use all available models as last resort
+        if (filteredModels.length === 0) {
+          console.log('No free or low-cost models found, using all available models');
+          filteredModels = allModels;
+        }
+      }
+
+      // Sort by context length (prefer models with more context)
+      filteredModels.sort((a, b) => (b.context_length || 0) - (a.context_length || 0));
+
+      // Cache the results
+      this.modelCache.set(cacheKey, {
+        models: filteredModels,
+        timestamp: Date.now()
+      });
+
+      console.log(`Fetched ${filteredModels.length} models from OpenRouter (${preferFree ? 'free/low-cost' : 'all'})`);
+
+      // Log some examples for debugging
+      if (filteredModels.length > 0) {
+        console.log('Sample models:');
+        filteredModels.slice(0, 3).forEach(model => {
+          const cost = model.pricing ? `$${model.pricing.prompt + model.pricing.completion}` : 'unknown';
+          console.log(`- ${model.id} (${cost}, context: ${model.context_length || 'unknown'})`);
+        });
+      }
+
+      return filteredModels;
+
+    } catch (error) {
+      console.error('Failed to fetch OpenRouter models:', error.message);
+
+      // Return cached models if available, even if expired
+      if (cached) {
+        console.log('Using expired cached models as fallback');
+        return cached.models;
+      }
+
+      throw error;
+    }
+  }
+
+  /**
    * Create a provider instance based on the provider ID
    */
   createProvider(providerId, config, apiKey) {
@@ -130,28 +245,28 @@ class LangChainFactory {
           model: config.defaultModel,
           temperature: 0.7
         });
-      
+
       case 'groq':
         return new ChatGroq({
           apiKey,
           model: config.defaultModel,
           temperature: 0.7
         });
-      
+
       case 'openai':
         return new ChatOpenAI({
           apiKey,
           model: config.defaultModel,
           temperature: 0.7
         });
-      
+
       case 'anthropic':
         return new ChatAnthropic({
           apiKey,
           model: config.defaultModel,
           temperature: 0.7
         });
-      
+
       case 'openrouter':
         return new ChatOpenAI({
           apiKey,
@@ -165,7 +280,7 @@ class LangChainFactory {
             }
           }
         });
-      
+
       default:
         throw new Error(`Unknown provider: ${providerId}`);
     }
@@ -404,11 +519,49 @@ class LangChainFactory {
   /**
    * Refresh provider configurations (useful for runtime updates)
    */
-  refreshProviders() {
+  async refreshProviders() {
     console.log('Refreshing LLM providers...');
     this.providers.clear();
-    this.initializeProviders();
+    this.modelCache.clear(); // Clear model cache too
+    await this.initializeProviders();
     return this.getProviderStats();
+  }
+
+  /**
+   * Force refresh OpenRouter models (bypass cache)
+   */
+  async refreshOpenRouterModels(preferFree = true) {
+    const cacheKey = `openrouter_models_${preferFree}`;
+    this.modelCache.delete(cacheKey);
+
+    const provider = this.providers.get('openrouter');
+    if (provider && provider.isAvailable) {
+      const apiKey = process.env.OPENROUTER_API_KEY;
+      if (apiKey) {
+        try {
+          const models = await this.fetchOpenRouterModels(apiKey, preferFree);
+          // Update provider config with new models
+          const updatedConfig = {
+            ...provider.config,
+            availableModels: models.map(m => m.id),
+            defaultModel: models[0]?.id || provider.config.defaultModel
+          };
+
+          this.providers.set('openrouter', {
+            ...provider,
+            config: updatedConfig
+          });
+
+          console.log(`Refreshed OpenRouter models: ${models.length} available`);
+          return models;
+        } catch (error) {
+          console.error('Failed to refresh OpenRouter models:', error.message);
+          throw error;
+        }
+      }
+    }
+
+    return [];
   }
 }
 
