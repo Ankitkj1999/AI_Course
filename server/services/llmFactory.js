@@ -14,9 +14,10 @@ const PROVIDER_CONFIGS = {
     id: 'gemini',
     name: 'Google Gemini',
     isFree: false,
-    defaultModel: 'gemini-2.0-flash-exp',
+    defaultModel: null, // Will be set dynamically
     envKeyName: 'GOOGLE_API_KEY',
-    availableModels: ['gemini-2.0-flash-exp', 'gemini-pro', 'gemini-1.5-flash']
+    availableModels: [], // Will be populated dynamically
+    dynamicModels: true
   },
   openrouter: {
     id: 'openrouter',
@@ -85,21 +86,27 @@ class LangChainFactory {
   }
 
   /**
-   * Initialize dynamic provider (OpenRouter)
+   * Initialize dynamic provider (OpenRouter or Gemini)
    */
   async initializeDynamicProvider(providerId, config, apiKey) {
     try {
-      const models = await this.fetchOpenRouterModels(apiKey);
+      let models = [];
+
+      if (providerId === 'openrouter') {
+        models = await this.fetchOpenRouterModels(apiKey);
+      } else if (providerId === 'gemini') {
+        models = await this.fetchGeminiModels(apiKey);
+      }
 
       if (models.length === 0) {
-        throw new Error('No models available from OpenRouter');
+        throw new Error(`No models available from ${config.name}`);
       }
 
       // Update config with dynamic models
       const updatedConfig = {
         ...config,
-        availableModels: models.map(m => m.id),
-        defaultModel: models[0].id // Use first available model as default
+        availableModels: models.map(m => m.id || m.name || m),
+        defaultModel: models[0].id || models[0].name || models[0] // Use first available model as default
       };
 
       const provider = this.createProvider(providerId, updatedConfig, apiKey);
@@ -118,6 +125,97 @@ class LangChainFactory {
         isAvailable: false,
         error: error.message
       });
+    }
+  }
+
+  /**
+   * Fetch available models from Gemini API
+   */
+  async fetchGeminiModels(apiKey) {
+    const cacheKey = 'gemini_models';
+    const cached = this.modelCache.get(cacheKey);
+
+    // Check if cache is still valid
+    if (cached && (Date.now() - cached.timestamp) < this.cacheExpiry) {
+      return cached.models;
+    }
+
+    try {
+      // Use Google AI models API endpoint to get available models
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        signal: AbortSignal.timeout(10000) // 10 second timeout
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const allModels = data.models || [];
+
+      // Filter models that support generateContent (text generation)
+      const textGenerationModels = allModels.filter(model =>
+        model.supportedGenerationMethods &&
+        model.supportedGenerationMethods.includes('generateContent') &&
+        !model.name.includes('embedding') && // Exclude embedding models
+        !model.name.includes('imagen') // Exclude image generation models
+      );
+
+      // Convert to our format and sort by version (prefer newer/stable models)
+      const validatedModels = textGenerationModels
+        .map(model => ({
+          id: model.name.replace('models/', ''), // Remove 'models/' prefix
+          name: model.displayName || model.name.replace('models/', ''),
+          version: model.version,
+          inputLimit: model.inputTokenLimit,
+          outputLimit: model.outputTokenLimit
+        }))
+        .sort((a, b) => {
+          // Prefer stable versions over preview/experimental
+          const aIsStable = !a.version.includes('preview') && !a.version.includes('exp');
+          const bIsStable = !b.version.includes('preview') && !b.version.includes('exp');
+
+          if (aIsStable && !bIsStable) return -1;
+          if (!aIsStable && bIsStable) return 1;
+
+          // For same stability level, prefer higher input limits
+          return (b.inputLimit || 0) - (a.inputLimit || 0);
+        });
+
+      // Cache the results
+      this.modelCache.set(cacheKey, {
+        models: validatedModels,
+        timestamp: Date.now()
+      });
+
+      console.log(`✅ Fetched ${validatedModels.length} Gemini models from API (${textGenerationModels.length} total models)`);
+
+      // Log some examples for debugging
+      if (validatedModels.length > 0) {
+        console.log('Top models:');
+        validatedModels.slice(0, 5).forEach(model => {
+          console.log(`- ${model.id} (${model.version}, ${model.inputLimit} tokens)`);
+        });
+      }
+
+      return validatedModels;
+
+    } catch (error) {
+      console.error('Failed to fetch Gemini models from API:', error.message);
+
+      // Return cached models if available, even if expired
+      if (cached) {
+        console.log('Using expired cached Gemini models as fallback');
+        return cached.models;
+      }
+
+      // Last resort: Return empty array to disable provider
+      console.log('❌ Gemini API unavailable - disabling Gemini provider');
+      return [];
     }
   }
 
