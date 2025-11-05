@@ -184,9 +184,9 @@ aicourse/
 
 #### Docker Hub Deployment
 
-- `npm run docker:build:push` - Build and push to Docker Hub
+- `npm run docker:build:push [tag]` - Build and push to Docker Hub (default: latest)
 - `npm run docker:build:production` - Build production image
-- `npm run docker:deploy:production` - Deploy on server from Docker Hub
+- `npm run docker:deploy:production [tag]` - Deploy on server from Docker Hub (default: production)
 - `npm run docker:up:hub` - Run from Docker Hub image
 
 #### General Commands
@@ -223,6 +223,10 @@ npm run docker:restart
 
 # Check health
 npm run health
+
+# Production deployment workflow
+npm run docker:build:push production    # Build and push with 'production' tag
+npm run docker:deploy:production production  # Deploy the 'production' tag
 ```
 
 ### Docker Configuration

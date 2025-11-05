@@ -6,7 +6,7 @@ echo "🚀 Deploying AiCourse production on gksage.com..."
 # Configuration
 DOCKER_USERNAME="ankitkj199"
 IMAGE_NAME="aicourse"
-TAG="production"
+TAG=${1:-production}  # Accept tag parameter, default to "production"
 FULL_IMAGE_NAME="$DOCKER_USERNAME/$IMAGE_NAME:$TAG"
 CONTAINER_NAME="aicourse-app"
 
