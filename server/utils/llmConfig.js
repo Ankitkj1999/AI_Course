@@ -19,20 +19,8 @@ class LLMConfig {
       // Provider API Keys
       providers: {
         google: {
-          apiKey: process.env.GOOGLE_API_KEY || process.env.API_KEY, // Backward compatibility
-          enabled: !!(process.env.GOOGLE_API_KEY || process.env.API_KEY)
-        },
-        groq: {
-          apiKey: process.env.GROQ_API_KEY,
-          enabled: !!process.env.GROQ_API_KEY
-        },
-        openai: {
-          apiKey: process.env.OPENAI_API_KEY,
-          enabled: !!process.env.OPENAI_API_KEY
-        },
-        anthropic: {
-          apiKey: process.env.ANTHROPIC_API_KEY,
-          enabled: !!process.env.ANTHROPIC_API_KEY
+          apiKey: process.env.GOOGLE_API_KEY,
+          enabled: !!process.env.GOOGLE_API_KEY
         },
         openrouter: {
           apiKey: process.env.OPENROUTER_API_KEY,

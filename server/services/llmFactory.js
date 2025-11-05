@@ -1,7 +1,5 @@
 import { ChatOpenAI } from '@langchain/openai';
-import { ChatAnthropic } from '@langchain/anthropic';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import { ChatGroq } from '@langchain/groq';
 import dotenv from 'dotenv';
 import axios from 'axios';
 
@@ -19,30 +17,6 @@ const PROVIDER_CONFIGS = {
     defaultModel: 'gemini-2.0-flash-exp',
     envKeyName: 'GOOGLE_API_KEY',
     availableModels: ['gemini-2.0-flash-exp', 'gemini-pro', 'gemini-1.5-flash']
-  },
-  groq: {
-    id: 'groq',
-    name: 'Groq',
-    isFree: true,
-    defaultModel: 'llama-3.1-8b-instant',
-    envKeyName: 'GROQ_API_KEY',
-    availableModels: ['llama-3.1-8b-instant', 'llama-3.2-90b-text-preview', 'llama-3.2-11b-text-preview']
-  },
-  openai: {
-    id: 'openai',
-    name: 'OpenAI',
-    isFree: false,
-    defaultModel: 'gpt-3.5-turbo',
-    envKeyName: 'OPENAI_API_KEY',
-    availableModels: ['gpt-3.5-turbo', 'gpt-4o-mini', 'gpt-4o']
-  },
-  anthropic: {
-    id: 'anthropic',
-    name: 'Anthropic Claude',
-    isFree: false,
-    defaultModel: 'claude-3-5-sonnet-20241022',
-    envKeyName: 'ANTHROPIC_API_KEY',
-    availableModels: ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-haiku-20240307']
   },
   openrouter: {
     id: 'openrouter',
@@ -241,27 +215,6 @@ class LangChainFactory {
     switch (providerId) {
       case 'gemini':
         return new ChatGoogleGenerativeAI({
-          apiKey,
-          model: config.defaultModel,
-          temperature: 0.7
-        });
-
-      case 'groq':
-        return new ChatGroq({
-          apiKey,
-          model: config.defaultModel,
-          temperature: 0.7
-        });
-
-      case 'openai':
-        return new ChatOpenAI({
-          apiKey,
-          model: config.defaultModel,
-          temperature: 0.7
-        });
-
-      case 'anthropic':
-        return new ChatAnthropic({
           apiKey,
           model: config.defaultModel,
           temperature: 0.7
