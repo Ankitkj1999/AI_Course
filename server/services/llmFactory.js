@@ -48,7 +48,10 @@ class LangChainFactory {
     console.log('Initializing LLM providers...');
 
     for (const [providerId, config] of Object.entries(PROVIDER_CONFIGS)) {
-      const apiKey = process.env[config.envKeyName];
+      // For OpenRouter, use settings cache; for others, use direct env
+      const apiKey = config.envKeyName === 'OPENROUTER_API_KEY'
+        ? await this.getCachedApiKey(config.envKeyName)
+        : process.env[config.envKeyName];
 
       if (apiKey) {
         try {
@@ -340,30 +343,32 @@ class LangChainFactory {
   /**
    * Get an LLM instance for the specified provider
    */
-  getLLM(providerId, options = {}) {
+  async getLLM(providerId, options = {}) {
     const provider = this.providers.get(providerId);
-    
+
     if (!provider) {
       throw new Error(`Provider ${providerId} not found`);
     }
-    
+
     if (!provider.isAvailable) {
       throw new Error(`Provider ${providerId} is not available: ${provider.error}`);
     }
 
     // If custom model or temperature is specified, create a new instance
     if (options.model || options.temperature !== undefined) {
-      const apiKey = process.env[provider.config.envKeyName];
+      const apiKey = providerId === 'openrouter'
+        ? await this.getCachedApiKey('OPENROUTER_API_KEY')
+        : process.env[provider.config.envKeyName];
       const config = { ...provider.config };
-      
+
       if (options.model) config.defaultModel = options.model;
-      
+
       const llm = this.createProvider(providerId, config, apiKey);
-      
+
       if (options.temperature !== undefined) {
         llm.temperature = options.temperature;
       }
-      
+
       return llm;
     }
 
@@ -426,7 +431,7 @@ class LangChainFactory {
    */
   async healthCheck(providerId) {
     const startTime = Date.now();
-    
+
     try {
       const validation = this.validateProvider(providerId);
       if (!validation.valid) {
@@ -440,9 +445,9 @@ class LangChainFactory {
       }
 
       // Test with a minimal prompt
-      const llm = this.getLLM(providerId, { temperature: 0 });
+      const llm = await this.getLLM(providerId, { temperature: 0 });
       const testPrompt = 'Hello';
-      
+
       const response = await llm.invoke(testPrompt);
       const responseTime = Date.now() - startTime;
 
@@ -579,6 +584,15 @@ class LangChainFactory {
   }
 
   /**
+   * Get API key from cache (for production) or env (for development)
+   */
+  async getCachedApiKey(envKeyName) {
+    // Import settingsCache dynamically to avoid circular dependency
+    const settingsCache = (await import('./settingsCache.js')).default;
+    return await settingsCache.get(envKeyName);
+  }
+
+  /**
    * Force refresh OpenRouter models (bypass cache)
    */
   async refreshOpenRouterModels(preferFree = true) {
@@ -587,7 +601,7 @@ class LangChainFactory {
 
     const provider = this.providers.get('openrouter');
     if (provider && provider.isAvailable) {
-      const apiKey = process.env.OPENROUTER_API_KEY;
+      const apiKey = await this.getCachedApiKey('OPENROUTER_API_KEY');
       if (apiKey) {
         try {
           const models = await this.fetchOpenRouterModels(apiKey, preferFree);

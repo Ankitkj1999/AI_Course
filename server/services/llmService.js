@@ -56,11 +56,11 @@ class LLMService {
     if (!validation.valid) {
       throw new Error(`Provider validation failed: ${validation.error}`);
     }
-    
+
     try {
 
-      // Get LLM instance
-      const llm = this.factory.getLLM(providerId, {
+      // Get LLM instance (now async)
+      const llm = await this.factory.getLLM(providerId, {
         model: options.model,
         temperature: options.temperature
       });
