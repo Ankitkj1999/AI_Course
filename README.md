@@ -225,6 +225,10 @@ npm run docker:restart
 npm run health
 
 # Production deployment workflow
+npm run docker:build:push v1.2.3        # Build and push with custom tag
+npm run docker:deploy:production v1.2.3 # Deploy the same tag
+
+# Or use default tags:
 npm run docker:build:push production    # Build and push with 'production' tag
 npm run docker:deploy:production production  # Deploy the 'production' tag
 ```
