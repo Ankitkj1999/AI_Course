@@ -24,6 +24,7 @@ import settingsCache from './services/settingsCache.js';
 import { generateCourseSEO } from './utils/seo.js';
 import { getServerPort, getServerURL, validateConfig } from './utils/config.js';
 import llmService from './services/llmService.js';
+import { safeGet, safeGetArray, safeGetFirst } from './utils/safeAccess.js';
 
 // NOTE: Google Generative AI SDK is still available for future advanced features
 // such as Gemini Live APIs, Deep Research, Google Search integration, etc.
@@ -864,6 +865,18 @@ app.post('/api/generate', requireAuth, async (req, res) => {
     const receivedData = req.body;
     const promptString = receivedData.prompt;
     const { provider, model, temperature } = receivedData;
+    
+    // Generate request ID for logging correlation
+    const requestId = logger.llm.generateRequestId();
+    const startTime = Date.now();
+    
+    // Log request start
+    logger.llm.logRequestStart(requestId, '/api/generate', {
+        prompt: promptString?.substring(0, 100) + '...',
+        provider,
+        model,
+        temperature
+    }, req.user?.id, provider);
 
     try {
         // If provider is specified, use new LLM service
@@ -875,6 +888,15 @@ app.post('/api/generate', requireAuth, async (req, res) => {
             });
 
             if (result.success) {
+                const duration = Date.now() - startTime;
+                
+                // Log successful request
+                logger.llm.logRequestSuccess(requestId, '/api/generate', {
+                    contentLength: result.data.content?.length,
+                    provider: result.data.provider,
+                    model: result.data.model
+                }, duration, req.user?.id, result.data.provider);
+                
                 // Maintain backward compatibility with existing response format
                 res.status(200).json({ 
                     text: result.data.content,
@@ -889,6 +911,14 @@ app.post('/api/generate', requireAuth, async (req, res) => {
                     }
                 });
             } else {
+                // Log error with context
+                logger.llm.logRequestError(requestId, '/api/generate', new Error(result.error.message || 'Content generation failed'), {
+                    userId: req.user?.id,
+                    provider,
+                    model,
+                    prompt: promptString?.substring(0, 100)
+                });
+                
                 res.status(500).json({ 
                     success: false, 
                     message: result.error.message || 'Content generation failed'
@@ -924,6 +954,19 @@ app.post('/api/generate', requireAuth, async (req, res) => {
         });
 
         if (result.success) {
+          const duration = Date.now() - startTime;
+          
+          // Log fallback usage
+          logger.llm.logProviderFallback(requestId, '/api/generate', provider || 'none', 'gemini', 'Legacy fallback path');
+          
+          // Log successful request
+          logger.llm.logRequestSuccess(requestId, '/api/generate', {
+              contentLength: result.data.content?.length,
+              provider: result.data.provider,
+              model: result.data.model,
+              legacy: true
+          }, duration, req.user?.id, result.data.provider);
+          
           res.status(200).json({ 
             text: result.data.content,
             contentType: 'markdown',
@@ -937,6 +980,14 @@ app.post('/api/generate', requireAuth, async (req, res) => {
             }
           });
         } else {
+          // Log error with context
+          logger.llm.logRequestError(requestId, '/api/generate', new Error(result.error.message || 'Content generation failed'), {
+              userId: req.user?.id,
+              provider: 'gemini',
+              prompt: promptString?.substring(0, 100),
+              legacy: true
+          });
+          
           res.status(500).json({ 
             success: false, 
             message: result.error.message || 'Content generation failed'
@@ -944,11 +995,16 @@ app.post('/api/generate', requireAuth, async (req, res) => {
         }
         
     } catch (error) {
-        logger.error(`Generate theory error: ${error.message}`, { 
-            error: error.stack, 
+        // Log error with enhanced context
+        logger.llm.logRequestError(requestId, '/api/generate', error, {
+            userId: req.user?.id,
+            provider,
+            model,
+            temperature,
             prompt: promptString?.substring(0, 100),
-            provider 
+            duration: Date.now() - startTime
         });
+        
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
@@ -960,8 +1016,10 @@ app.post('/api/image', async (req, res) => {
     gis(promptString, logResults);
     function logResults(error, results) {
         if (error) {
-            //ERROR
-            console.log('Error', error);
+            logger.error('Image search error', { 
+                error: error.message,
+                prompt: promptString?.substring(0, 100)
+            });
         }
         else {
             res.status(200).json({ url: results[0].url });
@@ -1000,15 +1058,45 @@ app.post('/api/transcript', async (req, res) => {
 //STORE COURSE
 app.post('/api/course', requireAuth, async (req, res) => {
     const { user, content, type, mainTopic, lang } = req.body;
+    
+    // Generate request ID for logging correlation
+    const requestId = logger.llm.generateRequestId();
+    const startTime = Date.now();
+    
+    // Log request start
+    logger.llm.logRequestStart(requestId, '/api/course', {
+        mainTopic,
+        type,
+        contentLength: content?.length,
+        lang
+    }, user, 'unsplash');
 
-    unsplash.search.getPhotos({
-        query: mainTopic,
-        page: 1,
-        perPage: 1,
-        orientation: 'landscape',
-    }).then(async (result) => {
-        const photos = result.response.results;
-        const photo = photos && photos.length > 0 ? photos[0].urls.regular : null;
+    try {
+        const result = await unsplash.search.getPhotos({
+            query: mainTopic,
+            page: 1,
+            perPage: 1,
+            orientation: 'landscape',
+        });
+
+        // Safely access Unsplash response with fallback
+        const photos = safeGetArray(result, 'response.results', []);
+        const firstPhoto = safeGetFirst(result, 'response.results');
+        const photo = safeGet(firstPhoto, 'urls.regular', null);
+
+        // Log if Unsplash API returned unexpected data
+        if (!photo) {
+            logger.llm.logValidationFailure(requestId, '/api/course', {
+                expected: 'response.results[0].urls.regular',
+                issue: 'No usable images returned'
+            }, {
+                hasResponse: !!safeGet(result, 'response'),
+                hasResults: !!safeGet(result, 'response.results'),
+                resultsLength: safeGetArray(result, 'response.results', []).length,
+                mainTopic
+            });
+        }
+
         try {
             // Generate SEO-friendly slug
             const title = extractTitleFromContent(content, mainTopic);
@@ -1019,7 +1107,16 @@ app.post('/api/course', requireAuth, async (req, res) => {
             const newLang = new LangSchema({ course: newCourse._id, lang: lang });
             await newLang.save();
             
-            logger.info(`Course created: ${newCourse._id} with slug: ${slug}`);
+            const duration = Date.now() - startTime;
+            
+            // Log successful course creation
+            logger.llm.logRequestSuccess(requestId, '/api/course', {
+                courseId: newCourse._id,
+                slug,
+                hasPhoto: !!photo,
+                mainTopic
+            }, duration, user, 'unsplash');
+            
             res.json({ 
                 success: true, 
                 message: 'Course created successfully', 
@@ -1027,27 +1124,91 @@ app.post('/api/course', requireAuth, async (req, res) => {
                 slug: slug
             });
         } catch (error) {
-            logger.error(`Course creation error: ${error.message}`, { error: error.stack, user, mainTopic });
+            // Log course creation error with context
+            logger.llm.logRequestError(requestId, '/api/course', error, {
+                userId: user,
+                mainTopic,
+                hasPhoto: !!photo,
+                step: 'course_creation'
+            });
             res.status(500).json({ success: false, message: 'Internal server error' });
         }
-    }).catch(error => {
-        console.log('Error', error);
-        res.status(500).json({ success: false, message: 'Internal server error' });
-    })
+    } catch (error) {
+        // Handle Unsplash API errors gracefully
+        logger.llm.logRequestError(requestId, '/api/course', error, {
+            userId: user,
+            mainTopic,
+            unsplashQuery: mainTopic,
+            step: 'unsplash_api'
+        });
+
+        // Continue course creation without photo
+        try {
+            const title = extractTitleFromContent(content, mainTopic);
+            const slug = await generateUniqueSlug(title, Course);
+            
+            const newCourse = new Course({ user, content, type, mainTopic, slug, photo: null });
+            await newCourse.save();
+            const newLang = new LangSchema({ course: newCourse._id, lang: lang });
+            await newLang.save();
+            
+            const duration = Date.now() - startTime;
+            
+            // Log successful fallback course creation
+            logger.llm.logRequestSuccess(requestId, '/api/course', {
+                courseId: newCourse._id,
+                slug,
+                hasPhoto: false,
+                mainTopic,
+                fallback: true
+            }, duration, user, 'fallback');
+            
+            res.json({ 
+                success: true, 
+                message: 'Course created successfully (without image)', 
+                courseId: newCourse._id,
+                slug: slug
+            });
+        } catch (courseError) {
+            // Log fallback course creation error
+            logger.llm.logRequestError(requestId, '/api/course', courseError, {
+                userId: user,
+                mainTopic,
+                step: 'fallback_course_creation'
+            });
+            res.status(500).json({ success: false, message: 'Internal server error' });
+        }
+    }
 });
 
 //STORE COURSE SHARED
 app.post('/api/courseshared', requireAuth, async (req, res) => {
     const { user, content, type, mainTopic } = req.body;
 
-    unsplash.search.getPhotos({
-        query: mainTopic,
-        page: 1,
-        perPage: 1,
-        orientation: 'landscape',
-    }).then(async (result) => {
-        const photos = result.response.results;
-        const photo = photos && photos.length > 0 ? photos[0].urls.regular : null;
+    try {
+        const result = await unsplash.search.getPhotos({
+            query: mainTopic,
+            page: 1,
+            perPage: 1,
+            orientation: 'landscape',
+        });
+
+        // Safely access Unsplash response with fallback
+        const photos = safeGetArray(result, 'response.results', []);
+        const firstPhoto = safeGetFirst(result, 'response.results');
+        const photo = safeGet(firstPhoto, 'urls.regular', null);
+
+        // Log if Unsplash API returned unexpected data
+        if (!photo) {
+            logger.warn(`Unsplash API returned no usable images for shared course topic: ${mainTopic}`, {
+                unsplashResponse: {
+                    hasResponse: !!safeGet(result, 'response'),
+                    hasResults: !!safeGet(result, 'response.results'),
+                    resultsLength: safeGetArray(result, 'response.results', []).length
+                }
+            });
+        }
+
         try {
             // Generate SEO-friendly slug for shared course
             const title = extractTitleFromContent(content, mainTopic);
@@ -1056,7 +1217,10 @@ app.post('/api/courseshared', requireAuth, async (req, res) => {
             const newCourse = new Course({ user, content, type, mainTopic, slug, photo });
             await newCourse.save();
             
-            logger.info(`Shared course created: ${newCourse._id} with slug: ${slug}`);
+            logger.info(`Shared course created: ${newCourse._id} with slug: ${slug}`, {
+                hasPhoto: !!photo,
+                mainTopic
+            });
             res.json({ 
                 success: true, 
                 message: 'Course created successfully', 
@@ -1067,7 +1231,39 @@ app.post('/api/courseshared', requireAuth, async (req, res) => {
             logger.error(`Shared course creation error: ${error.message}`, { error: error.stack, user, mainTopic });
             res.status(500).json({ success: false, message: 'Internal server error' });
         }
-    })
+    } catch (error) {
+        // Handle Unsplash API errors gracefully
+        logger.error(`Unsplash API error for shared course creation: ${error.message}`, { 
+            error: error.stack, 
+            user, 
+            mainTopic,
+            unsplashQuery: mainTopic
+        });
+
+        // Continue course creation without photo
+        try {
+            const title = extractTitleFromContent(content, mainTopic);
+            const slug = await generateUniqueSlug(title, Course);
+            
+            const newCourse = new Course({ user, content, type, mainTopic, slug, photo: null });
+            await newCourse.save();
+            
+            logger.info(`Shared course created without photo due to Unsplash error: ${newCourse._id} with slug: ${slug}`);
+            res.json({ 
+                success: true, 
+                message: 'Course created successfully (without image)', 
+                courseId: newCourse._id,
+                slug: slug
+            });
+        } catch (courseError) {
+            logger.error(`Shared course creation fallback error: ${courseError.message}`, { 
+                error: courseError.stack, 
+                user, 
+                mainTopic 
+            });
+            res.status(500).json({ success: false, message: 'Internal server error' });
+        }
+    }
 });
 
 //UPDATE COURSE
@@ -3513,8 +3709,21 @@ const server = await startServer();
 
 //CREATE QUIZ
 app.post('/api/quiz/create', requireAuth, async (req, res) => {
+    // Generate request ID for logging correlation
+    const requestId = logger.llm.generateRequestId();
+    const startTime = Date.now();
+    
     try {
         const { userId, keyword, title, format, provider, model, questionAndAnswers } = req.body;
+        
+        // Log request start
+        logger.llm.logRequestStart(requestId, '/api/quiz/create', {
+            keyword,
+            title,
+            format,
+            provider,
+            model
+        }, userId, provider);
         
         if (!userId || !keyword || !title) {
             return res.status(400).json({
@@ -3544,6 +3753,13 @@ app.post('/api/quiz/create', requireAuth, async (req, res) => {
         });
 
         if (!result.success) {
+            logger.llm.logRequestError(requestId, '/api/quiz/create', new Error(result.error || 'Failed to generate quiz content'), {
+                userId,
+                keyword,
+                title,
+                provider,
+                model
+            });
             throw new Error(result.error || 'Failed to generate quiz content');
         }
 
@@ -3575,7 +3791,17 @@ app.post('/api/quiz/create', requireAuth, async (req, res) => {
 
         await newQuiz.save();
 
-        logger.info(`Quiz created: ${newQuiz._id} with slug: ${slug}`);
+        const duration = Date.now() - startTime;
+        
+        // Log successful quiz creation
+        logger.llm.logRequestSuccess(requestId, '/api/quiz/create', {
+            quizId: newQuiz._id,
+            slug,
+            keyword,
+            title,
+            contentLength: quizContent?.length,
+            provider: result.data.provider
+        }, duration, userId, result.data.provider);
         
         res.json({
             success: true,
@@ -3589,7 +3815,16 @@ app.post('/api/quiz/create', requireAuth, async (req, res) => {
         });
 
     } catch (error) {
-        logger.error(`Quiz creation error: ${error.message}`, { error: error.stack });
+        // Log quiz creation error with context
+        logger.llm.logRequestError(requestId, '/api/quiz/create', error, {
+            userId: req.body.userId,
+            keyword: req.body.keyword,
+            title: req.body.title,
+            provider: req.body.provider,
+            model: req.body.model,
+            duration: Date.now() - startTime
+        });
+        
         res.status(500).json({
             success: false,
             message: 'Failed to create quiz'
@@ -3756,8 +3991,20 @@ app.delete('/api/quiz/:slug', async (req, res) => {
 
 //CREATE FLASHCARD
 app.post('/api/flashcard/create', requireAuth, async (req, res) => {
+    // Generate request ID for logging correlation
+    const requestId = logger.llm.generateRequestId();
+    const startTime = Date.now();
+    
     try {
         const { userId, keyword, title, provider, model } = req.body;
+        
+        // Log request start
+        logger.llm.logRequestStart(requestId, '/api/flashcard/create', {
+            keyword,
+            title,
+            provider,
+            model
+        }, userId, provider);
 
         if (!userId || !keyword || !title) {
             return res.status(400).json({
@@ -3798,6 +4045,13 @@ app.post('/api/flashcard/create', requireAuth, async (req, res) => {
         });
 
         if (!result.success) {
+            logger.llm.logRequestError(requestId, '/api/flashcard/create', new Error(result.error || 'Failed to generate flashcard content'), {
+                userId,
+                keyword,
+                title,
+                provider,
+                model
+            });
             throw new Error(result.error || 'Failed to generate flashcard content');
         }
 
@@ -3814,7 +4068,15 @@ app.post('/api/flashcard/create', requireAuth, async (req, res) => {
                 throw new Error('No valid JSON found in response');
             }
         } catch (parseError) {
-            logger.error(`Flashcard parsing error: ${parseError.message}`);
+            logger.llm.logRequestError(requestId, '/api/flashcard/create', parseError, {
+                userId,
+                keyword,
+                title,
+                provider,
+                model,
+                step: 'json_parsing',
+                generatedText: generatedText?.substring(0, 200)
+            });
             return res.status(500).json({
                 success: false,
                 message: 'Failed to parse generated flashcards'
@@ -3841,7 +4103,19 @@ app.post('/api/flashcard/create', requireAuth, async (req, res) => {
 
         await newFlashcard.save();
 
-        logger.info(`Flashcard set created: ${newFlashcard._id} with slug: ${slug}`);
+        const duration = Date.now() - startTime;
+        
+        // Log successful flashcard creation
+        logger.llm.logRequestSuccess(requestId, '/api/flashcard/create', {
+            flashcardId: newFlashcard._id,
+            slug,
+            keyword,
+            title,
+            cardsCount: cards.length,
+            contentLength: generatedText?.length,
+            provider: result.data.provider
+        }, duration, userId, result.data.provider);
+        
         res.json({
             success: true,
             message: 'Flashcard set created successfully',
@@ -3851,7 +4125,16 @@ app.post('/api/flashcard/create', requireAuth, async (req, res) => {
         });
 
     } catch (error) {
-        logger.error(`Flashcard creation error: ${error.message}`, { error: error.stack });
+        // Log flashcard creation error with context
+        logger.llm.logRequestError(requestId, '/api/flashcard/create', error, {
+            userId: req.body.userId,
+            keyword: req.body.keyword,
+            title: req.body.title,
+            provider: req.body.provider,
+            model: req.body.model,
+            duration: Date.now() - startTime
+        });
+        
         res.status(500).json({
             success: false,
             message: 'Failed to create flashcard set'
@@ -3982,8 +4265,21 @@ app.delete('/api/flashcard/:slug', async (req, res) => {
 
 //CREATE GUIDE
 app.post('/api/guide/create', requireAuth, async (req, res) => {
+    // Generate request ID for logging correlation
+    const requestId = logger.llm.generateRequestId();
+    const startTime = Date.now();
+    
     try {
         const { userId, keyword, title, customization, provider, model } = req.body;
+        
+        // Log request start
+        logger.llm.logRequestStart(requestId, '/api/guide/create', {
+            keyword,
+            title,
+            customization,
+            provider,
+            model
+        }, userId, provider);
 
         if (!userId || !keyword || !title) {
             return res.status(400).json({
@@ -4042,6 +4338,13 @@ app.post('/api/guide/create', requireAuth, async (req, res) => {
         });
 
         if (!result.success) {
+            logger.llm.logRequestError(requestId, '/api/guide/create', new Error(result.error || 'Failed to generate guide content'), {
+                userId,
+                keyword,
+                title,
+                provider,
+                model
+            });
             throw new Error(result.error || 'Failed to generate guide content');
         }
 
@@ -4156,9 +4459,23 @@ app.post('/api/guide/create', requireAuth, async (req, res) => {
             }
         });
 
-        logger.info('Saving guide to database');
         await newGuide.save();
-        logger.info(`Guide saved successfully: ${newGuide._id} with slug: ${slug}`);
+        
+        const duration = Date.now() - startTime;
+        
+        // Log successful guide creation
+        logger.llm.logRequestSuccess(requestId, '/api/guide/create', {
+            guideId: newGuide._id,
+            slug,
+            keyword,
+            title,
+            contentLength: generatedText?.length,
+            relatedTopicsCount: guideData.relatedTopics?.length || 0,
+            deepDiveTopicsCount: guideData.deepDiveTopics?.length || 0,
+            questionsCount: guideData.questions?.length || 0,
+            provider: result.data.provider
+        }, duration, userId, result.data.provider);
+        
         res.json({
             success: true,
             message: 'Guide created successfully',
@@ -4174,7 +4491,16 @@ app.post('/api/guide/create', requireAuth, async (req, res) => {
         });
 
     } catch (error) {
-        logger.error(`Guide creation error: ${error.message}`, { error: error.stack, userId, keyword, title });
+        // Log guide creation error with context
+        logger.llm.logRequestError(requestId, '/api/guide/create', error, {
+            userId: req.body.userId,
+            keyword: req.body.keyword,
+            title: req.body.title,
+            provider: req.body.provider,
+            model: req.body.model,
+            duration: Date.now() - startTime
+        });
+        
         res.status(500).json({
             success: false,
             message: `Failed to create guide: ${error.message}`
