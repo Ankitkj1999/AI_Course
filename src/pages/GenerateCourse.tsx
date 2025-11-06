@@ -113,7 +113,7 @@ const GenerateCourse = () => {
   ];
 
   useEffect(() => {
-    if (sessionStorage.getItem("type") !== "free") {
+    if (localStorage.getItem("type") !== "free") {
       setPaidMember(true);
     }
   }, []);

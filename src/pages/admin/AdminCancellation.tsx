@@ -21,15 +21,15 @@ const AdminCancellation = () => {
         if (response.data && response.data[0] && response.data[0].cancel) {
           setValue(response.data[0].cancel);
         }
-        // Fallback to sessionStorage if API fails
-        const storedCancellation = sessionStorage.getItem('cancel');
+        // Fallback to localStorage if API fails
+        const storedCancellation = localStorage.getItem('cancel');
         if (storedCancellation && !response.data[0]?.cancel) {
           setValue(storedCancellation);
         }
       } catch (error) {
         console.error('Error loading cancellation policy:', error);
-        // Fallback to sessionStorage
-        const storedCancellation = sessionStorage.getItem('cancel');
+        // Fallback to localStorage
+        const storedCancellation = localStorage.getItem('cancel');
         if (storedCancellation) {
           setValue(storedCancellation);
         }
@@ -50,7 +50,7 @@ const AdminCancellation = () => {
       });
       
       if (response.data.success) {
-        sessionStorage.setItem('cancel', String(value));
+        localStorage.setItem('cancel', String(value));
         toast.success('Cancellation Policy updated successfully');
       } else {
         toast.error('Failed to update Cancellation Policy');

@@ -77,7 +77,7 @@ const Hero = () => {
 
   useEffect(() => {
     // Check authentication status
-    const auth = sessionStorage.getItem("auth");
+    const auth = localStorage.getItem("auth");
     setIsAuthenticated(auth === "true");
   }, []);
 

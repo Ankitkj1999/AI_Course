@@ -22,7 +22,7 @@ const Dashboard = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const userId = sessionStorage.getItem('uid');
+  const userId = localStorage.getItem('uid');
   const [courseProgress, setCourseProgress] = useState({});
   const [modules, setTotalModules] = useState({});
   const [lessons, setTotalLessons] = useState({});
@@ -39,9 +39,9 @@ const Dashboard = () => {
     const response = await axios.post(postURL, { courseId });
     if (response.data.success) {
       const jsonData = JSON.parse(content);
-      sessionStorage.setItem('courseId', courseId);
-      sessionStorage.setItem('first', completed);
-      sessionStorage.setItem('jsonData', JSON.stringify(jsonData));
+      localStorage.setItem('courseId', courseId);
+      localStorage.setItem('first', completed);
+      localStorage.setItem('jsonData', JSON.stringify(jsonData));
       let ending = '';
       if (completed) ending = end;
       navigate('/course/' + courseId, {
@@ -57,9 +57,9 @@ const Dashboard = () => {
       });
     } else {
       const jsonData = JSON.parse(content);
-      sessionStorage.setItem('courseId', courseId);
-      sessionStorage.setItem('first', completed);
-      sessionStorage.setItem('jsonData', JSON.stringify(jsonData));
+      localStorage.setItem('courseId', courseId);
+      localStorage.setItem('first', completed);
+      localStorage.setItem('jsonData', JSON.stringify(jsonData));
       let ending = '';
       if (completed) ending = end;
       navigate('/course/' + courseId, {
@@ -341,10 +341,10 @@ const Dashboard = () => {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="w-36">
                               <ShareOnSocial
-                                textToShare={sessionStorage.getItem('mName') + " shared you course on " + course.mainTopic}
+                                textToShare={localStorage.getItem('mName') + " shared you course on " + course.mainTopic}
                                 link={websiteURL + '/shareable?id=' + course._id}
-                                linkTitle={sessionStorage.getItem('mName') + " shared you course on " + course.mainTopic}
-                                linkMetaDesc={sessionStorage.getItem('mName') + " shared you course on " + course.mainTopic}
+                                linkTitle={localStorage.getItem('mName') + " shared you course on " + course.mainTopic}
+                                linkMetaDesc={localStorage.getItem('mName') + " shared you course on " + course.mainTopic}
                                 linkFavicon={appLogo}
                                 noReferer
                               >
@@ -429,10 +429,10 @@ const Dashboard = () => {
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent className="w-36">
                                     <ShareOnSocial
-                                      textToShare={sessionStorage.getItem('mName') + " shared you course on " + course.mainTopic}
+                                      textToShare={localStorage.getItem('mName') + " shared you course on " + course.mainTopic}
                                       link={websiteURL + '/shareable?id=' + course._id}
-                                      linkTitle={sessionStorage.getItem('mName') + " shared you course on " + course.mainTopic}
-                                      linkMetaDesc={sessionStorage.getItem('mName') + " shared you course on " + course.mainTopic}
+                                      linkTitle={localStorage.getItem('mName') + " shared you course on " + course.mainTopic}
+                                      linkMetaDesc={localStorage.getItem('mName') + " shared you course on " + course.mainTopic}
                                       linkFavicon={appLogo}
                                       noReferer
                                     >

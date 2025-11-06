@@ -43,11 +43,11 @@ const AdminDashboard = () => {
     async function dashboardData() {
       const postURL = serverURL + `/api/dashboard`;
       const response = await axios.post(postURL);
-      sessionStorage.setItem('terms', response.data.admin.terms)
-      sessionStorage.setItem('privacy', response.data.admin.privacy)
-      sessionStorage.setItem('cancel', response.data.admin.cancel)
-      sessionStorage.setItem('refund', response.data.admin.refund)
-      sessionStorage.setItem('billing', response.data.admin.billing)
+      localStorage.setItem('terms', response.data.admin.terms)
+      localStorage.setItem('privacy', response.data.admin.privacy)
+      localStorage.setItem('cancel', response.data.admin.cancel)
+      localStorage.setItem('refund', response.data.admin.refund)
+      localStorage.setItem('billing', response.data.admin.billing)
       usersPieData[0].value = response.data.paid;
       usersPieData[1].value = response.data.free;
       coursesPieData[0].value = response.data.courses - response.data.videoType;

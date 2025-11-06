@@ -41,13 +41,13 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 appuser
 
 # Copy built application
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/server ./server
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/server/node_modules ./server/node_modules
+COPY --from=builder --chown=appuser:nodejs /app/dist ./dist
+COPY --from=builder --chown=appuser:nodejs /app/server ./server
+COPY --from=deps --chown=appuser:nodejs /app/node_modules ./node_modules
+COPY --from=deps --chown=appuser:nodejs /app/server/node_modules ./server/node_modules
 
-# Create logs directory and set permissions
-RUN mkdir -p logs server/logs && chown -R appuser:nodejs /app
+# Create logs directory
+RUN mkdir -p logs server/logs
 
 USER appuser
 

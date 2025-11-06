@@ -135,9 +135,9 @@ const PaymentDetails = () => {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      firstName: sessionStorage.getItem('mName'),
+      firstName: localStorage.getItem('mName'),
       lastName: '',
-      email: sessionStorage.getItem('email'),
+      email: localStorage.getItem('email'),
       address: '',
       city: '',
       state: '',
@@ -156,9 +156,9 @@ const PaymentDetails = () => {
       setIsProcessing(false);
       handleFlutterPayment({
         callback: (response) => {
-          sessionStorage.setItem('stripe', "" + response.transaction_id);
-          sessionStorage.setItem('method', 'flutterwave');
-          sessionStorage.setItem('plan', plan.name);
+          localStorage.setItem('stripe', "" + response.transaction_id);
+          localStorage.setItem('method', 'flutterwave');
+          localStorage.setItem('plan', plan.name);
           navigate('/payment-success/' + response.transaction_id);
           closePaymentModal();
         },
@@ -190,9 +190,9 @@ const PaymentDetails = () => {
     try {
       const postURL = serverURL + '/api/razorpaycreate';
       const res = await axios.post(postURL, dataToSend);
-      sessionStorage.setItem('method', 'razorpay');
+      localStorage.setItem('method', 'razorpay');
       setIsProcessing(false);
-      sessionStorage.setItem('plan', plan.name);
+      localStorage.setItem('plan', plan.name);
       window.open(res.data.short_url, '_blank');
       navigate('/payment-pending', { state: { sub: res.data.id, link: res.data.short_url, planName: plan.name, planCost: plan.price } });
     } catch (error) {
@@ -220,9 +220,9 @@ const PaymentDetails = () => {
     try {
       const postURL = serverURL + '/api/paystackpayment';
       const res = await axios.post(postURL, dataToSend);
-      sessionStorage.setItem('paystack', res.data.id);
-      sessionStorage.setItem('method', 'paystack');
-      sessionStorage.setItem('plan', plan.name);
+      localStorage.setItem('paystack', res.data.id);
+      localStorage.setItem('method', 'paystack');
+      localStorage.setItem('plan', plan.name);
       setIsProcessing(false);
       window.location.href = res.data.url;
 
@@ -244,8 +244,8 @@ const PaymentDetails = () => {
     payment_options: "card",
     payment_plan: plan.name === 'Monthly Plan' ? flutterwavePlanIdOne : flutterwavePlanIdTwo,
     customer: {
-      email: sessionStorage.getItem('email'),
-      name: sessionStorage.getItem('mName'),
+      email: localStorage.getItem('email'),
+      name: localStorage.getItem('mName'),
     },
     customizations: {
       title: appName,
@@ -267,9 +267,9 @@ const PaymentDetails = () => {
     try {
       const postURL = serverURL + '/api/stripepayment';
       const res = await axios.post(postURL, dataToSend);
-      sessionStorage.setItem('stripe', res.data.id);
-      sessionStorage.setItem('method', 'stripe');
-      sessionStorage.setItem('plan', plan.name);
+      localStorage.setItem('stripe', res.data.id);
+      localStorage.setItem('method', 'stripe');
+      localStorage.setItem('plan', plan.name);
       setIsProcessing(false);
       window.location.href = res.data.url;
 
@@ -504,8 +504,8 @@ const PaymentDetails = () => {
     try {
       const postURL = serverURL + '/api/paypal';
       const res = await axios.post(postURL, dataToSend);
-      sessionStorage.setItem('method', 'paypal');
-      sessionStorage.setItem('plan', plan.name);
+      localStorage.setItem('method', 'paypal');
+      localStorage.setItem('plan', plan.name);
       setIsProcessing(false);
       const links = res.data.links;
       const approveLink = links.find(link => link.rel === "approve");

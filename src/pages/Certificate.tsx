@@ -17,7 +17,7 @@ const Certificate = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [processing, setProcessing] = useState(false);
-  const userName = sessionStorage.getItem('mName');
+  const userName = localStorage.getItem('mName');
   const { state } = useLocation();
   const { courseId } = useParams();
   const [courseData, setCourseData] = useState(null);
@@ -26,7 +26,7 @@ const Certificate = () => {
   // Fetch course data from API
   const fetchCourseFromAPI = async () => {
     try {
-      const userId = sessionStorage.getItem('uid');
+      const userId = localStorage.getItem('uid');
       if (!courseId) {
         throw new Error('Missing course ID');
       }
@@ -100,8 +100,8 @@ const Certificate = () => {
       setLoading(false);
     } else {
       // Try to get data from session storage first
-      const jsonData = sessionStorage.getItem('jsonData');
-      const storedEnd = sessionStorage.getItem('courseEndDate');
+      const jsonData = localStorage.getItem('jsonData');
+      const storedEnd = localStorage.getItem('courseEndDate');
       
       if (jsonData) {
         try {
@@ -120,7 +120,7 @@ const Certificate = () => {
       }
       
       // Check if user is authenticated before making API call
-      const userId = sessionStorage.getItem('uid');
+      const userId = localStorage.getItem('uid');
       if (userId && courseId) {
         // If user is authenticated, try to fetch from API
         await fetchCourseFromAPI();
@@ -275,7 +275,7 @@ const Certificate = () => {
                 <div ref={pdfRef}>
                   <img src={certificate} className="w-full h-full" alt="logo" />
                   <p className='absolute text-3xl font-black italic max-lg:text-2xl max-md:text-lg' style={{ top: '47%', left: '50%', transform: 'translate(-50%, -50%)' }}>
-                    {sessionStorage.getItem('mName')}
+                    {localStorage.getItem('mName')}
                   </p>
                   <p className='absolute text-xs font-medium max-md:text-[8px]' style={{ color: '#0f4bac', top: '63.5%', left: '50%', transform: 'translate(-50%, -50%)' }}>
                     on {checkAndFormatDate(courseData.end)}

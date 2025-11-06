@@ -36,7 +36,7 @@ const GuideList: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const { toast } = useToast();
 
-  const userId = sessionStorage.getItem('uid');
+  const userId = localStorage.getItem('uid');
 
   const fetchGuides = async (page: number = 1) => {
     if (!userId) return;

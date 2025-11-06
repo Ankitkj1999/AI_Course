@@ -38,7 +38,7 @@ const Login = () => {
     settings.FACEBOOK_LOGIN_ENABLED?.value === "true";
 
   useEffect(() => {
-    const auth = sessionStorage.getItem("auth");
+    const auth = localStorage.getItem("auth");
     if (auth) {
       redirectHome();
     }
@@ -68,20 +68,20 @@ const Login = () => {
       if (response.data.success) {
         // Token is now stored in httpOnly cookie automatically
 
-        sessionStorage.setItem("email", response.data.userData.email);
-        sessionStorage.setItem("mName", response.data.userData.mName);
-        sessionStorage.setItem("auth", "true");
-        sessionStorage.setItem("uid", response.data.userData._id);
-        sessionStorage.setItem("type", response.data.userData.type);
-        sessionStorage.setItem("isAdmin", response.data.userData.isAdmin);
+        localStorage.setItem("email", response.data.userData.email);
+        localStorage.setItem("mName", response.data.userData.mName);
+        localStorage.setItem("auth", "true");
+        localStorage.setItem("uid", response.data.userData._id);
+        localStorage.setItem("type", response.data.userData.type);
+        localStorage.setItem("isAdmin", response.data.userData.isAdmin);
         toast({
           title: "Login successful",
           description: "Welcome back to " + appName,
         });
-        if (sessionStorage.getItem("shared") === null) {
+        if (localStorage.getItem("shared") === null) {
           redirectHome();
         } else {
-          getDataFromDatabase(sessionStorage.getItem("shared"));
+          getDataFromDatabase(localStorage.getItem("shared"));
         }
       } else {
         setError(response.data.message);
@@ -103,7 +103,7 @@ const Login = () => {
       const jsonData = JSON.parse(dat);
       const type = response.data[0].type.toLowerCase();
       const mainTopic = response.data[0].mainTopic;
-      const user = sessionStorage.getItem("uid");
+      const user = localStorage.getItem("uid");
       const content = JSON.stringify(jsonData);
 
       const postURLs = serverURL + "/api/courseshared";
@@ -114,7 +114,7 @@ const Login = () => {
         mainTopic,
       });
       if (responses.data.success) {
-        sessionStorage.removeItem("shared");
+        localStorage.removeItem("shared");
         redirectHome();
       } else {
         redirectHome();
@@ -241,14 +241,14 @@ const Login = () => {
                             description: "Welcome back to " + appName,
                           });
                           setIsLoading(false);
-                          sessionStorage.setItem("email", decoded.email);
-                          sessionStorage.setItem("mName", decoded.name);
-                          sessionStorage.setItem("auth", "true");
-                          sessionStorage.setItem(
+                          localStorage.setItem("email", decoded.email);
+                          localStorage.setItem("mName", decoded.name);
+                          localStorage.setItem("auth", "true");
+                          localStorage.setItem(
                             "uid",
                             response.data.userData._id
                           );
-                          sessionStorage.setItem(
+                          localStorage.setItem(
                             "type",
                             response.data.userData.type
                           );
@@ -314,14 +314,14 @@ const Login = () => {
                           description: "Welcome back to " + appName,
                         });
                         setIsLoading(false);
-                        sessionStorage.setItem("email", email);
-                        sessionStorage.setItem("mName", name);
-                        sessionStorage.setItem("auth", "true");
-                        sessionStorage.setItem(
+                        localStorage.setItem("email", email);
+                        localStorage.setItem("mName", name);
+                        localStorage.setItem("auth", "true");
+                        localStorage.setItem(
                           "uid",
                           response.data.userData._id
                         );
-                        sessionStorage.setItem(
+                        localStorage.setItem(
                           "type",
                           response.data.userData.type
                         );

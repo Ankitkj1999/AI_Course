@@ -21,15 +21,15 @@ const AdminPrivacy = () => {
         if (response.data && response.data[0] && response.data[0].privacy) {
           setValue(response.data[0].privacy);
         }
-        // Fallback to sessionStorage if API fails
-        const storedPrivacy = sessionStorage.getItem('privacy');
+        // Fallback to localStorage if API fails
+        const storedPrivacy = localStorage.getItem('privacy');
         if (storedPrivacy && !response.data[0]?.privacy) {
           setValue(storedPrivacy);
         }
       } catch (error) {
         console.error('Error loading privacy policy:', error);
-        // Fallback to sessionStorage
-        const storedPrivacy = sessionStorage.getItem('privacy');
+        // Fallback to localStorage
+        const storedPrivacy = localStorage.getItem('privacy');
         if (storedPrivacy) {
           setValue(storedPrivacy);
         }
@@ -50,7 +50,7 @@ const AdminPrivacy = () => {
       });
       
       if (response.data.success) {
-        sessionStorage.setItem('privacy', String(value));
+        localStorage.setItem('privacy', String(value));
         toast.success('Privacy Policy updated successfully');
       } else {
         toast.error('Failed to update Privacy Policy');

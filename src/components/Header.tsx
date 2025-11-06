@@ -28,8 +28,8 @@ const Header = () => {
   useEffect(() => {
     // Check authentication status
     const checkAuth = () => {
-      const auth = sessionStorage.getItem('auth');
-      const name = sessionStorage.getItem('mName');
+      const auth = localStorage.getItem('auth');
+      const name = localStorage.getItem('mName');
       setIsAuthenticated(auth === 'true');
       setUserName(name || '');
     };
@@ -51,8 +51,8 @@ const Header = () => {
       console.error('Logout error:', error);
     }
     
-    // Clear session storage
-    sessionStorage.clear();
+    // Clear local storage
+    localStorage.clear();
     setIsAuthenticated(false);
     setUserName('');
     navigate('/');

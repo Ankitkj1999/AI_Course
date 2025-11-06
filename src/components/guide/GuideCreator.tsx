@@ -33,19 +33,19 @@ const GuideCreator: React.FC = () => {
       return;
     }
 
-    const userId = sessionStorage.getItem('uid');
-    if (!userId) {
-      toast({
-        title: "Authentication Error",
-        description: "Please log in to create guides.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsLoading(true);
 
     try {
+      const userId = localStorage.getItem('uid');
+      if (!userId) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in to create guides.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const response = await guideService.createGuide({
         userId,
         keyword: keyword.trim(),

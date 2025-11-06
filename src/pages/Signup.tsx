@@ -45,7 +45,7 @@ const Signup = () => {
   const facebookLoginEnabled = settings.FACEBOOK_LOGIN_ENABLED?.value === 'true';
 
   useEffect(() => {
-    const auth = sessionStorage.getItem('auth');
+    const auth = localStorage.getItem('auth');
     if (auth) {
       redirectHome();
     }
@@ -84,11 +84,11 @@ const Signup = () => {
 
       const response = await axios.post(postURL, { email, mName: name, password, type });
       if (response.data.success) {
-        sessionStorage.setItem('email', email);
-        sessionStorage.setItem('mName', name);
-        sessionStorage.setItem('auth', 'true');
-        sessionStorage.setItem('uid', response.data.userId);
-        sessionStorage.setItem('type', 'free');
+        localStorage.setItem('email', email);
+        localStorage.setItem('mName', name);
+        localStorage.setItem('auth', 'true');
+        localStorage.setItem('uid', response.data.userId);
+        localStorage.setItem('type', 'free');
         toast({
           title: "Account created!",
           description: "Welcome to " + appName + ".",
@@ -304,11 +304,11 @@ const Signup = () => {
                             description: "Welcome back to " + appName,
                           });
                           setIsLoading(false);
-                          sessionStorage.setItem('email', decoded.email);
-                          sessionStorage.setItem('mName', decoded.name);
-                          sessionStorage.setItem('auth', 'true');
-                          sessionStorage.setItem('uid', response.data.userData._id);
-                          sessionStorage.setItem('type', response.data.userData.type);
+                          localStorage.setItem('email', decoded.email);
+                          localStorage.setItem('mName', decoded.name);
+                          localStorage.setItem('auth', 'true');
+                          localStorage.setItem('uid', response.data.userData._id);
+                          localStorage.setItem('type', response.data.userData.type);
                           sendEmail(decoded.email, decoded.name);
                         } else {
                           setIsLoading(false);
@@ -368,11 +368,11 @@ const Signup = () => {
                           description: "Welcome back to " + appName,
                         });
                         setIsLoading(false);
-                        sessionStorage.setItem('email', profile.email);
-                        sessionStorage.setItem('mName', profile.name);
-                        sessionStorage.setItem('auth', 'true');
-                        sessionStorage.setItem('uid', response.data.userData._id);
-                        sessionStorage.setItem('type', response.data.userData.type);
+                        localStorage.setItem('email', profile.email);
+                        localStorage.setItem('mName', profile.name);
+                        localStorage.setItem('auth', 'true');
+                        localStorage.setItem('uid', response.data.userData._id);
+                        localStorage.setItem('type', response.data.userData.type);
                         sendEmail(profile.email, profile.name);
                       } else {
                         setIsLoading(false);

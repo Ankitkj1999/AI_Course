@@ -38,7 +38,7 @@ const FlashcardCreator: React.FC = () => {
       return;
     }
 
-    const userId = sessionStorage.getItem('uid');
+    const userId = localStorage.getItem('uid');
     if (!userId) {
       toast({
         title: "Authentication Error",

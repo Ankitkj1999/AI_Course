@@ -3,7 +3,7 @@ import { QuizDashboard } from '@/components/quiz/QuizDashboard';
 
 const DashboardQuizPage: React.FC = () => {
   // Get user ID from session storage (matching your existing pattern)
-  const userId = sessionStorage.getItem('uid') || '';
+  const userId = localStorage.getItem('uid') || '';
 
   if (!userId) {
     return (

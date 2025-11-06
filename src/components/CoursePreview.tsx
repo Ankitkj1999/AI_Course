@@ -130,7 +130,7 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
         topics[courseName.toLowerCase()][0].subtopics[0].theory = theory;
         topics[courseName.toLowerCase()][0].subtopics[0].image = image;
 
-        const user = sessionStorage.getItem('uid');
+        const user = localStorage.getItem('uid');
         const content = JSON.stringify(topics);
         const postURL = serverURL + '/api/course';
         const response = await axios.post(postURL, { user, content, type, mainTopic: courseName, lang }, {
@@ -138,9 +138,9 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
         });
 
         if (response.data.success) {
-            sessionStorage.setItem('courseId', response.data.courseId);
-            sessionStorage.setItem('first', response.data.completed);
-            sessionStorage.setItem('jsonData', JSON.stringify(topics));
+            localStorage.setItem('courseId', response.data.courseId);
+            localStorage.setItem('first', response.data.completed);
+            localStorage.setItem('jsonData', JSON.stringify(topics));
             navigate('/course/' + response.data.courseId, {
                 state: {
                     jsonData: topics,
@@ -166,7 +166,7 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
         topics[courseName.toLowerCase()][0].subtopics[0].theory = theory;
         topics[courseName.toLowerCase()][0].subtopics[0].youtube = image;
 
-        const user = sessionStorage.getItem('uid');
+        const user = localStorage.getItem('uid');
         const content = JSON.stringify(topics);
         const postURL = serverURL + '/api/course';
         const response = await axios.post(postURL, { user, content, type, mainTopic: courseName, lang }, {
@@ -174,9 +174,9 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
         });
 
         if (response.data.success) {
-            sessionStorage.setItem('courseId', response.data.courseId);
-            sessionStorage.setItem('first', response.data.completed);
-            sessionStorage.setItem('jsonData', JSON.stringify(topics));
+            localStorage.setItem('courseId', response.data.courseId);
+            localStorage.setItem('first', response.data.completed);
+            localStorage.setItem('jsonData', JSON.stringify(topics));
             navigate('/course/' + response.data.courseId, {
                 state: {
                     jsonData: topics,

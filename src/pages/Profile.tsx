@@ -28,8 +28,8 @@ import { useNavigate } from 'react-router-dom';
 const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    name: sessionStorage.getItem('mName'),
-    email: sessionStorage.getItem('email'),
+    name: localStorage.getItem('mName'),
+    email: localStorage.getItem('email'),
     password: "",
   });
   const navigate = useNavigate();
@@ -59,7 +59,7 @@ const Profile = () => {
   }
 
   async function deleteProfile() {
-    if (sessionStorage.getItem('adminEmail') === sessionStorage.getItem('email')) {
+    if (localStorage.getItem('adminEmail') === localStorage.getItem('email')) {
       toast({
         title: "Access Denied",
         description: "Admin profile cannot be deleted."
@@ -78,13 +78,13 @@ const Profile = () => {
       console.error('Logout error:', error);
     }
     
-    sessionStorage.clear();
+    localStorage.clear();
     navigate("/login");
   }
 
   async function startDeletion() {
     setProcessingDelete(true);
-    const uid = sessionStorage.getItem('uid');
+    const uid = localStorage.getItem('uid');
     const postURL = serverURL + '/api/deleteuser';
     try {
       const response = await axios.post(postURL, { userId: uid });
@@ -132,7 +132,7 @@ const Profile = () => {
       return;
     }
     setProcessing(true);
-    const uid = sessionStorage.getItem('uid');
+    const uid = localStorage.getItem('uid');
     const postURL = serverURL + '/api/profile';
     try {
       const response = await axios.post(postURL, { email: formData.email, mName: formData.name, password: formData.password, uid });
@@ -141,8 +141,8 @@ const Profile = () => {
           title: "Profile updated",
           description: "Your profile information has been updated successfully."
         });
-        sessionStorage.setItem('email', formData.email);
-        sessionStorage.setItem('mName', formData.name);
+        localStorage.setItem('email', formData.email);
+        localStorage.setItem('mName', formData.name);
         setProcessing(false);
         setIsEditing(false);
       } else {
@@ -165,18 +165,18 @@ const Profile = () => {
 
 
   async function getDetails() {
-    if (sessionStorage.getItem('type') !== 'free') {
+    if (localStorage.getItem('type') !== 'free') {
       const dataToSend = {
-        uid: sessionStorage.getItem('uid'),
-        email: sessionStorage.getItem('email'),
+        uid: localStorage.getItem('uid'),
+        email: localStorage.getItem('email'),
       };
       try {
         const postURL = serverURL + '/api/subscriptiondetail';
         await axios.post(postURL, dataToSend).then(res => {
           setMethod(res.data.method);
           setJsonData(res.data.session);
-          setPlan(sessionStorage.getItem('type'));
-          setCost(sessionStorage.getItem('plan') === 'Monthly Plan' ? '' + MonthCost : '' + YearCost);
+          setPlan(localStorage.getItem('type'));
+          setCost(localStorage.getItem('plan') === 'Monthly Plan' ? '' + MonthCost : '' + YearCost);
         });
       } catch (error) {
         console.error(error);
@@ -192,7 +192,7 @@ const Profile = () => {
     setProcessingCancel(true);
     const dataToSend = {
       id: jsonData.id,
-      email: sessionStorage.getItem('email')
+      email: localStorage.getItem('email')
     };
     try {
       if (method === 'stripe') {
@@ -203,7 +203,7 @@ const Profile = () => {
             title: "Subscription Cancelled",
             description: "Your subscription has been cancelled.",
           });
-          sessionStorage.setItem('type', 'free');
+          localStorage.setItem('type', 'free');
           window.location.href = websiteURL + '/dashboard/profile';
         });
       } else if (method === 'paypal') {
@@ -214,14 +214,14 @@ const Profile = () => {
             title: "Subscription Cancelled",
             description: "Your subscription has been cancelled.",
           });
-          sessionStorage.setItem('type', 'free');
+          localStorage.setItem('type', 'free');
           window.location.href = websiteURL + '/dashboard/profile';
         });
       } else if (method === 'paystack') {
         const dataToSends = {
           code: jsonData.subscription_code,
           token: jsonData.email_token,
-          email: sessionStorage.getItem('email')
+          email: localStorage.getItem('email')
         };
         const postURL = serverURL + '/api/paystackcancel';
         await axios.post(postURL, dataToSends).then(res => {
@@ -230,7 +230,7 @@ const Profile = () => {
             title: "Subscription Cancelled",
             description: "Your subscription has been cancelled.",
           });
-          sessionStorage.setItem('type', 'free');
+          localStorage.setItem('type', 'free');
           window.location.href = websiteURL + '/dashboard/profile';
         });
 
@@ -239,7 +239,7 @@ const Profile = () => {
         const dataToSends = {
           code: jsonData.id,
           token: jsonData.plan,
-          email: sessionStorage.getItem('email')
+          email: localStorage.getItem('email')
         };
         const postURL = serverURL + '/api/flutterwavecancel';
         await axios.post(postURL, dataToSends).then(res => {
@@ -248,7 +248,7 @@ const Profile = () => {
             title: "Subscription Cancelled",
             description: "Your subscription has been cancelled.",
           });
-          sessionStorage.setItem('type', 'free');
+          localStorage.setItem('type', 'free');
           window.location.href = websiteURL + '/dashboard/profile';
         });
       }
@@ -260,7 +260,7 @@ const Profile = () => {
             title: "Subscription Cancelled",
             description: "Your subscription has been cancelled.",
           });
-          sessionStorage.setItem('type', 'free');
+          localStorage.setItem('type', 'free');
           window.location.href = websiteURL + '/dashboard/profile';
         });
       }
@@ -315,7 +315,7 @@ const Profile = () => {
 
               <div>
                 <h3 className="font-medium text-sm text-muted-foreground mb-2">Account Status</h3>
-                {sessionStorage.getItem('type') !== 'free' ?
+                {localStorage.getItem('type') !== 'free' ?
                   <div className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 text-xs rounded px-2 py-1 inline-flex items-center">
                     <ShieldCheck className="h-3 w-3 mr-1" />
                     Active Paid Plan

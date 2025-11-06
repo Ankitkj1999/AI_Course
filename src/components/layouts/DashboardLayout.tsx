@@ -39,10 +39,10 @@ const DashboardLayout = () => {
   const [admin, setAdmin] = useState(false);
 
   useEffect(() => {
-    if (sessionStorage.getItem('uid') === null) {
+    if (localStorage.getItem('uid') === null) {
       window.location.href = websiteURL + '/login';
     }
-    const isAdmin = sessionStorage.getItem('isAdmin') === 'true';
+    const isAdmin = localStorage.getItem('isAdmin') === 'true';
     setAdmin(isAdmin);
   }, []);
 
@@ -73,7 +73,7 @@ const DashboardLayout = () => {
       console.error('Logout error:', error);
     }
     
-    sessionStorage.clear();
+    localStorage.clear();
     toast({
       title: "Logged Out",
       description: "You have logged out successfully",

@@ -59,7 +59,7 @@ const CoursePage = () => {
   //ADDED FROM v4.0
   const { state } = useLocation();
   const { mainTopic, type, courseId, end, pass, lang } = state || {};
-  const jsonData = JSON.parse(sessionStorage.getItem("jsonData"));
+  const jsonData = JSON.parse(localStorage.getItem("jsonData"));
   const [selected, setSelected] = useState("");
   const [theory, setTheory] = useState("");
   const [contentType, setContentType] = useState("html"); // Track content type for proper rendering
@@ -198,7 +198,7 @@ const CoursePage = () => {
 
   const storeLocal = useCallback(async (messages) => {
     try {
-      sessionStorage.setItem(mainTopic, JSON.stringify(messages));
+      localStorage.setItem(mainTopic, JSON.stringify(messages));
     } catch (error) {
       console.error(error);
     }
@@ -206,7 +206,7 @@ const CoursePage = () => {
 
   const loadMessages = useCallback(async () => {
     try {
-      const jsonValue = sessionStorage.getItem(mainTopic);
+      const jsonValue = localStorage.getItem(mainTopic);
       if (jsonValue !== null) {
         setMessages(JSON.parse(jsonValue));
       } else {
@@ -286,7 +286,7 @@ const CoursePage = () => {
     }
 
     setIsLoading(false);
-    sessionStorage.setItem("jsonData", JSON.stringify(jsonData));
+    localStorage.setItem("jsonData", JSON.stringify(jsonData));
   }, [jsonData, mainTopic, type, selected]);
 
   // Separate effect for counting done topics
@@ -714,7 +714,7 @@ const CoursePage = () => {
 
   async function updateCourse() {
     CountDoneTopics();
-    sessionStorage.setItem("jsonData", JSON.stringify(jsonData));
+    localStorage.setItem("jsonData", JSON.stringify(jsonData));
     const dataToSend = {
       content: JSON.stringify(jsonData),
       courseId: courseId,
@@ -1121,7 +1121,7 @@ const CoursePage = () => {
   }
 
   async function finish() {
-    if (sessionStorage.getItem("first") === "true") {
+    if (localStorage.getItem("first") === "true") {
       if (!end) {
         const today = new Date();
         const formattedDate = today.toLocaleDateString("en-GB");
@@ -1143,8 +1143,8 @@ const CoursePage = () => {
         if (response.data.success) {
           const today = new Date();
           const formattedDate = today.toLocaleDateString("en-GB");
-          sessionStorage.setItem("first", "true");
-          sessionStorage.setItem("courseEndDate", formattedDate);
+          localStorage.setItem("first", "true");
+          localStorage.setItem("courseEndDate", formattedDate);
           sendEmail(formattedDate);
         }
       } catch (error) {
@@ -1154,8 +1154,8 @@ const CoursePage = () => {
   }
 
   async function sendEmail(formattedDate) {
-    const userName = sessionStorage.getItem("mName");
-    const email = sessionStorage.getItem("email");
+    const userName = localStorage.getItem("mName");
+    const email = localStorage.getItem("email");
     const html = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
                   <meta http-equiv="Content-Type" content="text/html charset=UTF-8" />
                   <html lang="en">
@@ -1433,18 +1433,18 @@ const CoursePage = () => {
               </DropdownMenuItem>
               <ShareOnSocial
                 textToShare={
-                  sessionStorage.getItem("mName") +
+                  localStorage.getItem("mName") +
                   " shared you course on " +
                   mainTopic
                 }
                 link={websiteURL + "/shareable?id=" + courseId}
                 linkTitle={
-                  sessionStorage.getItem("mName") +
+                  localStorage.getItem("mName") +
                   " shared you course on " +
                   mainTopic
                 }
                 linkMetaDesc={
-                  sessionStorage.getItem("mName") +
+                  localStorage.getItem("mName") +
                   " shared you course on " +
                   mainTopic
                 }

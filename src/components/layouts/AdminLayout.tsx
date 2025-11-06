@@ -56,7 +56,7 @@ const AdminLayout = () => {
   }
 
   useEffect(() => {
-    const isAdmin = sessionStorage.getItem('isAdmin') === 'true';
+    const isAdmin = localStorage.getItem('isAdmin') === 'true';
     if (!isAdmin) {
       redirectHome();
     }
@@ -289,7 +289,7 @@ const AdminLayout = () => {
                     console.error('Logout error:', error);
                   }
                   
-                  sessionStorage.clear();
+                  localStorage.clear();
                   navigate('/login');
                 }}
                 variant="outline"

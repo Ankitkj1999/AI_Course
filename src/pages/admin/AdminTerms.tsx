@@ -21,15 +21,15 @@ const AdminTerms = () => {
         if (response.data && response.data[0] && response.data[0].terms) {
           setValue(response.data[0].terms);
         }
-        // Fallback to sessionStorage if API fails
-        const storedTerms = sessionStorage.getItem('terms');
+        // Fallback to localStorage if API fails
+        const storedTerms = localStorage.getItem('terms');
         if (storedTerms && !response.data[0]?.terms) {
           setValue(storedTerms);
         }
       } catch (error) {
         console.error('Error loading terms:', error);
-        // Fallback to sessionStorage
-        const storedTerms = sessionStorage.getItem('terms');
+        // Fallback to localStorage
+        const storedTerms = localStorage.getItem('terms');
         if (storedTerms) {
           setValue(storedTerms);
         }
@@ -50,7 +50,7 @@ const AdminTerms = () => {
       });
       
       if (response.data.success) {
-        sessionStorage.setItem('terms', String(value));
+        localStorage.setItem('terms', String(value));
         toast.success('Terms of Service updated successfully');
       } else {
         toast.error('Failed to update Terms of Service');
