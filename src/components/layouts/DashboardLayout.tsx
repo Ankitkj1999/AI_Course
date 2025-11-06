@@ -107,15 +107,6 @@ const DashboardLayout = () => {
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip="Generate Course" isActive={isActive('/dashboard/generate-course')}>
-                      <Link to="/dashboard/generate-course" className={cn(isActive('/dashboard/generate-course') && "text-primary")}>
-                        <Sparkles />
-                        <span>Generate Course</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
@@ -129,6 +120,15 @@ const DashboardLayout = () => {
               </div>
               <SidebarGroupContent>
                 <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="My Courses" isActive={isActive('/dashboard/courses')}>
+                      <Link to="/dashboard/courses" className={cn(isActive('/dashboard/courses') && "text-primary")}>
+                        <BookOpen />
+                        <span>My Courses</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild tooltip="My Quizzes" isActive={isActive('/dashboard/quizzes')}>
                       <Link to="/dashboard/quizzes" className={cn(isActive('/dashboard/quizzes') && "text-primary")}>
@@ -150,7 +150,7 @@ const DashboardLayout = () => {
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild tooltip="My Guides" isActive={isActive('/dashboard/guides')}>
                       <Link to="/dashboard/guides" className={cn(isActive('/dashboard/guides') && "text-primary")}>
-                        <BookOpen />
+                        <Layers />
                         <span>My Guides</span>
                       </Link>
                     </SidebarMenuButton>
@@ -169,6 +169,16 @@ const DashboardLayout = () => {
               <SidebarGroupContent>
                 <div className="px-2 space-y-2">
                   <Button
+                    className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-indigo-500 hover:to-blue-500 shadow-md transition-all"
+                    size="sm"
+                    asChild
+                  >
+                    <Link to="/dashboard/generate-course">
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Generate Course
+                    </Link>
+                  </Button>
+                  <Button
                     className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-pink-500 hover:to-purple-500 shadow-md transition-all"
                     size="sm"
                     asChild
@@ -184,7 +194,7 @@ const DashboardLayout = () => {
                     asChild
                   >
                     <Link to="/dashboard/create-flashcard">
-                      <Layers className="mr-2 h-4 w-4" />
+                      <CreditCard className="mr-2 h-4 w-4" />
                       Create Flashcards
                     </Link>
                   </Button>
@@ -329,6 +339,12 @@ const DashboardLayout = () => {
               </Link>
             </Button>
             <Button variant="ghost" size="sm" asChild className="flex flex-col items-center gap-1 h-auto py-2">
+              <Link to="/dashboard/courses">
+                <BookOpen className="h-5 w-5" />
+                <span className="text-xs">Courses</span>
+              </Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild className="flex flex-col items-center gap-1 h-auto py-2">
               <Link to="/dashboard/generate-course">
                 <Sparkles className="h-5 w-5" />
                 <span className="text-xs">Create</span>
@@ -338,12 +354,6 @@ const DashboardLayout = () => {
               <Link to="/dashboard/profile">
                 <User className="h-5 w-5" />
                 <span className="text-xs">Profile</span>
-              </Link>
-            </Button>
-            <Button variant="ghost" size="sm" asChild className="flex flex-col items-center gap-1 h-auto py-2">
-              <Link to="/dashboard/quizzes">
-                <Brain className="h-5 w-5" />
-                <span className="text-xs">Quizzes</span>
               </Link>
             </Button>
           </div>
