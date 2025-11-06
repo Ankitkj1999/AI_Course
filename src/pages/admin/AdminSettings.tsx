@@ -32,9 +32,8 @@ const AdminSettings = () => {
 
   const fetchSettings = async () => {
     try {
-      const token = localStorage.getItem("token");
       const response = await axios.get(`${serverURL}/api/admin/settings`, {
-        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
       });
       setSettings(response.data);
     } catch (error) {
@@ -51,11 +50,10 @@ const AdminSettings = () => {
   const updateSetting = async (key: string, value: string) => {
     setSaving(key);
     try {
-      const token = localStorage.getItem("token");
       await axios.put(
         `${serverURL}/api/admin/settings/${key}`,
         { value },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { withCredentials: true }
       );
 
       // Update local state

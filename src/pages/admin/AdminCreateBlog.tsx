@@ -66,7 +66,6 @@ const AdminCreateBlog = () => {
 
     try {
       const base64Image = await toBase64(image);
-      const token = localStorage.getItem("token");
 
       await axios.post(
         `${serverURL}/api/createblog`,
@@ -76,9 +75,7 @@ const AdminCreateBlog = () => {
           image: base64Image,
         },
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          withCredentials: true,
         }
       );
 

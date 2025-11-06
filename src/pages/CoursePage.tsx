@@ -365,9 +365,8 @@ const CoursePage = () => {
     const url = serverURL + "/api/chat";
 
     try {
-      const token = localStorage.getItem("token");
       const response = await axios.post(url, dataToSend, {
-        headers: { Authorization: `Bearer ${token}` }
+        withCredentials: true
       });
       if (response.data.success === false) {
         toast({
@@ -587,9 +586,8 @@ const CoursePage = () => {
     };
     try {
       const postURL = serverURL + "/api/generate";
-      const token = localStorage.getItem("token");
       const res = await axios.post(postURL, dataToSend, {
-        headers: { Authorization: `Bearer ${token}` }
+        withCredentials: true
       });
       const generatedText = res.data.text;
       const contentType = res.data.contentType || "html"; // Default to HTML for backward compatibility
@@ -799,9 +797,8 @@ const CoursePage = () => {
     };
     try {
       const postURL = serverURL + "/api/generate";
-      const token = localStorage.getItem("token");
       const res = await axios.post(postURL, dataToSend, {
-        headers: { Authorization: `Bearer ${token}` }
+        withCredentials: true
       });
       const generatedText = res.data.text;
       const contentType = res.data.contentType || "html"; // Default to HTML for backward compatibility
@@ -987,14 +984,13 @@ const CoursePage = () => {
         subtopicsString = subtopicsString + " , " + titleOfSubTopic;
       });
       const postURL = serverURL + "/api/aiexam";
-      const token = localStorage.getItem("token");
       const response = await axios.post(postURL, {
         courseId,
         mainTopic,
         subtopicsString,
         lang,
       }, {
-        headers: { Authorization: `Bearer ${token}` }
+        withCredentials: true
       });
       if (response.data.success) {
         setIsLoading(false);

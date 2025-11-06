@@ -7,6 +7,7 @@ import cors from 'cors';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import cookieParser from 'cookie-parser';
 import gis from 'g-i-s';
 import youtubesearchapi from 'youtube-search-api';
 import { YoutubeTranscript } from 'youtube-transcript';
@@ -107,6 +108,7 @@ app.use((req, res, next) => {
 const PORT = process.env.PORT;
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(express.json({ limit: '50mb' }));
+app.use(cookieParser());
 mongoose.connect(process.env.MONGODB_URI);
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
@@ -289,7 +291,7 @@ const Guide = mongoose.model('Guide', guideSchema);
 // Basic auth middleware - requires valid user
 const requireAuth = async (req, res, next) => {
     try {
-        const token = req.headers.authorization?.split(' ')[1];
+        const token = req.cookies.auth_token;
         if (!token || token === 'null' || token === 'undefined') {
             return res.status(401).json({ error: 'Authentication required' });
         }
@@ -312,7 +314,7 @@ const requireAuth = async (req, res, next) => {
 // Admin middleware - requires admin user
 const requireAdmin = async (req, res, next) => {
     try {
-        const token = req.headers.authorization?.split(' ')[1];
+        const token = req.cookies.auth_token;
         if (!token || token === 'null' || token === 'undefined') {
             return res.status(401).json({ error: 'Authentication required' });
         }
@@ -342,7 +344,7 @@ const requireAdmin = async (req, res, next) => {
 // Main admin middleware (for critical settings)
 const requireMainAdmin = async (req, res, next) => {
     try {
-        const token = req.headers.authorization?.split(' ')[1];
+        const token = req.cookies.auth_token;
         if (!token || token === 'null' || token === 'undefined') {
             return res.status(401).json({ error: 'No valid token provided' });
         }
@@ -475,10 +477,17 @@ app.post('/api/signin', async (req, res) => {
                 
                 console.log('Token generated successfully:', !!token);
                 
+                // Set httpOnly cookie
+                res.cookie('auth_token', token, {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: 'strict',
+                    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+                });
+                
                 return res.json({ 
                     success: true, 
                     message: 'SignIn Successful', 
-                    token,
                     userData: { ...user.toObject(), isAdmin: user.isAdmin } 
                 });
             } catch (error) {
@@ -521,7 +530,15 @@ app.post('/api/social', async (req, res) => {
                     { expiresIn: '7d' }
                 );
                 
-                res.json({ success: true, message: 'Account created successfully', token, userData: newUser });
+                // Set httpOnly cookie
+                res.cookie('auth_token', token, {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: 'strict',
+                    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+                });
+                
+                res.json({ success: true, message: 'Account created successfully', userData: newUser });
             } else {
                 const newUser = new User({ email, mName, password, type });
                 await newUser.save();
@@ -534,7 +551,15 @@ app.post('/api/social', async (req, res) => {
                     { expiresIn: '7d' }
                 );
                 
-                res.json({ success: true, message: 'Account created successfully', token, userData: newUser });
+                // Set httpOnly cookie
+                res.cookie('auth_token', token, {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: 'strict',
+                    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+                });
+                
+                res.json({ success: true, message: 'Account created successfully', userData: newUser });
             }
         } else {
             const token = jwt.sign(
@@ -543,7 +568,15 @@ app.post('/api/social', async (req, res) => {
                 { expiresIn: '7d' }
             );
             
-            return res.json({ success: true, message: 'SignIn Successful', token, userData: user });
+            // Set httpOnly cookie
+            res.cookie('auth_token', token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+            });
+            
+            return res.json({ success: true, message: 'SignIn Successful', userData: user });
         }
 
     } catch (error) {
@@ -551,6 +584,23 @@ app.post('/api/social', async (req, res) => {
         res.status(500).json({ success: false, message: 'Internal Server Error' });
     }
 
+});
+
+//LOGOUT
+app.post('/api/logout', (req, res) => {
+    try {
+        // Clear the httpOnly cookie
+        res.clearCookie('auth_token', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict'
+        });
+        
+        res.json({ success: true, message: 'Logged out successfully' });
+    } catch (error) {
+        console.error('Logout error:', error);
+        res.status(500).json({ success: false, message: 'Logout failed' });
+    }
 });
 
 //SEND MAIL

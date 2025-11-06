@@ -69,9 +69,16 @@ const Profile = () => {
     }
   }
 
-  function redirectLogin() {
+  async function redirectLogin() {
+    try {
+      // Call server logout endpoint to clear httpOnly cookie
+      const serverURL = await import('../utils/config').then(m => m.detectServerURL());
+      await axios.post(`${serverURL}/api/logout`, {}, { withCredentials: true });
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+    
     sessionStorage.clear();
-    localStorage.removeItem('token');
     navigate("/login");
   }
 

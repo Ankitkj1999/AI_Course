@@ -161,14 +161,14 @@ const FlashcardList: React.FC = () => {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {flashcards.map((flashcard) => (
-              <Card key={flashcard._id} className="bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow">
+              <Card key={flashcard._id} className="bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow flex flex-col">
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white line-clamp-2">
                         {flashcard.title}
                       </CardTitle>
-                      <CardDescription className="text-gray-600 dark:text-gray-300 mt-1">
+                      <CardDescription className="text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">
                         {flashcard.keyword}
                       </CardDescription>
                     </div>
@@ -177,65 +177,63 @@ const FlashcardList: React.FC = () => {
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-                      <div className="flex items-center gap-1">
-                        <Eye className="h-4 w-4" />
-                        {flashcard.viewCount}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        {formatDate(flashcard.createdAt)}
-                      </div>
+                <CardContent className="flex-1 flex flex-col justify-between">
+                  <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center gap-1">
+                      <Eye className="h-4 w-4" />
+                      {flashcard.viewCount}
                     </div>
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4" />
+                      {formatDate(flashcard.createdAt)}
+                    </div>
+                  </div>
 
-                    <div className="flex gap-2 justify-between items-center">
-                      <Button asChild variant="default" size="sm" className="flex-1">
-                        <Link to={`/dashboard/flashcard/${flashcard.slug}`}>
-                          <ExternalLink className="mr-2 h-4 w-4" />
-                          Study
-                        </Link>
-                      </Button>
-                      
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            disabled={isDeleting === flashcard.slug}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                  <div className="flex gap-2 justify-between items-center">
+                    <Button asChild variant="default" size="sm" className="flex-1">
+                      <Link to={`/dashboard/flashcard/${flashcard.slug}`}>
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Study
+                      </Link>
+                    </Button>
+                    
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          disabled={isDeleting === flashcard.slug}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                        >
+                          {isDeleting === flashcard.slug ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="bg-white dark:bg-gray-800">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="text-gray-900 dark:text-white">
+                            Delete Flashcard Set
+                          </AlertDialogTitle>
+                          <AlertDialogDescription className="text-gray-600 dark:text-gray-300">
+                            Are you sure you want to delete "{flashcard.title}"? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel className="dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+                            Cancel
+                          </AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(flashcard.slug, flashcard.title)}
+                            className="bg-red-600 hover:bg-red-700 text-white"
                           >
-                            {isDeleting === flashcard.slug ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent className="bg-white dark:bg-gray-800">
-                          <AlertDialogHeader>
-                            <AlertDialogTitle className="text-gray-900 dark:text-white">
-                              Delete Flashcard Set
-                            </AlertDialogTitle>
-                            <AlertDialogDescription className="text-gray-600 dark:text-gray-300">
-                              Are you sure you want to delete "{flashcard.title}"? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel className="dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
-                              Cancel
-                            </AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDelete(flashcard.slug, flashcard.title)}
-                              className="bg-red-600 hover:bg-red-700 text-white"
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </CardContent>
               </Card>

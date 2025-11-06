@@ -68,9 +68,8 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
         };
         try {
             const postURL = serverURL + '/api/generate';
-            const token = localStorage.getItem("token");
             const res = await axios.post(postURL, dataToSend, {
-                headers: { Authorization: `Bearer ${token}` }
+                withCredentials: true
             });
             const generatedText = res.data.text;
             const htmlContent = generatedText;
@@ -134,9 +133,8 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
         const user = sessionStorage.getItem('uid');
         const content = JSON.stringify(topics);
         const postURL = serverURL + '/api/course';
-        const token = localStorage.getItem("token");
         const response = await axios.post(postURL, { user, content, type, mainTopic: courseName, lang }, {
-            headers: { Authorization: `Bearer ${token}` }
+            withCredentials: true
         });
 
         if (response.data.success) {
@@ -171,9 +169,8 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
         const user = sessionStorage.getItem('uid');
         const content = JSON.stringify(topics);
         const postURL = serverURL + '/api/course';
-        const token = localStorage.getItem("token");
         const response = await axios.post(postURL, { user, content, type, mainTopic: courseName, lang }, {
-            headers: { Authorization: `Bearer ${token}` }
+            withCredentials: true
         });
 
         if (response.data.success) {
@@ -264,9 +261,8 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
         };
         try {
             const postURL = serverURL + '/api/generate';
-            const token = localStorage.getItem("token");
             const res = await axios.post(postURL, dataToSend, {
-                headers: { Authorization: `Bearer ${token}` }
+                withCredentials: true
             });
             const generatedText = res.data.text;
             const htmlContent = generatedText;

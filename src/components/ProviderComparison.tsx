@@ -109,9 +109,9 @@ const ProviderComparison: React.FC<ProviderComparisonProps> = ({ className = '' 
           const response = await fetch('/api/llm/generate', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
+              'Content-Type': 'application/json'
             },
+            credentials: 'include',
             body: JSON.stringify({
               prompt: prompt.trim(),
               provider: providerId,

@@ -7,6 +7,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { appName } from '@/constants';
 import { User, LogOut } from 'lucide-react';
 import Logo from '../res/logo.svg';
+import axios from 'axios';
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -41,10 +42,17 @@ const Header = () => {
     return () => window.removeEventListener('storage', checkAuth);
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      // Call server logout endpoint to clear httpOnly cookie
+      const serverURL = await import('../utils/config').then(m => m.detectServerURL());
+      await axios.post(`${serverURL}/api/logout`, {}, { withCredentials: true });
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+    
     // Clear session storage
     sessionStorage.clear();
-    localStorage.removeItem('token');
     setIsAuthenticated(false);
     setUserName('');
     navigate('/');

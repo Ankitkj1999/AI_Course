@@ -223,9 +223,8 @@ const GenerateCourse = () => {
     
     try {
       const postURL = serverURL + "/api/prompt";
-      const token = localStorage.getItem("token");
       const res = await axios.post(postURL, dataToSend, {
-        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
       });
       
       const generatedText = res.data.generatedText;

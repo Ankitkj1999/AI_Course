@@ -36,18 +36,15 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}): Pro
   const serverURL = await getServerURL();
   const url = `${serverURL}/api${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
-  // Get token from localStorage
-  const token = localStorage.getItem('token');
-
   console.log(`🌐 API Call: ${options.method || 'GET'} ${url}`);
 
   try {
     const response = await fetch(url, {
       headers: {
         'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` }),
         ...options.headers,
       },
+      credentials: 'include', // Include cookies in requests
       ...options,
     });
 
@@ -65,9 +62,9 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}): Pro
       return fetch(retryUrl, {
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
           ...options.headers,
         },
+        credentials: 'include', // Include cookies in requests
         ...options,
       });
     }

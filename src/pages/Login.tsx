@@ -64,12 +64,9 @@ const Login = () => {
     try {
       // Simulate authentication delay
       const postURL = serverURL + "/api/signin";
-      const response = await axios.post(postURL, { email, password });
+      const response = await axios.post(postURL, { email, password }, { withCredentials: true });
       if (response.data.success) {
-        // Store JWT token
-        if (response.data.token) {
-          localStorage.setItem("token", response.data.token);
-        }
+        // Token is now stored in httpOnly cookie automatically
 
         sessionStorage.setItem("email", response.data.userData.email);
         sessionStorage.setItem("mName", response.data.userData.mName);
@@ -235,12 +232,9 @@ const Login = () => {
                         const response = await axios.post(postURL, {
                           email,
                           name,
-                        });
+                        }, { withCredentials: true });
                         if (response.data.success) {
-                          // Store JWT token
-                          if (response.data.token) {
-                            localStorage.setItem("token", response.data.token);
-                          }
+                          // Token is now stored in httpOnly cookie automatically
 
                           toast({
                             title: "Login successful",
@@ -311,12 +305,9 @@ const Login = () => {
                       const response = await axios.post(postURL, {
                         email,
                         name,
-                      });
+                      }, { withCredentials: true });
                       if (response.data.success) {
-                        // Store JWT token
-                        if (response.data.token) {
-                          localStorage.setItem("token", response.data.token);
-                        }
+                        // Token is now stored in httpOnly cookie automatically
 
                         toast({
                           title: "Login successful",

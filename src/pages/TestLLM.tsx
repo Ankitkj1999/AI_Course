@@ -107,22 +107,12 @@ const TestLLM: React.FC = () => {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast({
-          title: "Authentication Required",
-          description: "Please log in to use the LLM test screen",
-          variant: "destructive"
-        });
-        return;
-      }
-
       const response = await fetch('/api/llm/generate', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({
           prompt: prompt.trim(),
           provider: selectedProvider,
@@ -237,15 +227,7 @@ const TestLLM: React.FC = () => {
     setCompareMode(true);
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast({
-          title: "Authentication Required",
-          description: "Please log in to use the comparison feature",
-          variant: "destructive"
-        });
-        return;
-      }
+      // Authentication is now handled via httpOnly cookies
 
       // Get available providers
       const providersResponse = await fetch('/api/llm/providers');
@@ -263,9 +245,9 @@ const TestLLM: React.FC = () => {
           const response = await fetch('/api/llm/generate', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
+              'Content-Type': 'application/json'
             },
+            credentials: 'include',
             body: JSON.stringify({
               prompt: prompt.trim(),
               provider: provider.id,
