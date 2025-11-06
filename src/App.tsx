@@ -45,6 +45,9 @@ import GuideListPage from "./pages/GuideList";
 import CreateGuidePage from "./pages/CreateGuide";
 import GuideViewerPage from "./pages/GuideViewer";
 
+// Courses import
+import CoursesPage from "./pages/dashboard/Courses";
+
 // LLM Test imports
 import TestLLM from "./pages/TestLLM";
 
@@ -111,6 +114,7 @@ const App = () => {
                 {/* Dashboard Routes */}
                 <Route path="/dashboard" element={<DashboardLayout />}>
                   <Route index element={<Dashboard />} />
+                  <Route path="courses" element={<CoursesPage />} />
                   <Route path="generate-course" element={<GenerateCourse />} />
                   <Route path="pricing" element={<ProfilePricing />} />
                   <Route path="payment/:planId" element={<PaymentDetails />} />
