@@ -502,8 +502,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🆘 Support
 
-- 📧 Email: <spacester.app@gmail.com>
-- 🐛 Issues: [GitHub Issues](https://github.com/yourusername/aicourse/issues)
+- 📧 Email: <ankit.k.j@gmail.com>
+- 🐛 Issues: [GitHub Issues](https://github.com/ankitkj1999/aicourse/issues)
 - 📖 Documentation: See guides above
 
 ## 🙏 Acknowledgments
@@ -515,4 +515,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-Made with ❤️ by [Spacester](https://github.com/spacester)
+Made with ❤️ by [Ankit](https://github.com/ankitkj1999)
