@@ -94,23 +94,14 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Create Quiz
-        </h1>
-        <p className="text-gray-600 dark:text-gray-300">
-          Generate AI-powered quizzes for any topic to enhance learning
-        </p>
-      </div>
-
       <Card className="bg-white dark:bg-gray-800 shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
             <Brain className="h-5 w-5 text-primary" />
-            Quiz Generator
+            Create Quiz
           </CardTitle>
           <CardDescription className="text-gray-600 dark:text-gray-300">
-            Enter a topic or keyword to generate comprehensive quizzes
+            Generate AI-powered quizzes for any topic to enhance learning
           </CardDescription>
         </CardHeader>
         <CardContent>

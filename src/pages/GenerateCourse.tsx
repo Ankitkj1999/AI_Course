@@ -296,23 +296,14 @@ const GenerateCourse = () => {
         keywords="course generation, AI learning, custom education"
       />
       <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Generate Course
-          </h1>
-          <p className="text-gray-600 dark:text-gray-300">
-            Create AI-powered courses for any topic to enhance learning
-          </p>
-        </div>
-
         <Card className="bg-white dark:bg-gray-800 shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
               <Sparkles className="h-5 w-5 text-primary" />
-              Course Generator
+              Generate Course
             </CardTitle>
             <CardDescription className="text-gray-600 dark:text-gray-300">
-              Enter a topic and subtopics to generate comprehensive courses
+              Create AI-powered courses for any topic to enhance learning
             </CardDescription>
           </CardHeader>
           <CardContent>

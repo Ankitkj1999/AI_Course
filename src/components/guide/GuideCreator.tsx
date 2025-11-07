@@ -71,11 +71,20 @@ const GuideCreator: React.FC = () => {
       } else {
         throw new Error(response.message || 'Failed to create guide');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating guide:', error);
+
+      const getErrorMessage = (error: unknown): string => {
+        if (typeof error === 'object' && error !== null) {
+          const err = error as { response?: { data?: { message?: string } }; message?: string };
+          return err.response?.data?.message || err.message || "Failed to create guide. Please try again.";
+        }
+        return "Failed to create guide. Please try again.";
+      };
+
       toast({
         title: "Creation Failed",
-        description: error.response?.data?.message || error.message || "Failed to create guide. Please try again.",
+        description: getErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -85,23 +94,14 @@ const GuideCreator: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Create Study Guide
-        </h1>
-        <p className="text-gray-600 dark:text-gray-300">
-          Generate comprehensive study guides for any topic with AI assistance
-        </p>
-      </div>
-
       <Card className="bg-white dark:bg-gray-800 shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
             <BookOpen className="h-5 w-5 text-primary" />
-            Guide Generator
+            Create Study Guide
           </CardTitle>
           <CardDescription className="text-gray-600 dark:text-gray-300">
-            Create focused, single-page study guides with examples and practice questions
+            Generate comprehensive study guides for any topic with AI assistance
           </CardDescription>
         </CardHeader>
         <CardContent>

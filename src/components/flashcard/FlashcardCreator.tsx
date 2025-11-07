@@ -70,11 +70,20 @@ const FlashcardCreator: React.FC = () => {
       } else {
         throw new Error(response.message || 'Failed to create flashcards');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating flashcards:', error);
+
+      let errorMessage = "Failed to create flashcards. Please try again.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string } } };
+        errorMessage = axiosError.response?.data?.message || errorMessage;
+      }
+
       toast({
         title: "Creation Failed",
-        description: error.response?.data?.message || error.message || "Failed to create flashcards. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -84,23 +93,14 @@ const FlashcardCreator: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Create Flashcards
-        </h1>
-        <p className="text-gray-600 dark:text-gray-300">
-          Generate AI-powered flashcards for any topic to enhance your learning
-        </p>
-      </div>
-
       <Card className="bg-white dark:bg-gray-800 shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
             <Brain className="h-5 w-5 text-primary" />
-            Flashcard Generator
+            Create Flashcards
           </CardTitle>
           <CardDescription className="text-gray-600 dark:text-gray-300">
-            Enter a topic or keyword to generate comprehensive flashcards
+            Generate AI-powered flashcards for any topic to enhance your learning
           </CardDescription>
         </CardHeader>
         <CardContent>
