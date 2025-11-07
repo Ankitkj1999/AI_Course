@@ -318,10 +318,10 @@ const Courses = () => {
           <>
             {courses.length > 0 ? (
               viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {courses.map((course) => (
-                    <Card key={course._id} className="overflow-hidden hover:shadow-md transition-all duration-200 border-border/40 hover:border-primary/30 group bg-card/50 backdrop-blur-sm">
-                      <div className="aspect-[16/10] relative overflow-hidden">
+                    <Card key={course._id} className="overflow-hidden hover:shadow-lg transition-all duration-200 border-border/40 hover:border-primary/30 group bg-card/50 backdrop-blur-sm flex flex-col min-h-[280px]">
+                      <div className="aspect-[16/9] relative overflow-hidden">
                         <img
                           src={course.photo}
                           alt={course.mainTopic}
@@ -365,7 +365,7 @@ const Courses = () => {
                         <CardTitle className="text-lg leading-tight capitalize line-clamp-1">{course.mainTopic}</CardTitle>
                         <CardDescription className="text-xs capitalize line-clamp-1">{course.type}</CardDescription>
                       </CardHeader>
-                      <CardContent className="pb-3 pt-0">
+                      <CardContent className="pb-3 pt-0 flex-1">
                         <div className="mb-3">
                           <div className="h-1.5 bg-secondary/60 rounded-full">
                             <div
@@ -389,7 +389,7 @@ const Courses = () => {
                           onClick={() => redirectCourse(course.content, course.mainTopic, course.type, course._id, course.completed, course.end)}
                           variant="ghost"
                           size="sm"
-                          className="w-full group-hover:bg-primary/5 transition-colors justify-between text-xs h-8"
+                          className="w-full bg-accent/10 border border-border/50 group-hover:bg-accent transition-colors justify-between text-xs h-8"
                         >
                           Continue Learning
                           <ArrowRight className="h-3.5 w-3.5 ml-2 group-hover:translate-x-0.5 transition-transform" />

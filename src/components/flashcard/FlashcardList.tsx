@@ -49,7 +49,7 @@ const FlashcardList: React.FC = () => {
         setCurrentPage(response.pagination.currentPage);
         setTotalPages(response.pagination.totalPages);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching flashcards:', error);
       toast({
         title: "Error",
@@ -81,7 +81,7 @@ const FlashcardList: React.FC = () => {
         // Refresh the list
         fetchFlashcards(currentPage);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting flashcard:', error);
       toast({
         title: "Error",
@@ -161,8 +161,8 @@ const FlashcardList: React.FC = () => {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {flashcards.map((flashcard) => (
-              <Card key={flashcard._id} className="bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow flex flex-col">
-                <CardHeader>
+              <Card key={flashcard._id} className="bg-white dark:bg-gray-800 hover:shadow-lg transition-all duration-200 border-border/40 hover:border-primary/30 group bg-card/50 backdrop-blur-sm flex flex-col min-h-[280px]">
+                <CardHeader className="pb-3 pt-6">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white line-clamp-2">
@@ -172,13 +172,13 @@ const FlashcardList: React.FC = () => {
                         {flashcard.keyword}
                       </CardDescription>
                     </div>
-                    <Badge variant="secondary" className="ml-2">
+                    <Badge variant="secondary" className="ml-2 shrink-0">
                       {flashcard.cardCount || flashcard.cards.length} cards
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="flex-1 flex flex-col justify-between">
-                  <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                <CardContent className="flex-1 flex flex-col justify-between px-6 pb-6 pt-0">
+                  <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mb-4">
                     <div className="flex items-center gap-1">
                       <Eye className="h-4 w-4" />
                       {flashcard.viewCount}
@@ -189,21 +189,21 @@ const FlashcardList: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex gap-2 justify-between items-center">
-                    <Button asChild variant="default" size="sm" className="flex-1">
+                  <div className="flex gap-2 justify-between items-center mt-auto">
+                    <Button asChild variant="default" size="sm" className="flex-1 bg-gradient-to-r from-primary to-purple-600 hover:from-purple-600 hover:to-primary">
                       <Link to={`/dashboard/flashcard/${flashcard.slug}`}>
                         <ExternalLink className="mr-2 h-4 w-4" />
                         Study
                       </Link>
                     </Button>
-                    
+
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
                           disabled={isDeleting === flashcard.slug}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 shrink-0"
                         >
                           {isDeleting === flashcard.slug ? (
                             <Loader2 className="h-4 w-4 animate-spin" />

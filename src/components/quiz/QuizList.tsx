@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { QuizService } from '@/services/quizService';
 import { getQuizURL, getQuizShareURL } from '@/utils/config';
 import { InlineLoader } from '@/components/ui/loading';
@@ -13,9 +15,21 @@ import {
   Trash2,
   Plus,
   Clock,
-  BarChart3
+  BarChart3,
+  Loader2
 } from 'lucide-react';
 import type { Quiz } from '@/types/quiz';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface QuizListProps {
   userId: string;
@@ -29,6 +43,14 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [deletingQuiz, setDeletingQuiz] = useState<string | null>(null);
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
 
   useEffect(() => {
     fetchQuizzes();
@@ -71,23 +93,19 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
     });
   };
 
-  const handleDelete = async (quiz: Quiz) => {
-    if (!confirm(`Are you sure you want to delete "${quiz.title}"?`)) {
-      return;
-    }
-
-    setDeletingQuiz(quiz.slug);
-    
+  const handleDelete = async (slug: string, title: string) => {
+    setDeletingQuiz(slug);
     try {
-      const response = await QuizService.deleteQuiz(quiz.slug, userId);
-      
+      const response = await QuizService.deleteQuiz(slug, userId);
+
       if (response.success) {
-        // Remove quiz from list
-        setQuizzes(prev => prev.filter(q => q.slug !== quiz.slug));
         toast({
-          title: "Quiz Deleted",
-          description: `"${quiz.title}" has been deleted successfully.`,
+          title: "Deleted",
+          description: `"${title}" has been deleted successfully.`,
         });
+
+        // Refresh the list
+        fetchQuizzes();
       } else {
         toast({
           title: "Error",
@@ -105,14 +123,6 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
     } finally {
       setDeletingQuiz(null);
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
   };
 
   if (loading) {
@@ -164,64 +174,53 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
           {quizzes.map((quiz) => {
             const quizURL = getQuizURL(quiz);
             const isDeleting = deletingQuiz === quiz.slug;
-            
+
             return (
-              <div key={quiz._id} className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-                {/* Quiz Header */}
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-4">
+              <Card key={quiz._id} className="bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow flex flex-col">
+                <CardHeader>
+                  <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <h3 className="font-semibold text-lg text-gray-900 dark:text-white mb-2 line-clamp-2">
+                      <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white line-clamp-2">
                         {quiz.title}
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-                        Topic: {quiz.keyword}
-                      </p>
+                      </CardTitle>
+                      <CardDescription className="text-gray-600 dark:text-gray-300 mt-1">
+                        {quiz.keyword}
+                      </CardDescription>
                     </div>
-                    <Brain className="h-8 w-8 text-blue-600 flex-shrink-0" />
-                  </div>
-
-                  {/* Stats */}
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                      <Eye className="h-4 w-4 mr-2" />
-                      {quiz.viewCount} views
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                      <BarChart3 className="h-4 w-4 mr-2" />
+                    <Badge variant="secondary" className="ml-2">
                       {quiz.format}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex-1 flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                      <div className="flex items-center gap-1">
+                        <Eye className="h-4 w-4" />
+                        {quiz.viewCount}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-4 w-4" />
+                        {formatDate(quiz.createdAt)}
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-gray-400 dark:text-gray-500 font-mono bg-gray-50 dark:bg-gray-700 p-2 rounded">
+                      {quiz.slug ? (
+                        <span className="text-green-600 dark:text-green-400">✓ SEO: {quizURL}</span>
+                      ) : (
+                        <span className="text-orange-600 dark:text-orange-400">⚠ ID: {quizURL}</span>
+                      )}
                     </div>
                   </div>
 
-                  {/* Dates */}
-                  <div className="space-y-1 mb-4">
-                    <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
-                      <Calendar className="h-3 w-3 mr-2" />
-                      Created: {formatDate(quiz.createdAt)}
-                    </div>
-                    <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
-                      <Clock className="h-3 w-3 mr-2" />
-                      Last viewed: {formatDate(quiz.lastVisitedAt)}
-                    </div>
-                  </div>
-
-                  {/* URL Display */}
-                  <div className="text-xs text-gray-400 dark:text-gray-500 mb-4 font-mono bg-gray-50 dark:bg-gray-700 p-2 rounded">
-                    {quiz.slug ? (
-                      <span className="text-green-600 dark:text-green-400">✓ SEO: {quizURL}</span>
-                    ) : (
-                      <span className="text-orange-600 dark:text-orange-400">⚠ ID: {quizURL}</span>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center justify-between">
-                    <Button asChild size="sm">
+                  <div className="flex gap-2 justify-between items-center">
+                    <Button asChild variant="default" size="sm" className="flex-1">
                       <Link to={quizURL}>
                         Take Quiz
                       </Link>
                     </Button>
-                    
+
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => handleShare(quiz)}
@@ -230,19 +229,48 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
                       >
                         <Share2 className="w-4 h-4" />
                       </button>
-                      
-                      <button
-                        onClick={() => handleDelete(quiz)}
-                        disabled={isDeleting}
-                        className="p-2 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition-colors disabled:opacity-50"
-                        title="Delete quiz"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={isDeleting}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                          >
+                            {isDeleting ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="bg-white dark:bg-gray-800">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="text-gray-900 dark:text-white">
+                              Delete Quiz
+                            </AlertDialogTitle>
+                            <AlertDialogDescription className="text-gray-600 dark:text-gray-300">
+                              Are you sure you want to delete "{quiz.title}"? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel className="dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+                              Cancel
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(quiz.slug, quiz.title)}
+                              className="bg-red-600 hover:bg-red-700 text-white"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             );
           })}
         </div>

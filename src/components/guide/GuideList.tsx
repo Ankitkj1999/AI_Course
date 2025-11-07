@@ -50,7 +50,7 @@ const GuideList: React.FC = () => {
         setCurrentPage(response.pagination.currentPage);
         setTotalPages(response.pagination.totalPages);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching guides:', error);
       toast({
         title: "Error",
@@ -82,7 +82,7 @@ const GuideList: React.FC = () => {
         // Refresh the list
         fetchGuides(currentPage);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting guide:', error);
       toast({
         title: "Error",
@@ -153,8 +153,8 @@ const GuideList: React.FC = () => {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {guides.map((guide) => (
-              <Card key={guide._id} className="bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow">
-                <CardHeader>
+              <Card key={guide._id} className="bg-white dark:bg-gray-800 hover:shadow-lg transition-all duration-200 border-border/40 hover:border-primary/30 group bg-card/50 backdrop-blur-sm flex flex-col min-h-[280px]">
+                <CardHeader className="pb-3 pt-6">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white line-clamp-2">
@@ -164,14 +164,15 @@ const GuideList: React.FC = () => {
                         {guide.keyword}
                       </CardDescription>
                     </div>
+                    <BookOpen className="h-6 w-6 text-blue-600 dark:text-blue-400 shrink-0 ml-2" />
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex-1 flex flex-col justify-between px-6 pb-6 pt-0">
                   <div className="space-y-3">
                     {guide.relatedTopics && guide.relatedTopics.length > 0 && (
                       <div className="flex flex-wrap gap-1">
                         {guide.relatedTopics.slice(0, 3).map((topic, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
+                          <Badge key={index} variant="secondary" className="text-xs bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
                             <Tag className="h-3 w-3 mr-1" />
                             {topic}
                           </Badge>
@@ -194,53 +195,53 @@ const GuideList: React.FC = () => {
                         {formatDate(guide.createdAt)}
                       </div>
                     </div>
+                  </div>
 
-                    <div className="flex gap-2 justify-between items-center">
-                      <Button asChild variant="default" size="sm" className="flex-1">
-                        <Link to={`/dashboard/guide/${guide.slug}`}>
-                          <ExternalLink className="mr-2 h-4 w-4" />
-                          Read Guide
-                        </Link>
-                      </Button>
-                      
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            disabled={isDeleting === guide.slug}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                  <div className="flex gap-2 justify-between items-center mt-auto">
+                    <Button asChild variant="default" size="sm" className="flex-1 bg-gradient-to-r from-primary to-blue-600 hover:from-blue-600 hover:to-primary">
+                      <Link to={`/dashboard/guide/${guide.slug}`}>
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Read Guide
+                      </Link>
+                    </Button>
+
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={isDeleting === guide.slug}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 shrink-0"
+                        >
+                          {isDeleting === guide.slug ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="bg-white dark:bg-gray-800">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="text-gray-900 dark:text-white">
+                            Delete Study Guide
+                          </AlertDialogTitle>
+                          <AlertDialogDescription className="text-gray-600 dark:text-gray-300">
+                            Are you sure you want to delete "{guide.title}"? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel className="dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+                            Cancel
+                          </AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(guide.slug, guide.title)}
+                            className="bg-red-600 hover:bg-red-700 text-white"
                           >
-                            {isDeleting === guide.slug ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent className="bg-white dark:bg-gray-800">
-                          <AlertDialogHeader>
-                            <AlertDialogTitle className="text-gray-900 dark:text-white">
-                              Delete Study Guide
-                            </AlertDialogTitle>
-                            <AlertDialogDescription className="text-gray-600 dark:text-gray-300">
-                              Are you sure you want to delete "{guide.title}"? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel className="dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
-                              Cancel
-                            </AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDelete(guide.slug, guide.title)}
-                              className="bg-red-600 hover:bg-red-700 text-white"
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </CardContent>
               </Card>
