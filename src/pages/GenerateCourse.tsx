@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
@@ -18,7 +18,7 @@ import {
   FormItem,
   FormLabel,
 } from "@/components/ui/form";
-import { Sparkles, Plus } from "lucide-react";
+import { Sparkles, Plus, Info } from "lucide-react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import CoursePreview from "@/components/CoursePreview";
@@ -295,23 +295,29 @@ const GenerateCourse = () => {
         description="Create a customized AI-generated course"
         keywords="course generation, AI learning, custom education"
       />
-      <div className="space-y-8 animate-fade-in max-w-3xl mx-auto px-4 py-8">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-gradient bg-gradient-to-r from-primary to-indigo-500 mb-4">
+      <div className="container mx-auto px-4 py-8 max-w-2xl">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
             Generate Course
           </h1>
-          <p className="text-muted-foreground max-w-lg mx-auto">
-            Type the topic on which you want to Generate course. Also, you can
-            enter a list of subtopics, which are the specifics you want to
-            learn.
+          <p className="text-gray-600 dark:text-gray-300">
+            Create AI-powered courses for any topic to enhance learning
           </p>
         </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="space-y-6">
+        <Card className="bg-white dark:bg-gray-800 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Course Generator
+            </CardTitle>
+            <CardDescription className="text-gray-600 dark:text-gray-300">
+              Enter a topic and subtopics to generate comprehensive courses
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   <FormField
                     control={form.control}
                     name="topic"
@@ -527,19 +533,35 @@ const GenerateCourse = () => {
                     </p>
                   </div>
 
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-medium text-blue-900 dark:text-blue-400 mb-1">
+                          What you'll get:
+                        </h4>
+                        <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
+                          <li>• Complete course with modules and lessons</li>
+                          <li>• AI-generated content with theory and examples</li>
+                          <li>• Progress tracking and completion status</li>
+                          <li>• Shareable course with unique link</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
                   <Button
                     onClick={() => onSubmit}
                     type="submit"
-                    className="w-full"
+                    className="w-full bg-gradient-to-r from-primary to-indigo-500 hover:from-indigo-500 hover:to-primary"
                   >
                     <Sparkles className="mr-2 h-4 w-4" />
-                    Submit
+                    Generate Course
                   </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </form>
-        </Form>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
       </div>
     </>
   );

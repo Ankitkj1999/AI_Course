@@ -15,8 +15,13 @@ const GuideCreator: React.FC = () => {
   const [keyword, setKeyword] = useState('');
   const [title, setTitle] = useState('');
   const [customization, setCustomization] = useState('');
-  const [selectedProvider, setSelectedProvider] = useState<string>('');
-  const [selectedModel, setSelectedModel] = useState<string>('');
+  // Use provider preferences hook for guide generation
+  const {
+    selectedProvider,
+    selectedModel,
+    setSelectedProvider,
+    setSelectedModel
+  } = useProviderPreferences('guide');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
