@@ -389,7 +389,7 @@ const Dashboard = () => {
                           onClick={() => redirectCourse(course.content, course.mainTopic, course.type, course._id, course.completed, course.end)}
                           variant="ghost"
                           size="sm"
-                          className="w-full group-hover:bg-primary/5 transition-colors justify-between text-xs h-8"
+                          className="w-full bg-accent/10 border border-border/50 group-hover:bg-accent transition-colors justify-between text-xs h-8"
                         >
                           Continue Learning
                           <ArrowRight className="h-3.5 w-3.5 ml-2 group-hover:translate-x-0.5 transition-transform" />
@@ -474,7 +474,7 @@ const Dashboard = () => {
                               onClick={() => redirectCourse(course.content, course.mainTopic, course.type, course._id, course.completed, course.end)}
                               variant="ghost"
                               size="sm"
-                              className="group-hover:bg-primary/5 transition-colors justify-between text-xs h-8 px-4"
+                              className="bg-accent/10 border border-border/50 group-hover:bg-accent transition-colors justify-between text-xs h-8 px-4"
                             >
                               Continue Learning
                               <ArrowRight className="h-3.5 w-3.5 ml-2 group-hover:translate-x-0.5 transition-transform" />
