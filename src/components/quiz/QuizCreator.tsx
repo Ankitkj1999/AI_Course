@@ -128,7 +128,6 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
                 value={formData.keyword}
                 onChange={handleInputChange}
                 placeholder="e.g., JavaScript fundamentals, React hooks, Node.js..."
-                className="dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:placeholder-gray-400"
                 disabled={isCreating}
                 required
               />
@@ -148,7 +147,6 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
                 value={formData.title}
                 onChange={handleInputChange}
                 placeholder="e.g., JavaScript Fundamentals Quiz"
-                className="dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:placeholder-gray-400"
                 disabled={isCreating}
                 required
               />
@@ -166,7 +164,7 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
                 name="format"
                 value={formData.format}
                 onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full px-4 py-3 border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-ring bg-background text-foreground"
                 disabled={isCreating}
               >
                 <option value="mixed">Mixed Questions</option>

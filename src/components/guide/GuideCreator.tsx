@@ -126,7 +126,6 @@ const GuideCreator: React.FC = () => {
                 placeholder="e.g., React Hooks, Machine Learning, Python Functions"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                className="dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:placeholder-gray-400"
                 disabled={isLoading}
               />
               <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -144,7 +143,6 @@ const GuideCreator: React.FC = () => {
                 placeholder="e.g., Complete Guide to React Hooks"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:placeholder-gray-400"
                 disabled={isLoading}
               />
               <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -161,7 +159,6 @@ const GuideCreator: React.FC = () => {
                 placeholder="e.g., Focus on practical examples, include beginner-friendly explanations, cover advanced concepts..."
                 value={customization}
                 onChange={(e) => setCustomization(e.target.value)}
-                className="dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:placeholder-gray-400"
                 disabled={isLoading}
                 rows={3}
               />

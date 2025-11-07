@@ -44,11 +44,20 @@ const FlashcardViewer: React.FC = () => {
       } else {
         throw new Error('Flashcard set not found');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching flashcard set:', error);
+
+      const getErrorMessage = (error: unknown): string => {
+        if (typeof error === 'object' && error !== null) {
+          const err = error as { message?: string };
+          return err.message || "Failed to load flashcard set. Please try again.";
+        }
+        return "Failed to load flashcard set. Please try again.";
+      };
+
       toast({
         title: "Error",
-        description: "Failed to load flashcard set. Please try again.",
+        description: getErrorMessage(error),
         variant: "destructive",
       });
       navigate('/dashboard/flashcards');
@@ -164,7 +173,7 @@ const FlashcardViewer: React.FC = () => {
             {currentCard.difficulty}
           </Badge>
         </div>
-        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+        <div className="w-full bg-muted rounded-full h-2">
           <div 
             className="bg-primary h-2 rounded-full transition-all duration-300"
             style={{ width: `${((currentCardIndex + 1) / flashcardSet.cards.length) * 100}%` }}
@@ -174,8 +183,8 @@ const FlashcardViewer: React.FC = () => {
 
       {/* Flashcard */}
       <div className="mb-8">
-        <Card 
-          className="min-h-[300px] cursor-pointer transition-all duration-300 hover:shadow-lg bg-white dark:bg-gray-800"
+        <Card
+          className="min-h-[300px] cursor-pointer transition-all duration-300 hover:shadow-lg"
           onClick={flipCard}
         >
           <CardContent className="p-8 flex items-center justify-center text-center min-h-[300px]">
@@ -222,7 +231,6 @@ const FlashcardViewer: React.FC = () => {
           variant="outline"
           onClick={prevCard}
           disabled={flashcardSet.cards.length <= 1}
-          className="dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600"
         >
           <ChevronLeft className="mr-2 h-4 w-4" />
           Previous
@@ -231,7 +239,6 @@ const FlashcardViewer: React.FC = () => {
         <Button
           variant="outline"
           onClick={flipCard}
-          className="dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600"
         >
           <RotateCcw className="mr-2 h-4 w-4" />
           Flip Card
@@ -241,7 +248,6 @@ const FlashcardViewer: React.FC = () => {
           variant="outline"
           onClick={nextCard}
           disabled={flashcardSet.cards.length <= 1}
-          className="dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600"
         >
           Next
           <ChevronRight className="ml-2 h-4 w-4" />

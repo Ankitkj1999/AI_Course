@@ -125,7 +125,6 @@ const FlashcardCreator: React.FC = () => {
                 placeholder="e.g., Photosynthesis, JavaScript Functions, World War II"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                className="dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:placeholder-gray-400"
                 disabled={isLoading}
               />
               <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -143,7 +142,6 @@ const FlashcardCreator: React.FC = () => {
                 placeholder="e.g., Biology: Photosynthesis Basics"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:placeholder-gray-400"
                 disabled={isLoading}
               />
               <p className="text-sm text-gray-500 dark:text-gray-400">

@@ -216,7 +216,7 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
 
         {/* Debug Info */}
         {process.env.NODE_ENV === 'development' && (
-          <div className="text-xs text-gray-500 bg-gray-100 p-2 rounded">
+          <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
             Debug: {providers.length} providers loaded, Available: {providers.filter(p => p.isAvailable).length}
           </div>
         )}
@@ -290,7 +290,7 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
         {/* Provider Info */}
         {selectedProviderData && (
           <div className="pt-2 border-t">
-            <div className="flex items-center justify-between text-sm text-gray-600">
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>Status:</span>
               <div className="flex items-center space-x-2">
                 {selectedProviderData.isAvailable ? (
@@ -308,7 +308,7 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
             </div>
             
             {showHealthStatus && getProviderHealth(selectedProvider) && (
-              <div className="flex items-center justify-between text-sm text-gray-600 mt-1">
+              <div className="flex items-center justify-between text-sm text-muted-foreground mt-1">
                 <span>Response Time:</span>
                 <span>
                   {getProviderHealth(selectedProvider)?.data.responseTime || 'N/A'}ms
