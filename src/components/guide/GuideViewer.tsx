@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
-  ArrowLeft,
   Eye,
   Calendar,
   Loader2,
@@ -32,7 +31,7 @@ const GuideViewer: React.FC = () => {
   // Process markdown content to handle escaped characters and format code blocks
   const processMarkdownContent = (content: string): string => {
     if (!content) return '';
-    
+
     // If content looks like escaped JSON, try to unescape it
     try {
       // Handle common escape sequences
@@ -41,10 +40,10 @@ const GuideViewer: React.FC = () => {
         .replace(/\\"/g, '"')           // Convert \" to "
         .replace(/\\\\/g, '\\')         // Convert \\\\ to \\
         .replace(/\\t/g, '\t');         // Convert \\t to tabs
-      
+
       // Format code blocks for better parsing
       processed = formatCodeBlocks(processed);
-      
+
       return processed;
     } catch (error) {
       console.warn('Failed to process markdown content:', error);
@@ -52,19 +51,13 @@ const GuideViewer: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    if (slug) {
-      fetchGuide();
-    }
-  }, [slug]);
-
   const fetchGuide = async () => {
     if (!slug) return;
 
     try {
       setIsLoading(true);
       const response = await guideService.getGuideBySlug(slug);
-      
+
       if (response.success) {
         setGuide(response.guide);
       } else {
@@ -82,6 +75,12 @@ const GuideViewer: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (slug) {
+      fetchGuide();
+    }
+  }, [slug]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -116,10 +115,6 @@ const GuideViewer: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
             Guide not found
           </h1>
-          <Button onClick={() => navigate('/dashboard/guides')}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Guides
-          </Button>
         </div>
       </div>
     );
@@ -129,15 +124,6 @@ const GuideViewer: React.FC = () => {
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       {/* Header */}
       <div className="mb-8">
-        <Button 
-          variant="ghost" 
-          onClick={() => navigate('/dashboard/guides')}
-          className="mb-4 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Guides
-        </Button>
-        
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">

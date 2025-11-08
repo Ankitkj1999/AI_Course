@@ -39,13 +39,15 @@ const Login = () => {
 
   useEffect(() => {
     const auth = localStorage.getItem("auth");
-    if (auth) {
-      redirectHome();
+    const uid = localStorage.getItem("uid");
+    if (auth && uid) {
+      // Use navigate instead of window.location to avoid triggering full page reload
+      navigate("/dashboard", { replace: true });
     }
-  });
+  }, [navigate]);
 
   function redirectHome() {
-    navigate("/dashboard");
+    navigate("/dashboard", { replace: true });
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

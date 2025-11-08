@@ -48,53 +48,84 @@ export const getServerURL = () => {
 
 // Auto-detect server URL by testing connectivity
 export const detectServerURL = async (): Promise<string> => {
+  const startTime = performance.now();
+  console.log('🔍 Starting server URL detection...');
+
   const baseURL = getServerURL();
-  
+
   // If we have a specific URL from env, use it
   if (import.meta.env.VITE_SERVER_URL) {
+    console.log(`✅ Using env-defined server URL: ${baseURL} (${performance.now() - startTime}ms)`);
     return baseURL;
   }
 
   // In production, the server URL is the origin, so we can test the health endpoint directly
   if (isProduction() && typeof window !== 'undefined') {
     try {
+      console.log(`🔍 Testing production health endpoint: ${window.location.origin}/health`);
       const response = await fetch(`${window.location.origin}/health`, {
         method: 'GET',
         signal: AbortSignal.timeout(1000)
       });
       if (response.ok) {
+        console.log(`✅ Production server detected: ${window.location.origin} (${performance.now() - startTime}ms)`);
         return window.location.origin;
       }
     } catch (error) {
+      console.log(`❌ Production health check failed: ${error.message}`);
       // Fallback to the default if health check fails
     }
   }
-  
+
   // In development, try to find the actual server port
   if (isDevelopment() && typeof window !== 'undefined') {
     const protocol = window.location.protocol;
     const hostname = window.location.hostname;
     const commonPorts = [5010, 5011, 5012, 5013, 5014, 5015];
-    
-    for (const port of commonPorts) {
+
+    console.log(`🔍 Testing development ports in parallel: ${commonPorts.join(', ')}`);
+
+    // Test all ports in parallel with shorter timeout
+    const portTests = commonPorts.map(async (port) => {
       try {
         const testURL = `${protocol}//${hostname}:${port}`;
-        const response = await fetch(`${testURL}/health`, { 
+        const portStartTime = performance.now();
+
+        const response = await fetch(`${testURL}/health`, {
           method: 'GET',
-          signal: AbortSignal.timeout(1000) // 1 second timeout
+          signal: AbortSignal.timeout(200) // Reduced to 200ms timeout
         });
-        
+
         if (response.ok) {
-          console.log(`🔍 Auto-detected server at: ${testURL}`);
+          console.log(`✅ Server detected at port ${port}: ${testURL} (${(performance.now() - portStartTime).toFixed(2)}ms)`);
           return testURL;
         }
       } catch (error) {
-        // Port not available, try next
-        continue;
+        // Port not available, silently continue
       }
+      return null;
+    });
+
+    // Wait for the first successful response using Promise.allSettled + find
+    const portResults = await Promise.allSettled(portTests);
+    const successfulResult = portResults.find(result =>
+      result.status === 'fulfilled' && result.value !== null
+    );
+
+    if (successfulResult && successfulResult.status === 'fulfilled') {
+      console.log(`🎯 Fast server detection completed: ${successfulResult.value} (${performance.now() - startTime}ms total)`);
+      return successfulResult.value;
     }
+
+    if (successfulResult && successfulResult.status === 'fulfilled') {
+      console.log(`🎯 Fast server detection completed: ${successfulResult.value} (${performance.now() - startTime}ms total)`);
+      return successfulResult.value;
+    }
+
+    console.log(`⚠️ No server found on common ports (${performance.now() - startTime}ms elapsed)`);
   }
-  
+
+  console.log(`⚠️ Using fallback server URL: ${baseURL} (${performance.now() - startTime}ms)`);
   return baseURL;
 };
 

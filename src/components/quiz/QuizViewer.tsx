@@ -5,7 +5,6 @@ import { getQuizShareURL } from '@/utils/config';
 import { InlineLoader } from '@/components/ui/loading';
 import { useToast } from '@/hooks/use-toast';
 import { 
-  ArrowLeft, 
   Share2, 
   CheckCircle, 
   XCircle, 
@@ -146,12 +145,6 @@ export const QuizViewer: React.FC = () => {
       <div className="max-w-4xl mx-auto p-6 text-center">
         <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
         <p className="text-gray-600 mb-4">{error || 'Quiz not found'}</p>
-        <button 
-          onClick={() => navigate('/dashboard/quizzes')}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          Back to Quizzes
-        </button>
       </div>
     );
   }
@@ -168,12 +161,6 @@ export const QuizViewer: React.FC = () => {
       <div className="max-w-4xl mx-auto p-6 text-center">
         <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
         <p className="text-gray-600 mb-4">Unable to load quiz question. The quiz content may be malformed.</p>
-        <button
-          onClick={() => navigate('/dashboard/quizzes')}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          Back to Quizzes
-        </button>
       </div>
     );
   }
@@ -181,15 +168,7 @@ export const QuizViewer: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={() => navigate('/dashboard/quizzes')}
-          className="flex items-center text-gray-600 hover:text-gray-800"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Quizzes
-        </button>
-        
+      <div className="flex items-center justify-end mb-6">
         <button
           onClick={handleShare}
           className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-800"
@@ -200,11 +179,11 @@ export const QuizViewer: React.FC = () => {
       </div>
 
       {/* Quiz Info */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">{quiz.title}</h1>
-        <p className="text-gray-600 mb-4">Topic: {quiz.keyword}</p>
-        
-        <div className="flex items-center space-x-6 text-sm text-gray-500">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{quiz.title}</h1>
+        <p className="text-gray-600 dark:text-gray-300 mb-4">Topic: {quiz.keyword}</p>
+
+        <div className="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
           <span className="flex items-center">
             <Target className="w-4 h-4 mr-1" />
             {parsedQuiz.totalQuestions} questions
@@ -218,10 +197,10 @@ export const QuizViewer: React.FC = () => {
 
       {!quizStarted ? (
         /* Quiz Start Screen */
-        <div className="bg-white rounded-lg shadow-md p-8 text-center">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center">
           <Trophy className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Ready to start?</h2>
-          <p className="text-gray-600 mb-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Ready to start?</h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
             This quiz contains {parsedQuiz.totalQuestions} questions about {quiz.keyword}.
             Take your time and read each question carefully.
           </p>
@@ -234,43 +213,43 @@ export const QuizViewer: React.FC = () => {
         </div>
       ) : showResults ? (
         /* Results Screen */
-        <div className="bg-white rounded-lg shadow-md p-8">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8">
           <div className="text-center mb-8">
             <Trophy className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Quiz Complete!</h2>
-            <p className="text-gray-600">Here are your results</p>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Quiz Complete!</h2>
+            <p className="text-gray-600 dark:text-gray-300">Here are your results</p>
           </div>
 
           {stats && (
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-              <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">{stats.percentage}%</div>
-                <div className="text-sm text-blue-800">Score</div>
+              <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.percentage}%</div>
+                <div className="text-sm text-blue-800 dark:text-blue-300">Score</div>
               </div>
-              <div className="text-center p-4 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">{stats.correctAnswers}</div>
-                <div className="text-sm text-green-800">Correct</div>
+              <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.correctAnswers}</div>
+                <div className="text-sm text-green-800 dark:text-green-300">Correct</div>
               </div>
-              <div className="text-center p-4 bg-red-50 rounded-lg">
-                <div className="text-2xl font-bold text-red-600">{stats.incorrectAnswers}</div>
-                <div className="text-sm text-red-800">Incorrect</div>
+              <div className="text-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                <div className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.incorrectAnswers}</div>
+                <div className="text-sm text-red-800 dark:text-red-300">Incorrect</div>
               </div>
-              <div className="text-center p-4 bg-purple-50 rounded-lg">
-                <div className="text-2xl font-bold text-purple-600">{stats.grade}</div>
-                <div className="text-sm text-purple-800">Grade</div>
+              <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{stats.grade}</div>
+                <div className="text-sm text-purple-800 dark:text-purple-300">Grade</div>
               </div>
             </div>
           )}
 
           {/* Question Review */}
           <div className="space-y-4 mb-8">
-            <h3 className="text-lg font-semibold text-gray-900">Review Answers</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Review Answers</h3>
             {parsedQuiz.questions.map((question, index: number) => {
               const userAnswer = userAnswers[index];
               const isCorrect = userAnswer === question.correctAnswer;
-              
+
               return (
-                <div key={index} className="border border-gray-200 rounded-lg p-4">
+                <div key={index} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
                   <div className="flex items-start space-x-3">
                     {isCorrect ? (
                       <CheckCircle className="h-5 w-5 text-green-500 mt-1 flex-shrink-0" />
@@ -278,24 +257,24 @@ export const QuizViewer: React.FC = () => {
                       <XCircle className="h-5 w-5 text-red-500 mt-1 flex-shrink-0" />
                     )}
                     <div className="flex-1">
-                      <h4 className="font-medium text-gray-900 mb-2">
+                      <h4 className="font-medium text-gray-900 dark:text-white mb-2">
                         {index + 1}. {question.question}
                       </h4>
                       <div className="space-y-1 text-sm">
-                        <p className="text-gray-600">
-                          Your answer: <span className={isCorrect ? 'text-green-600' : 'text-red-600'}>
+                        <p className="text-gray-600 dark:text-gray-300">
+                          Your answer: <span className={isCorrect ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
                             {userAnswer >= 0 ? question.options[userAnswer] : 'No answer'}
                           </span>
                         </p>
                         {!isCorrect && (
-                          <p className="text-gray-600">
-                            Correct answer: <span className="text-green-600">
+                          <p className="text-gray-600 dark:text-gray-300">
+                            Correct answer: <span className="text-green-600 dark:text-green-400">
                               {question.options[question.correctAnswer]}
                             </span>
                           </p>
                         )}
                         {question.explanation && (
-                          <p className="text-gray-700 mt-2 p-2 bg-gray-50 rounded">
+                          <p className="text-gray-700 dark:text-gray-200 mt-2 p-2 bg-gray-50 dark:bg-gray-700 rounded">
                             {question.explanation}
                           </p>
                         )}
@@ -319,15 +298,15 @@ export const QuizViewer: React.FC = () => {
         </div>
       ) : (
         /* Quiz Question Screen */
-        <div className="bg-white rounded-lg shadow-md p-8">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8">
           {/* Progress */}
           <div className="mb-6">
-            <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+            <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-300 mb-2">
               <span>Question {currentQuestion + 1} of {parsedQuiz.totalQuestions}</span>
               <span>{Math.round(((currentQuestion + 1) / parsedQuiz.totalQuestions) * 100)}% Complete</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
+            <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+              <div
                 className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${((currentQuestion + 1) / parsedQuiz.totalQuestions) * 100}%` }}
               />
@@ -336,7 +315,7 @@ export const QuizViewer: React.FC = () => {
 
           {/* Question */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
               {currentQ.question}
             </h2>
 
@@ -348,21 +327,21 @@ export const QuizViewer: React.FC = () => {
                   onClick={() => handleAnswerSelect(index)}
                   className={`w-full text-left p-4 border-2 rounded-lg transition-colors ${
                     userAnswers[currentQuestion] === index
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                      : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
                   }`}
                 >
                   <div className="flex items-center">
                     <div className={`w-4 h-4 rounded-full border-2 mr-3 ${
                       userAnswers[currentQuestion] === index
                         ? 'border-blue-500 bg-blue-500'
-                        : 'border-gray-300'
+                        : 'border-gray-300 dark:border-gray-500'
                     }`}>
                       {userAnswers[currentQuestion] === index && (
                         <div className="w-2 h-2 bg-white rounded-full mx-auto mt-0.5" />
                       )}
                     </div>
-                    <span>{option}</span>
+                    <span className="text-gray-900 dark:text-white">{option}</span>
                   </div>
                 </button>
               ))}
@@ -374,7 +353,7 @@ export const QuizViewer: React.FC = () => {
             <button
               onClick={handlePrevious}
               disabled={currentQuestion === 0}
-              className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Previous
             </button>

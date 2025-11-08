@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -12,7 +12,7 @@ import NotFound from "./pages/NotFound";
 import Dashboard from "./pages/Dashboard";
 import CoursePage from "./pages/CoursePage";
 import GenerateCourse from "./pages/GenerateCourse";
-import DashboardLayout from "./components/layouts/DashboardLayout";
+import { AppLayout } from "./components/layouts/AppLayout";
 import ProfilePricing from "./pages/ProfilePricing";
 import PaymentDetails from "./pages/PaymentDetails";
 import Profile from "./pages/Profile";
@@ -77,6 +77,17 @@ import { googleClientId } from "./constants";
 
 const queryClient = new QueryClient();
 
+// Redirect components for backward compatibility
+const RedirectToFlashcard = () => {
+  const { slug } = useParams<{ slug: string }>();
+  return <Navigate to={`/flashcard/${slug}`} replace />;
+};
+
+const RedirectToGuide = () => {
+  const { slug } = useParams<{ slug: string }>();
+  return <Navigate to={`/guide/${slug}`} replace />;
+};
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
@@ -112,7 +123,7 @@ const App = () => {
                 <Route path="/reset-password/:token" element={<ResetPassword />} />
 
                 {/* Dashboard Routes */}
-                <Route path="/dashboard" element={<DashboardLayout />}>
+                <Route path="/dashboard" element={<AppLayout mode="authenticated" />}>
                   <Route index element={<Dashboard />} />
                   <Route path="courses" element={<CoursesPage />} />
                   <Route path="generate-course" element={<GenerateCourse />} />
@@ -134,14 +145,34 @@ const App = () => {
                 <Route path="/course/:courseId/quiz" element={<QuizPage />} />
 
                 {/* Quiz Routes */}
-                <Route path="/quiz/:slug" element={<QuizViewerPage />} />
-                <Route path="/quiz/id/:id" element={<QuizViewerPage />} />
+                <Route path="/quiz/:slug" element={
+                  <AppLayout mode="public">
+                    <QuizViewerPage />
+                  </AppLayout>
+                } />
+                <Route path="/quiz/id/:id" element={
+                  <AppLayout mode="public">
+                    <QuizViewerPage />
+                  </AppLayout>
+                } />
 
                 {/* Flashcard Routes */}
-                <Route path="/dashboard/flashcard/:slug" element={<FlashcardViewerPage />} />
+                <Route path="/flashcard/:slug" element={
+                  <AppLayout mode="public">
+                    <FlashcardViewerPage />
+                  </AppLayout>
+                } />
 
                 {/* Guide Routes */}
-                <Route path="/dashboard/guide/:slug" element={<GuideViewerPage />} />
+                <Route path="/guide/:slug" element={
+                  <AppLayout mode="public">
+                    <GuideViewerPage />
+                  </AppLayout>
+                } />
+
+                {/* Backward Compatibility Redirects */}
+                <Route path="/dashboard/flashcard/:slug" element={<RedirectToFlashcard />} />
+                <Route path="/dashboard/guide/:slug" element={<RedirectToGuide />} />
 
                 {/* Payment Routes */}
                 <Route path="/payment-success/:planId" element={<PaymentSuccess />} />

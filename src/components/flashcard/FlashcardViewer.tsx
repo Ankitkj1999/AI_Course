@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,6 @@ import {
   ChevronLeft, 
   ChevronRight, 
   RotateCcw, 
-  ArrowLeft,
   Eye,
   Calendar,
   Loader2
@@ -26,22 +25,24 @@ const FlashcardViewer: React.FC = () => {
   const [isFlipped, setIsFlipped] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (slug) {
-      fetchFlashcardSet();
+  const fetchFlashcardSet = useCallback(async () => {
+    if (!slug) {
+      console.log('No slug provided');
+      return;
     }
-  }, [slug]);
 
-  const fetchFlashcardSet = async () => {
-    if (!slug) return;
-
+    console.log('Fetching flashcard set for slug:', slug);
     try {
       setIsLoading(true);
+      console.log('Making API call to getFlashcardBySlug');
       const response = await flashcardService.getFlashcardBySlug(slug);
-      
+      console.log('API response received:', response);
+
       if (response.success) {
+        console.log('Setting flashcard set:', response.flashcard);
         setFlashcardSet(response.flashcard);
       } else {
+        console.log('API returned success=false');
         throw new Error('Flashcard set not found');
       }
     } catch (error: unknown) {
@@ -62,9 +63,15 @@ const FlashcardViewer: React.FC = () => {
       });
       navigate('/dashboard/flashcards');
     } finally {
+      console.log('Setting isLoading to false');
       setIsLoading(false);
     }
-  };
+  }, [slug, toast, navigate]);
+
+  useEffect(() => {
+    console.log('useEffect triggered, slug:', slug);
+    fetchFlashcardSet();
+  }, [fetchFlashcardSet]);
 
   const nextCard = () => {
     if (!flashcardSet) return;
@@ -116,10 +123,6 @@ const FlashcardViewer: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
             Flashcard set not found
           </h1>
-          <Button onClick={() => navigate('/dashboard/flashcards')}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Flashcards
-          </Button>
         </div>
       </div>
     );
@@ -131,15 +134,6 @@ const FlashcardViewer: React.FC = () => {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       {/* Header */}
       <div className="mb-8">
-        <Button 
-          variant="ghost" 
-          onClick={() => navigate('/dashboard/flashcards')}
-          className="mb-4 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Flashcards
-        </Button>
-        
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
