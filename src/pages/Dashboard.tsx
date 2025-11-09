@@ -35,8 +35,12 @@ const Dashboard = () => {
     setLoadingMore(page > 1);
     const postURL = `${serverURL}/api/courses?userId=${userId}&page=${page}&limit=9`;
     try {
+      console.log('Fetching courses from:', postURL);
       const response = await axios.get(postURL);
+      console.log('API Response received:', response.data);
       const coursesData = response.data.courses || response.data || [];
+      console.log('Courses data length:', coursesData.length);
+
       if (coursesData.length === 0) {
         setHasMore(false);
       } else {
@@ -88,10 +92,12 @@ const Dashboard = () => {
           const newCourses = coursesData.filter(course => !existingIds.has(course._id));
           return [...prevCourses, ...newCourses];
         });
+        console.log('Courses state updated, isLoading should be false now');
       }
     } catch (error) {
-      console.error(error);
+      console.error('API Error:', error);
     } finally {
+      console.log('Setting loading states to false');
       setIsLoading(false);
       setLoadingMore(false);
     }
