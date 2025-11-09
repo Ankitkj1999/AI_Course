@@ -123,7 +123,7 @@ const Dashboard = () => {
       setIsLoading(false);
       setLoadingMore(false);
     }
-  }, [page, userId, courseProgress, modules, lessons]);
+  }, [page, userId]);
 
   useEffect(() => {
     fetchUserCourses();
