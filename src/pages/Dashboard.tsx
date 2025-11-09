@@ -15,54 +15,6 @@ import { useToast } from '@/hooks/use-toast';
 import ShareOnSocial from 'react-share-on-social';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-  const CountDoneTopics = async (json: string, mainTopic: string, courseId: string) => {
-    try {
-      const jsonData = JSON.parse(json);
-      let doneCount = 0;
-      let totalTopics = 0;
-      jsonData[mainTopic.toLowerCase()].forEach((topic: { subtopics: string[]; }) => {
-        topic.subtopics.forEach((subtopic) => {
-          if (subtopic.done) {
-            doneCount++;
-          }
-          totalTopics++;
-        });
-      });
-      const quizCount = await getQuiz(courseId);
-      totalTopics = totalTopics + 1;
-      if (quizCount) {
-        totalTopics = totalTopics - 1;
-      }
-      const completionPercentage = Math.round((doneCount / totalTopics) * 100);
-      return completionPercentage;
-    } catch (error) {
-      console.error(error);
-      return 0;
-    }
-  }
-
-  const CountTotalModules = async (json: string, mainTopic: string) => {
-    try {
-      const jsonData = JSON.parse(json);
-      return jsonData[mainTopic.toLowerCase()].length;
-    } catch (error) {
-      console.error(error);
-      return 0;
-    }
-  }
-
-  const CountTotalLessons = async (json: string, mainTopic: string) => {
-    try {
-      const jsonData = JSON.parse(json);
-      return jsonData[mainTopic.toLowerCase()].reduce(
-        (total, topic) => total + topic.subtopics.length,
-        0
-      );
-    } catch (error) {
-      console.error(error);
-      return 0;
-    }
-  }
 const Dashboard = () => {
 
   const navigate = useNavigate();
@@ -92,21 +44,41 @@ const Dashboard = () => {
         const modulesMap = { ...modules }; // Spread existing state
         const lessonsMap = { ...lessons }; // Spread existing state
 
-        // Parallelize the async operations for better performance
-        const promises = coursesData.map(async (course) => {
-          const [progress, totalModules, totalLessons] = await Promise.all([
-            CountDoneTopics(course.content, course.mainTopic, course._id),
-            CountTotalModules(course.content, course.mainTopic),
-            CountTotalLessons(course.content, course.mainTopic)
-          ]);
-          return { courseId: course._id, progress, totalModules, totalLessons };
-        });
+        // Calculate progress data synchronously to avoid API calls
+        coursesData.forEach((course) => {
+          try {
+            const jsonData = JSON.parse(course.content);
+            const mainTopicKey = course.mainTopic.toLowerCase();
 
-        const results = await Promise.all(promises);
-        results.forEach(({ courseId, progress, totalModules, totalLessons }) => {
-          progressMap[courseId] = progress;
-          modulesMap[courseId] = totalModules;
-          lessonsMap[courseId] = totalLessons;
+            // Count done topics
+            let doneCount = 0;
+            let totalTopics = 0;
+            if (jsonData[mainTopicKey]) {
+              jsonData[mainTopicKey].forEach((topic: { subtopics: string[]; }) => {
+                topic.subtopics.forEach((subtopic) => {
+                  if (subtopic.done) {
+                    doneCount++;
+                  }
+                  totalTopics++;
+                });
+              });
+            }
+            const completionPercentage = totalTopics > 0 ? Math.round((doneCount / totalTopics) * 100) : 0;
+            progressMap[course._id] = completionPercentage;
+
+            // Count modules
+            modulesMap[course._id] = jsonData[mainTopicKey] ? jsonData[mainTopicKey].length : 0;
+
+            // Count lessons
+            lessonsMap[course._id] = jsonData[mainTopicKey] ?
+              jsonData[mainTopicKey].reduce((total: number, topic: { subtopics: string[]; }) => total + topic.subtopics.length, 0) : 0;
+
+          } catch (error) {
+            console.error('Error parsing course content:', error);
+            progressMap[course._id] = 0;
+            modulesMap[course._id] = 0;
+            lessonsMap[course._id] = 0;
+          }
         });
         setCourseProgress(progressMap);
         setTotalModules(modulesMap);
