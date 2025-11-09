@@ -98,63 +98,15 @@ const Courses = () => {
     }
   };
 
-  const fetchUserCourses = useCallback(async () => {
-    setIsLoading(page === 1);
-    setLoadingMore(page > 1);
-    const postURL = `${serverURL}/api/courses?userId=${userId}&page=${page}&limit=9&visibility=${visibilityFilter}`;
-    try {
-      const response = await axios.get(postURL);
-      const coursesData = response.data.courses || response.data || [];
-      if (coursesData.length === 0) {
-        setHasMore(false);
-      } else {
-        const progressMap = { ...courseProgress }; // Spread existing state
-        const modulesMap = { ...modules }; // Spread existing state
-        const lessonsMap = { ...lessons }; // Spread existing state
-        for (const course of coursesData) {
-          const progress = await CountDoneTopics(course.content, course.mainTopic, course._id);
-          const totalModules = await CountTotalModules(course.content, course.mainTopic);
-          const totalLessons = await CountTotalLessons(course.content, course.mainTopic);
-          progressMap[course._id] = progress;
-          modulesMap[course._id] = totalModules;
-          lessonsMap[course._id] = totalLessons;
-        }
-        setCourseProgress(progressMap);
-        setTotalModules(modulesMap);
-        setTotalLessons(lessonsMap);
-        await setCourses((prevCourses) => [...prevCourses, ...coursesData]);
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsLoading(false);
-      setLoadingMore(false);
+  const getQuiz = async (courseId: string) => {
+    const postURL = serverURL + '/api/getmyresult';
+    const response = await axios.post(postURL, { courseId });
+    if (response.data.success) {
+      return response.data.message;
+    } else {
+      return false;
     }
-  }, [page, userId, visibilityFilter, courseProgress, modules, lessons, CountDoneTopics]);
-
-  useEffect(() => {
-    fetchUserCourses();
-  }, [fetchUserCourses]);
-
-  // Reset pagination when filter changes
-  useEffect(() => {
-    setCourses([]);
-    setPage(1);
-    setHasMore(true);
-  }, [visibilityFilter]);
-
-  const handleScroll = useCallback(() => {
-    if (!hasMore || loadingMore) return;
-    const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
-    if (scrollTop + clientHeight >= scrollHeight - 100) {
-      setPage((prevPage) => prevPage + 1);
-    }
-  }, [hasMore, loadingMore]);
-
-  useEffect(() => {
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [handleScroll]);
+  };
 
   const CountDoneTopics = async (json: string, mainTopic: string, courseId: string) => {
     try {
@@ -180,7 +132,7 @@ const Courses = () => {
       console.error(error);
       return 0;
     }
-  }
+  };
 
   const CountTotalModules = async (json: string, mainTopic: string) => {
     try {
@@ -190,7 +142,7 @@ const Courses = () => {
       console.error(error);
       return 0;
     }
-  }
+  };
 
   const CountTotalLessons = async (json: string, mainTopic: string) => {
     try {
@@ -203,17 +155,79 @@ const Courses = () => {
       console.error(error);
       return 0;
     }
-  }
+  };
 
-  async function getQuiz(courseId: string) {
-    const postURL = serverURL + '/api/getmyresult';
-    const response = await axios.post(postURL, { courseId });
-    if (response.data.success) {
-      return response.data.message;
-    } else {
-      return false;
+  const fetchUserCourses = useCallback(async () => {
+    setIsLoading(page === 1);
+    setLoadingMore(page > 1);
+    const postURL = `${serverURL}/api/courses?userId=${userId}&page=${page}&limit=9&visibility=${visibilityFilter}`;
+    try {
+      const response = await axios.get(postURL);
+      const coursesData = response.data.courses || response.data || [];
+      if (coursesData.length === 0) {
+        setHasMore(false);
+      } else {
+        const progressMap = { ...courseProgress }; // Spread existing state
+        const modulesMap = { ...modules }; // Spread existing state
+        const lessonsMap = { ...lessons }; // Spread existing state
+
+        // Parallelize the async operations for better performance
+        const promises = coursesData.map(async (course) => {
+          const [progress, totalModules, totalLessons] = await Promise.all([
+            CountDoneTopics(course.content, course.mainTopic, course._id),
+            CountTotalModules(course.content, course.mainTopic),
+            CountTotalLessons(course.content, course.mainTopic)
+          ]);
+          return { courseId: course._id, progress, totalModules, totalLessons };
+        });
+
+        const results = await Promise.all(promises);
+        results.forEach(({ courseId, progress, totalModules, totalLessons }) => {
+          progressMap[courseId] = progress;
+          modulesMap[courseId] = totalModules;
+          lessonsMap[courseId] = totalLessons;
+        });
+        setCourseProgress(progressMap);
+        setTotalModules(modulesMap);
+        setTotalLessons(lessonsMap);
+        await setCourses((prevCourses) => {
+          const existingIds = new Set(prevCourses.map(course => course._id));
+          const newCourses = coursesData.filter(course => !existingIds.has(course._id));
+          return [...prevCourses, ...newCourses];
+        });
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+      setLoadingMore(false);
     }
-  }
+  }, [page, userId, visibilityFilter]);
+
+  useEffect(() => {
+    fetchUserCourses();
+  }, [fetchUserCourses]);
+
+  // Reset pagination when filter changes
+  useEffect(() => {
+    setCourses([]);
+    setPage(1);
+    setHasMore(true);
+  }, [visibilityFilter]);
+
+  const handleScroll = useCallback(() => {
+    if (!hasMore || loadingMore) return;
+    const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+    if (scrollTop + clientHeight >= scrollHeight - 100) {
+      setPage((prevPage) => prevPage + 1);
+    }
+  }, [hasMore, loadingMore]);
+
+  useEffect(() => {
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [handleScroll]);
+
 
   return (
     <>
