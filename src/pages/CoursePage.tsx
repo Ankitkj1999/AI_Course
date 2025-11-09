@@ -53,6 +53,7 @@ import axios from "axios";
 import ShareOnSocial from "react-share-on-social";
 import { prepareContentForRendering } from "@/utils/contentHandler";
 import StyledText from "@/components/styledText";
+import { ContentAttribution } from "@/components/ContentAttribution";
 import html2pdf from "html2pdf.js";
 
 const CoursePage = () => {

@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiDelete } from '@/utils/api';
+import { apiGet, apiPost, apiDelete, apiPatch } from '@/utils/api';
 import type { 
   Quiz, 
   QuizListResponse, 
@@ -6,6 +6,14 @@ import type {
   CreateQuizRequest, 
   CreateQuizResponse 
 } from '@/types/quiz';
+import type { 
+  VisibilityResponse, 
+  ToggleVisibilityRequest,
+  PublicContentResponse,
+  PublicContentQueryParams,
+  ForkResponse,
+  ForkInfoResponse
+} from '@/types/content-sharing';
 
 export class QuizService {
   // Create a new quiz
@@ -18,9 +26,10 @@ export class QuizService {
   static async getUserQuizzes(
     userId: string, 
     page: number = 1, 
-    limit: number = 10
+    limit: number = 10,
+    visibility: 'all' | 'public' | 'private' = 'all'
   ): Promise<QuizListResponse> {
-    const response = await apiGet(`/quizzes?userId=${userId}&page=${page}&limit=${limit}`);
+    const response = await apiGet(`/quizzes?userId=${userId}&page=${page}&limit=${limit}&visibility=${visibility}`);
     return response.json();
   }
 
@@ -39,6 +48,50 @@ export class QuizService {
   // Delete quiz
   static async deleteQuiz(slug: string, userId: string): Promise<{ success: boolean; message: string }> {
     const response = await apiDelete(`/quiz/${slug}`, { body: JSON.stringify({ userId }) });
+    return response.json();
+  }
+
+  // Toggle quiz visibility
+  static async toggleVisibility(slug: string, isPublic: boolean): Promise<VisibilityResponse> {
+    const data: ToggleVisibilityRequest = { isPublic };
+    const response = await apiPatch(`/quiz/${slug}/visibility`, data);
+    return response.json();
+  }
+
+  // Get quiz visibility status
+  static async getVisibilityStatus(slug: string): Promise<VisibilityResponse> {
+    const response = await apiGet(`/quiz/${slug}/visibility`);
+    return response.json();
+  }
+
+  // Get public quizzes
+  static async getPublicContent(params: PublicContentQueryParams = {}): Promise<PublicContentResponse> {
+    const { page = 1, limit = 20, search = '', sortBy = 'recent' } = params;
+    const queryParams = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+      ...(search && { search }),
+      sortBy
+    });
+    const response = await apiGet(`/public/quiz?${queryParams.toString()}`);
+    return response.json();
+  }
+
+  // Get single public quiz by slug
+  static async getPublicContentBySlug(slug: string): Promise<QuizResponse> {
+    const response = await apiGet(`/public/quiz/${slug}`);
+    return response.json();
+  }
+
+  // Fork a quiz
+  static async forkContent(slug: string): Promise<ForkResponse> {
+    const response = await apiPost(`/quiz/${slug}/fork`);
+    return response.json();
+  }
+
+  // Get fork information for a quiz
+  static async getForkInfo(slug: string): Promise<ForkInfoResponse> {
+    const response = await apiGet(`/quiz/${slug}/forks`);
     return response.json();
   }
 }

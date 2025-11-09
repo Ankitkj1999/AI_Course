@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowRight, Mail, Lock, AlertTriangle } from "lucide-react";
 import { appName, facebookClientId, serverURL } from "@/constants";
 import { useSettings } from "@/hooks/useSettings";
+import { getPendingFork, clearPendingFork } from "@/utils/forkRedirect";
 import Logo from "../res/logo.svg";
 import axios from "axios";
 import { GoogleLogin } from "@react-oauth/google";
@@ -41,6 +42,14 @@ const Login = () => {
     const auth = localStorage.getItem("auth");
     const uid = localStorage.getItem("uid");
     if (auth && uid) {
+      // Check for pending fork operation using utility
+      const pendingFork = getPendingFork();
+      if (pendingFork) {
+        console.log('Found pending fork operation, redirecting to:', pendingFork.returnUrl);
+        clearPendingFork();
+        navigate(pendingFork.returnUrl, { replace: true });
+        return;
+      }
       // Use navigate instead of window.location to avoid triggering full page reload
       navigate("/dashboard", { replace: true });
     }
@@ -80,6 +89,16 @@ const Login = () => {
           title: "Login successful",
           description: "Welcome back to " + appName,
         });
+        
+        // Check for pending fork operation using utility
+        const pendingFork = getPendingFork();
+        if (pendingFork) {
+          console.log('Found pending fork operation after login, redirecting to:', pendingFork.returnUrl);
+          clearPendingFork();
+          navigate(pendingFork.returnUrl, { replace: true });
+          return;
+        }
+        
         if (localStorage.getItem("shared") === null) {
           redirectHome();
         } else {
@@ -254,6 +273,16 @@ const Login = () => {
                             "type",
                             response.data.userData.type
                           );
+                          
+                          // Check for pending fork operation using utility
+                          const pendingFork = getPendingFork();
+                          if (pendingFork) {
+                            console.log('Found pending fork operation after Google login, redirecting to:', pendingFork.returnUrl);
+                            clearPendingFork();
+                            navigate(pendingFork.returnUrl, { replace: true });
+                            return;
+                          }
+                          
                           redirectHome();
                         } else {
                           setIsLoading(false);
@@ -327,6 +356,16 @@ const Login = () => {
                           "type",
                           response.data.userData.type
                         );
+                        
+                        // Check for pending fork operation using utility
+                        const pendingFork = getPendingFork();
+                        if (pendingFork) {
+                          console.log('Found pending fork operation after Facebook login, redirecting to:', pendingFork.returnUrl);
+                          clearPendingFork();
+                          navigate(pendingFork.returnUrl, { replace: true });
+                          return;
+                        }
+                        
                         redirectHome();
                       } else {
                         setIsLoading(false);

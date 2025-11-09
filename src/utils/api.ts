@@ -111,6 +111,13 @@ export const apiPut = (endpoint: string, data?: unknown, options: RequestInit = 
     body: data ? JSON.stringify(data) : undefined,
   });
 
+export const apiPatch = (endpoint: string, data?: unknown, options: RequestInit = {}) =>
+  apiFetch(endpoint, {
+    ...options,
+    method: 'PATCH',
+    body: data ? JSON.stringify(data) : undefined,
+  });
+
 export const apiDelete = (endpoint: string, options: RequestInit = {}) =>
   apiFetch(endpoint, { ...options, method: 'DELETE' });
 

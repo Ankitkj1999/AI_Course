@@ -109,7 +109,28 @@ const PORT = process.env.PORT;
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
-mongoose.connect(process.env.MONGODB_URI);
+mongoose.connect(process.env.MONGODB_URI, {
+    serverSelectionTimeoutMS: 30000, // 30 seconds
+    socketTimeoutMS: 45000, // 45 seconds
+    maxPoolSize: 10,
+    minPoolSize: 2,
+    retryWrites: true,
+    retryReads: true
+});
+
+// MongoDB connection event handlers
+mongoose.connection.on('connected', () => {
+    logger.info('MongoDB connected successfully');
+});
+
+mongoose.connection.on('error', (err) => {
+    logger.error('MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+    logger.warn('MongoDB disconnected');
+});
+
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 465,
@@ -157,8 +178,21 @@ const courseSchema = new mongoose.Schema({
     photo: String,
     date: { type: Date, default: Date.now },
     end: { type: Date, default: Date.now },
-    completed: { type: Boolean, default: false }
+    completed: { type: Boolean, default: false },
+    // Visibility and fork fields
+    isPublic: { type: Boolean, default: false, index: true },
+    forkCount: { type: Number, default: 0 },
+    forkedFrom: {
+        contentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', default: null },
+        originalOwnerId: { type: String, default: null },
+        originalOwnerName: { type: String, default: null },
+        forkedAt: { type: Date, default: null }
+    },
+    ownerName: { type: String, default: '' }
 });
+
+// Create compound index for efficient public content queries
+courseSchema.index({ isPublic: 1, date: -1 });
 const subscriptionSchema = new mongoose.Schema({
     user: String,
     subscription: String,
@@ -226,8 +260,21 @@ const quizSchema = new mongoose.Schema({
         possibleAnswers: [String]
     }],
     createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now }
+    updatedAt: { type: Date, default: Date.now },
+    // Visibility and fork fields
+    isPublic: { type: Boolean, default: false, index: true },
+    forkCount: { type: Number, default: 0 },
+    forkedFrom: {
+        contentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Quiz', default: null },
+        originalOwnerId: { type: String, default: null },
+        originalOwnerName: { type: String, default: null },
+        forkedAt: { type: Date, default: null }
+    },
+    ownerName: { type: String, default: '' }
 });
+
+// Create compound index for efficient public content queries
+quizSchema.index({ isPublic: 1, createdAt: -1 });
 
 const flashcardSchema = new mongoose.Schema({
     userId: { type: String, required: true, index: true },
@@ -249,8 +296,21 @@ const flashcardSchema = new mongoose.Schema({
     viewCount: { type: Number, default: 0 },
     lastVisitedAt: { type: Date, default: Date.now },
     createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now }
+    updatedAt: { type: Date, default: Date.now },
+    // Visibility and fork fields
+    isPublic: { type: Boolean, default: false, index: true },
+    forkCount: { type: Number, default: 0 },
+    forkedFrom: {
+        contentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Flashcard', default: null },
+        originalOwnerId: { type: String, default: null },
+        originalOwnerName: { type: String, default: null },
+        forkedAt: { type: Date, default: null }
+    },
+    ownerName: { type: String, default: '' }
 });
+
+// Create compound index for efficient public content queries
+flashcardSchema.index({ isPublic: 1, createdAt: -1 });
 
 const guideSchema = new mongoose.Schema({
     userId: { type: String, required: true, index: true },
@@ -269,8 +329,21 @@ const guideSchema = new mongoose.Schema({
     viewCount: { type: Number, default: 0 },
     lastVisitedAt: { type: Date, default: Date.now },
     createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now }
+    updatedAt: { type: Date, default: Date.now },
+    // Visibility and fork fields
+    isPublic: { type: Boolean, default: false, index: true },
+    forkCount: { type: Number, default: 0 },
+    forkedFrom: {
+        contentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Guide', default: null },
+        originalOwnerId: { type: String, default: null },
+        originalOwnerName: { type: String, default: null },
+        forkedAt: { type: Date, default: null }
+    },
+    ownerName: { type: String, default: '' }
 });
+
+// Create compound index for efficient public content queries
+guideSchema.index({ isPublic: 1, createdAt: -1 });
 
 //MODEL
 const User = mongoose.model('User', userSchema);
@@ -378,6 +451,24 @@ const requireMainAdmin = async (req, res, next) => {
         }
         res.status(401).json({ error: 'Token verification failed' });
     }
+};
+
+// Optional auth middleware - attaches user if authenticated but doesn't require it
+const optionalAuth = async (req, res, next) => {
+    try {
+        const token = req.cookies.auth_token;
+        if (token && token !== 'null' && token !== 'undefined') {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const user = await User.findById(decoded.id);
+            if (user) {
+                req.user = user;
+            }
+        }
+    } catch (error) {
+        // Silently fail - authentication is optional
+        logger.debug('Optional auth failed:', error.message);
+    }
+    next();
 };
 
 //REQUEST
@@ -1403,17 +1494,43 @@ app.post('/api/sendcertificate', async (req, res) => {
 // Backend: Modify API to handle pagination
 app.get('/api/courses', async (req, res) => {
     try {
-        const { userId, page = 1, limit = 9 } = req.query;
+        const { userId, page = 1, limit = 9, visibility = 'all' } = req.query;
         const skip = (page - 1) * limit;
 
-        const courses = await Course.find({ user: userId })
-            .skip(parseInt(skip))
-            .limit(parseInt(limit));
+        // Build query based on visibility filter
+        const query = { user: userId };
+        if (visibility === 'public') {
+            query.isPublic = true;
+        } else if (visibility === 'private') {
+            query.isPublic = false;
+        }
+        // 'all' means no additional filter
 
-        res.json(courses);
+        const courses = await Course.find(query)
+            .select('user content type mainTopic slug photo date end completed isPublic forkCount forkedFrom ownerName')
+            .skip(parseInt(skip))
+            .limit(parseInt(limit))
+            .sort({ date: -1 });
+
+        const total = await Course.countDocuments(query);
+
+        res.json({
+            success: true,
+            courses: courses,
+            pagination: {
+                currentPage: parseInt(page),
+                totalPages: Math.ceil(total / limit),
+                totalItems: total,
+                hasNext: page * limit < total,
+                hasPrev: page > 1
+            }
+        });
     } catch (error) {
         console.log('Error', error);
-        res.status(500).send('Internal Server Error');
+        res.status(500).json({
+            success: false,
+            message: 'Internal Server Error'
+        });
     }
 });
 
@@ -1431,7 +1548,7 @@ app.get('/api/shareable', async (req, res) => {
 });
 
 //GET COURSE BY SLUG
-app.get('/api/course/:slug', async (req, res) => {
+app.get('/api/course/:slug', optionalAuth, async (req, res) => {
     try {
         const { slug } = req.params;
         const course = await Course.findOne({ slug });
@@ -1440,6 +1557,17 @@ app.get('/api/course/:slug', async (req, res) => {
             return res.status(404).json({ 
                 success: false, 
                 message: 'Course not found' 
+            });
+        }
+        
+        // Check access control: content must be public OR user must be the owner
+        const isOwner = req.user && course.user === req.user._id.toString();
+        const isPublic = course.isPublic === true;
+        
+        if (!isPublic && !isOwner) {
+            return res.status(403).json({
+                success: false,
+                message: 'This content is private'
             });
         }
         
@@ -3885,7 +4013,7 @@ app.post('/api/quiz/create', requireAuth, async (req, res) => {
 //GET USER QUIZZES
 app.get('/api/quizzes', async (req, res) => {
     try {
-        const { userId, page = 1, limit = 10 } = req.query;
+        const { userId, page = 1, limit = 10, visibility = 'all' } = req.query;
         
         if (!userId) {
             return res.status(400).json({
@@ -3894,12 +4022,21 @@ app.get('/api/quizzes', async (req, res) => {
             });
         }
 
+        // Build query based on visibility filter
+        const query = { userId };
+        if (visibility === 'public') {
+            query.isPublic = true;
+        } else if (visibility === 'private') {
+            query.isPublic = false;
+        }
+        // 'all' means no additional filter
+
         const skip = (page - 1) * limit;
-        const totalCount = await Quiz.countDocuments({ userId });
+        const totalCount = await Quiz.countDocuments(query);
         const totalPages = Math.ceil(totalCount / limit);
 
-        const quizzes = await Quiz.find({ userId })
-            .select('_id userId keyword title slug format tokens viewCount lastVisitedAt createdAt updatedAt')
+        const quizzes = await Quiz.find(query)
+            .select('_id userId keyword title slug format tokens viewCount lastVisitedAt createdAt updatedAt isPublic forkCount forkedFrom ownerName')
             .sort({ updatedAt: -1 })
             .skip(parseInt(skip))
             .limit(parseInt(limit));
@@ -3923,7 +4060,7 @@ app.get('/api/quizzes', async (req, res) => {
 });
 
 //GET QUIZ BY SLUG
-app.get('/api/quiz/:slug', async (req, res) => {
+app.get('/api/quiz/:slug', optionalAuth, async (req, res) => {
     try {
         const { slug } = req.params;
         
@@ -3933,6 +4070,17 @@ app.get('/api/quiz/:slug', async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: 'Quiz not found'
+            });
+        }
+
+        // Check access control: content must be public OR user must be the owner
+        const isOwner = req.user && quiz.userId === req.user._id.toString();
+        const isPublic = quiz.isPublic === true;
+        
+        if (!isPublic && !isOwner) {
+            return res.status(403).json({
+                success: false,
+                message: 'This content is private'
             });
         }
 
@@ -4195,7 +4343,7 @@ app.post('/api/flashcard/create', requireAuth, async (req, res) => {
 //GET USER FLASHCARDS
 app.get('/api/flashcards', async (req, res) => {
     try {
-        const { userId, page = 1, limit = 10 } = req.query;
+        const { userId, page = 1, limit = 10, visibility = 'all' } = req.query;
 
         if (!userId) {
             return res.status(400).json({
@@ -4204,14 +4352,23 @@ app.get('/api/flashcards', async (req, res) => {
             });
         }
 
+        // Build query based on visibility filter
+        const query = { userId };
+        if (visibility === 'public') {
+            query.isPublic = true;
+        } else if (visibility === 'private') {
+            query.isPublic = false;
+        }
+        // 'all' means no additional filter
+
         const skip = (page - 1) * limit;
-        const flashcards = await Flashcard.find({ userId })
-            .select('title keyword slug createdAt cards viewCount')
+        const flashcards = await Flashcard.find(query)
+            .select('title keyword slug createdAt cards viewCount isPublic forkCount forkedFrom ownerName')
             .sort({ createdAt: -1 })
             .skip(parseInt(skip))
             .limit(parseInt(limit));
 
-        const total = await Flashcard.countDocuments({ userId });
+        const total = await Flashcard.countDocuments(query);
 
         // Add card count to each flashcard
         const flashcardsWithCount = flashcards.map(flashcard => ({
@@ -4241,7 +4398,7 @@ app.get('/api/flashcards', async (req, res) => {
 });
 
 //GET FLASHCARD BY SLUG
-app.get('/api/flashcard/:slug', async (req, res) => {
+app.get('/api/flashcard/:slug', optionalAuth, async (req, res) => {
     try {
         const { slug } = req.params;
         const flashcard = await Flashcard.findOne({ slug });
@@ -4250,6 +4407,17 @@ app.get('/api/flashcard/:slug', async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: 'Flashcard set not found'
+            });
+        }
+
+        // Check access control: content must be public OR user must be the owner
+        const isOwner = req.user && flashcard.userId === req.user._id.toString();
+        const isPublic = flashcard.isPublic === true;
+        
+        if (!isPublic && !isOwner) {
+            return res.status(403).json({
+                success: false,
+                message: 'This content is private'
             });
         }
 
@@ -4570,7 +4738,7 @@ app.get('/api/guide/test', (req, res) => {
 //GET USER GUIDES
 app.get('/api/guides', async (req, res) => {
     try {
-        const { userId, page = 1, limit = 10 } = req.query;
+        const { userId, page = 1, limit = 10, visibility = 'all' } = req.query;
 
         if (!userId) {
             return res.status(400).json({
@@ -4579,14 +4747,23 @@ app.get('/api/guides', async (req, res) => {
             });
         }
 
+        // Build query based on visibility filter
+        const query = { userId };
+        if (visibility === 'public') {
+            query.isPublic = true;
+        } else if (visibility === 'private') {
+            query.isPublic = false;
+        }
+        // 'all' means no additional filter
+
         const skip = (page - 1) * limit;
-        const guides = await Guide.find({ userId })
-            .select('title keyword slug createdAt viewCount relatedTopics')
+        const guides = await Guide.find(query)
+            .select('title keyword slug createdAt viewCount relatedTopics isPublic forkCount forkedFrom ownerName')
             .sort({ createdAt: -1 })
             .skip(parseInt(skip))
             .limit(parseInt(limit));
 
-        const total = await Guide.countDocuments({ userId });
+        const total = await Guide.countDocuments(query);
 
         res.json({
             success: true,
@@ -4610,7 +4787,7 @@ app.get('/api/guides', async (req, res) => {
 });
 
 //GET GUIDE BY SLUG
-app.get('/api/guide/:slug', async (req, res) => {
+app.get('/api/guide/:slug', optionalAuth, async (req, res) => {
     try {
         const { slug } = req.params;
         const guide = await Guide.findOne({ slug });
@@ -4619,6 +4796,17 @@ app.get('/api/guide/:slug', async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: 'Guide not found'
+            });
+        }
+
+        // Check access control: content must be public OR user must be the owner
+        const isOwner = req.user && guide.userId === req.user._id.toString();
+        const isPublic = guide.isPublic === true;
+        
+        if (!isPublic && !isOwner) {
+            return res.status(403).json({
+                success: false,
+                message: 'This content is private'
             });
         }
 
@@ -4682,14 +4870,536 @@ app.delete('/api/guide/:slug', async (req, res) => {
     }
 });
 
-// Catch-all handler: send back React's index.html file for client-side routing
-app.get('*', (req, res) => {
-    // Skip API routes - return 404 for API routes that don't exist
-    if (req.path.startsWith('/api/')) {
-        return res.status(404).json({ error: 'API endpoint not found' });
-    }
+// VISIBILITY MANAGEMENT ENDPOINTS
 
-    res.sendFile('index.html', { root: 'dist' });
+// Helper function to get the correct model based on content type
+const getContentModel = (contentType) => {
+    const models = {
+        'course': Course,
+        'quiz': Quiz,
+        'flashcard': Flashcard,
+        'guide': Guide
+    };
+    return models[contentType];
+};
+
+// PATCH endpoint for toggling content visibility
+app.patch('/api/:contentType/:slug/visibility', requireAuth, async (req, res) => {
+    try {
+        const { contentType, slug } = req.params;
+        const { isPublic } = req.body;
+        const userId = req.user._id.toString();
+
+        // Validate content type
+        const Model = getContentModel(contentType);
+        if (!Model) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid content type'
+            });
+        }
+
+        // Validate isPublic parameter
+        if (typeof isPublic !== 'boolean') {
+            return res.status(400).json({
+                success: false,
+                message: 'isPublic must be a boolean value'
+            });
+        }
+
+        // Find content by slug
+        const content = await Model.findOne({ slug });
+
+        if (!content) {
+            return res.status(404).json({
+                success: false,
+                message: `${contentType.charAt(0).toUpperCase() + contentType.slice(1)} not found`
+            });
+        }
+
+        // Verify ownership
+        if (content.userId !== userId && content.user !== userId) {
+            return res.status(403).json({
+                success: false,
+                message: 'You do not have permission to modify this content'
+            });
+        }
+
+        // Update visibility
+        content.isPublic = isPublic;
+        await content.save();
+
+        logger.info(`${contentType} visibility updated: ${slug} - isPublic: ${isPublic}`);
+
+        res.json({
+            success: true,
+            isPublic: content.isPublic,
+            message: `${contentType.charAt(0).toUpperCase() + contentType.slice(1)} visibility updated successfully`
+        });
+
+    } catch (error) {
+        logger.error(`Toggle visibility error: ${error.message}`, { 
+            error: error.stack, 
+            contentType: req.params.contentType,
+            slug: req.params.slug 
+        });
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update visibility'
+        });
+    }
+});
+
+// GET endpoint for visibility status
+app.get('/api/:contentType/:slug/visibility', requireAuth, async (req, res) => {
+    try {
+        const { contentType, slug } = req.params;
+        const userId = req.user._id.toString();
+
+        // Validate content type
+        const Model = getContentModel(contentType);
+        if (!Model) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid content type'
+            });
+        }
+
+        // Find content by slug
+        const content = await Model.findOne({ slug });
+
+        if (!content) {
+            return res.status(404).json({
+                success: false,
+                message: `${contentType.charAt(0).toUpperCase() + contentType.slice(1)} not found`
+            });
+        }
+
+        // Verify ownership
+        if (content.userId !== userId && content.user !== userId) {
+            return res.status(403).json({
+                success: false,
+                message: 'You do not have permission to view this content visibility status'
+            });
+        }
+
+        logger.info(`${contentType} visibility status retrieved: ${slug}`);
+
+        res.json({
+            success: true,
+            isPublic: content.isPublic || false,
+            forkCount: content.forkCount || 0
+        });
+
+    } catch (error) {
+        logger.error(`Get visibility status error: ${error.message}`, { 
+            error: error.stack, 
+            contentType: req.params.contentType,
+            slug: req.params.slug 
+        });
+        res.status(500).json({
+            success: false,
+            message: 'Failed to retrieve visibility status'
+        });
+    }
+});
+
+// PUBLIC CONTENT DISCOVERY ENDPOINTS
+
+// GET unified public content endpoint
+app.get('/api/public/content', optionalAuth, async (req, res) => {
+    try {
+        const { 
+            type = 'all', 
+            page = 1, 
+            limit = 20, 
+            search = '', 
+            sortBy = 'recent' 
+        } = req.query;
+
+        // Validate and parse pagination parameters
+        const pageNum = Math.max(1, parseInt(page));
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit))); // Max 100 items per page
+        const skip = (pageNum - 1) * limitNum;
+
+        // Build base query for public content
+        const baseQuery = { isPublic: true };
+
+        // Add search functionality if search term provided
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i');
+            baseQuery.$or = [
+                { title: searchRegex },
+                { keyword: searchRegex },
+                { mainTopic: searchRegex }
+            ];
+        }
+
+        // Determine which models to query based on type
+        let modelsToQuery = [];
+        if (type === 'all') {
+            modelsToQuery = [
+                { model: Course, type: 'course' },
+                { model: Quiz, type: 'quiz' },
+                { model: Flashcard, type: 'flashcard' },
+                { model: Guide, type: 'guide' }
+            ];
+        } else {
+            const Model = getContentModel(type);
+            if (!Model) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid content type. Must be: course, quiz, flashcard, guide, or all'
+                });
+            }
+            modelsToQuery = [{ model: Model, type }];
+        }
+
+        // Determine sort order
+        let sortOptions = {};
+        switch (sortBy) {
+            case 'popular':
+                sortOptions = { viewCount: -1, createdAt: -1 };
+                break;
+            case 'forks':
+                sortOptions = { forkCount: -1, createdAt: -1 };
+                break;
+            case 'recent':
+            default:
+                sortOptions = { createdAt: -1 };
+                break;
+        }
+
+        // Query all relevant models
+        const contentPromises = modelsToQuery.map(async ({ model, type }) => {
+            const items = await model
+                .find(baseQuery)
+                .select('title slug keyword mainTopic ownerName userId user forkCount viewCount createdAt date isPublic forkedFrom')
+                .sort(sortOptions)
+                .lean();
+            
+            // Add contentType field to each item
+            return items.map(item => ({
+                ...item,
+                contentType: type,
+                // Normalize date field (Course uses 'date', others use 'createdAt')
+                createdAt: item.createdAt || item.date
+            }));
+        });
+
+        // Wait for all queries to complete
+        const allContentArrays = await Promise.all(contentPromises);
+        const allContent = allContentArrays.flat();
+
+        // Sort combined results
+        allContent.sort((a, b) => {
+            if (sortBy === 'popular') {
+                return (b.viewCount || 0) - (a.viewCount || 0);
+            } else if (sortBy === 'forks') {
+                return (b.forkCount || 0) - (a.forkCount || 0);
+            } else {
+                return new Date(b.createdAt) - new Date(a.createdAt);
+            }
+        });
+
+        // Apply pagination to combined results
+        const totalItems = allContent.length;
+        const paginatedContent = allContent.slice(skip, skip + limitNum);
+        const totalPages = Math.ceil(totalItems / limitNum);
+
+        logger.info(`Public content retrieved: type=${type}, page=${pageNum}, results=${paginatedContent.length}`);
+
+        res.json({
+            success: true,
+            data: paginatedContent,
+            pagination: {
+                currentPage: pageNum,
+                totalPages,
+                totalItems,
+                itemsPerPage: limitNum,
+                hasNext: pageNum < totalPages,
+                hasPrev: pageNum > 1
+            }
+        });
+
+    } catch (error) {
+        logger.error(`Get public content error: ${error.message}`, { 
+            error: error.stack,
+            query: req.query
+        });
+        res.status(500).json({
+            success: false,
+            message: 'Failed to retrieve public content'
+        });
+    }
+});
+
+// GET public content by specific type
+app.get('/api/public/:contentType', optionalAuth, async (req, res) => {
+    try {
+        const { contentType } = req.params;
+        const { 
+            page = 1, 
+            limit = 20, 
+            search = '', 
+            sortBy = 'recent' 
+        } = req.query;
+
+        // Validate content type
+        const Model = getContentModel(contentType);
+        if (!Model) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid content type. Must be: course, quiz, flashcard, or guide'
+            });
+        }
+
+        // Validate and parse pagination parameters
+        const pageNum = Math.max(1, parseInt(page));
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+        const skip = (pageNum - 1) * limitNum;
+
+        // Build query for public content
+        const query = { isPublic: true };
+
+        // Add search functionality
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i');
+            query.$or = [
+                { title: searchRegex },
+                { keyword: searchRegex },
+                { mainTopic: searchRegex }
+            ];
+        }
+
+        // Determine sort order
+        let sortOptions = {};
+        switch (sortBy) {
+            case 'popular':
+                sortOptions = { viewCount: -1, createdAt: -1 };
+                break;
+            case 'forks':
+                sortOptions = { forkCount: -1, createdAt: -1 };
+                break;
+            case 'recent':
+            default:
+                sortOptions = { createdAt: -1 };
+                break;
+        }
+
+        // Get total count for pagination
+        const totalItems = await Model.countDocuments(query);
+
+        // Query content with pagination
+        const content = await Model
+            .find(query)
+            .select('title slug keyword mainTopic ownerName userId user forkCount viewCount createdAt date isPublic forkedFrom')
+            .sort(sortOptions)
+            .skip(skip)
+            .limit(limitNum)
+            .lean();
+
+        // Add contentType field and normalize date
+        const normalizedContent = content.map(item => ({
+            ...item,
+            contentType,
+            createdAt: item.createdAt || item.date
+        }));
+
+        const totalPages = Math.ceil(totalItems / limitNum);
+
+        logger.info(`Public ${contentType} content retrieved: page=${pageNum}, results=${content.length}`);
+
+        res.json({
+            success: true,
+            data: normalizedContent,
+            pagination: {
+                currentPage: pageNum,
+                totalPages,
+                totalItems,
+                itemsPerPage: limitNum,
+                hasNext: pageNum < totalPages,
+                hasPrev: pageNum > 1
+            }
+        });
+
+    } catch (error) {
+        logger.error(`Get public ${req.params.contentType} error: ${error.message}`, { 
+            error: error.stack,
+            contentType: req.params.contentType,
+            query: req.query
+        });
+        res.status(500).json({
+            success: false,
+            message: `Failed to retrieve public ${req.params.contentType} content`
+        });
+    }
+});
+
+// GET single public content by slug
+app.get('/api/public/:contentType/:slug', optionalAuth, async (req, res) => {
+    try {
+        const { contentType, slug } = req.params;
+
+        // Validate content type
+        const Model = getContentModel(contentType);
+        if (!Model) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid content type. Must be: course, quiz, flashcard, or guide'
+            });
+        }
+
+        // Find content by slug
+        const content = await Model.findOne({ slug }).lean();
+
+        if (!content) {
+            return res.status(404).json({
+                success: false,
+                message: `${contentType.charAt(0).toUpperCase() + contentType.slice(1)} not found`
+            });
+        }
+
+        // Check if content is public
+        if (!content.isPublic) {
+            return res.status(403).json({
+                success: false,
+                message: 'This content is private and cannot be accessed'
+            });
+        }
+
+        // Add contentType field
+        const normalizedContent = {
+            ...content,
+            contentType,
+            createdAt: content.createdAt || content.date
+        };
+
+        logger.info(`Public ${contentType} retrieved: ${slug}`);
+
+        res.json({
+            success: true,
+            content: normalizedContent
+        });
+
+    } catch (error) {
+        logger.error(`Get public ${req.params.contentType} by slug error: ${error.message}`, { 
+            error: error.stack,
+            contentType: req.params.contentType,
+            slug: req.params.slug
+        });
+        res.status(500).json({
+            success: false,
+            message: `Failed to retrieve public ${req.params.contentType}`
+        });
+    }
+});
+
+// FORK FUNCTIONALITY ENDPOINTS
+
+// POST endpoint for forking content
+app.post('/api/:contentType/:slug/fork', requireAuth, async (req, res) => {
+    try {
+        const { contentType, slug } = req.params;
+        const userId = req.user._id.toString();
+        const userName = req.user.mName || req.user.email;
+
+        // Validate content type
+        const Model = getContentModel(contentType);
+        if (!Model) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid content type'
+            });
+        }
+
+        // Find the original content by slug
+        const originalContent = await Model.findOne({ slug });
+
+        if (!originalContent) {
+            return res.status(404).json({
+                success: false,
+                message: `${contentType.charAt(0).toUpperCase() + contentType.slice(1)} not found`
+            });
+        }
+
+        // Check if content is public
+        if (!originalContent.isPublic) {
+            return res.status(403).json({
+                success: false,
+                message: 'Cannot fork private content'
+            });
+        }
+
+        // Check if user is trying to fork their own content
+        const originalOwnerId = originalContent.userId || originalContent.user;
+        if (originalOwnerId === userId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot fork your own content'
+            });
+        }
+
+        // Create a copy of the content
+        const contentCopy = originalContent.toObject();
+        delete contentCopy._id;
+        delete contentCopy.__v;
+
+        // Generate a unique slug for the forked content
+        const baseSlug = `${slug}-fork`;
+        const uniqueSlug = await generateUniqueSlug(Model, baseSlug);
+
+        // Set forked content properties
+        contentCopy.slug = uniqueSlug;
+        contentCopy.userId = userId;
+        contentCopy.user = userId; // For backward compatibility with Course model
+        contentCopy.isPublic = false; // Forked content is private by default
+        contentCopy.forkCount = 0; // Reset fork count for the copy
+        contentCopy.viewCount = 0; // Reset view count
+        contentCopy.ownerName = userName;
+        
+        // Set forkedFrom metadata
+        contentCopy.forkedFrom = {
+            contentId: originalContent._id,
+            originalOwnerId: originalOwnerId,
+            originalOwnerName: originalContent.ownerName || 'Unknown User',
+            forkedAt: new Date()
+        };
+
+        // Create the forked content
+        const forkedContent = new Model(contentCopy);
+        await forkedContent.save();
+
+        // Increment fork count on original content
+        await Model.findByIdAndUpdate(
+            originalContent._id,
+            { $inc: { forkCount: 1 } }
+        );
+
+        logger.info(`Content forked successfully: ${contentType}/${slug} -> ${uniqueSlug} by user ${userId}`);
+
+        res.json({
+            success: true,
+            message: 'Content forked successfully',
+            forkedContent: {
+                _id: forkedContent._id,
+                slug: forkedContent.slug,
+                contentType
+            }
+        });
+
+    } catch (error) {
+        logger.error(`Fork ${req.params.contentType} error: ${error.message}`, { 
+            error: error.stack,
+            contentType: req.params.contentType,
+            slug: req.params.slug,
+            userId: req.user?._id
+        });
+        res.status(500).json({
+            success: false,
+            message: `Failed to fork ${req.params.contentType}`
+        });
+    }
 });
 
 // Graceful shutdown

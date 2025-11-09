@@ -12,6 +12,11 @@ import {
   Loader2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuthState } from '@/hooks/useAuthState';
+import { usePendingFork } from '@/hooks/usePendingFork';
+import { VisibilityToggle } from '@/components/VisibilityToggle';
+import { ForkButton } from '@/components/ForkButton';
+import { ContentAttribution } from '@/components/ContentAttribution';
 import { flashcardService } from '@/services/flashcardService';
 import { FlashcardSet, FlashcardType } from '@/types/flashcard';
 
@@ -19,11 +24,16 @@ const FlashcardViewer: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { userId, isAuthenticated } = useAuthState();
+  
+  // Handle pending fork operations after login
+  usePendingFork();
   
   const [flashcardSet, setFlashcardSet] = useState<FlashcardSet | null>(null);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOwner, setIsOwner] = useState(false);
 
   const fetchFlashcardSet = useCallback(async () => {
     if (!slug) {
@@ -41,6 +51,9 @@ const FlashcardViewer: React.FC = () => {
       if (response.success) {
         console.log('Setting flashcard set:', response.flashcard);
         setFlashcardSet(response.flashcard);
+        
+        // Check if current user is the owner
+        setIsOwner(userId === response.flashcard.userId);
       } else {
         console.log('API returned success=false');
         throw new Error('Flashcard set not found');
@@ -134,8 +147,15 @@ const FlashcardViewer: React.FC = () => {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       {/* Header */}
       <div className="mb-8">
+        <div className="mb-4">
+          <ContentAttribution
+            forkedFrom={flashcardSet.forkedFrom}
+            contentType="flashcard"
+          />
+        </div>
+        
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
+          <div className="flex-1">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
               {flashcardSet.title}
             </h1>
@@ -144,14 +164,44 @@ const FlashcardViewer: React.FC = () => {
             </p>
           </div>
           
-          <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-            <div className="flex items-center gap-1">
-              <Eye className="h-4 w-4" />
-              {flashcardSet.viewCount} views
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+            <div className="flex items-center gap-2">
+              {isOwner && (
+                <VisibilityToggle
+                  contentType="flashcard"
+                  slug={flashcardSet.slug}
+                  isPublic={flashcardSet.isPublic || false}
+                  onToggle={(newState) => {
+                    setFlashcardSet(prev => prev ? { ...prev, isPublic: newState } : null);
+                  }}
+                />
+              )}
+              
+              {flashcardSet.isPublic && (
+                <ForkButton
+                  contentType="flashcard"
+                  slug={flashcardSet.slug}
+                  isAuthenticated={isAuthenticated}
+                  isOwner={isOwner}
+                  onForkSuccess={(forkedContent) => {
+                    toast({
+                      title: 'Flashcard Set Forked!',
+                      description: `Successfully forked "${forkedContent.title}"`,
+                    });
+                  }}
+                />
+              )}
             </div>
-            <div className="flex items-center gap-1">
-              <Calendar className="h-4 w-4" />
-              {formatDate(flashcardSet.createdAt)}
+            
+            <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+              <div className="flex items-center gap-1">
+                <Eye className="h-4 w-4" />
+                {flashcardSet.viewCount} views
+              </div>
+              <div className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                {formatDate(flashcardSet.createdAt)}
+              </div>
             </div>
           </div>
         </div>

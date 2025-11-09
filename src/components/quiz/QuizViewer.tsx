@@ -4,6 +4,11 @@ import { QuizService, QuizParser } from '@/services/quizService';
 import { getQuizShareURL } from '@/utils/config';
 import { InlineLoader } from '@/components/ui/loading';
 import { useToast } from '@/hooks/use-toast';
+import { useAuthState } from '@/hooks/useAuthState';
+import { usePendingFork } from '@/hooks/usePendingFork';
+import { VisibilityToggle } from '@/components/VisibilityToggle';
+import { ForkButton } from '@/components/ForkButton';
+import { ContentAttribution } from '@/components/ContentAttribution';
 import { 
   Share2, 
   CheckCircle, 
@@ -19,10 +24,15 @@ export const QuizViewer: React.FC = () => {
   const { slug, id } = useParams<{ slug?: string; id?: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { userId, isAuthenticated } = useAuthState();
+  
+  // Handle pending fork operations after login
+  usePendingFork();
   
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
   
   // Quiz state
   const [parsedQuiz, setParsedQuiz] = useState<{
@@ -67,6 +77,9 @@ export const QuizViewer: React.FC = () => {
 
       if (response.success) {
         setQuiz(response.quiz);
+        
+        // Check if current user is the owner
+        setIsOwner(userId === response.quiz.userId);
         
         // Handle redirect for ID-based URLs
         if (response.redirect && !slug) {
@@ -168,18 +181,53 @@ export const QuizViewer: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto p-6">
       {/* Header */}
-      <div className="flex items-center justify-end mb-6">
-        <button
-          onClick={handleShare}
-          className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-800"
-        >
-          <Share2 className="w-4 h-4 mr-2" />
-          Share
-        </button>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          {isOwner && quiz && (
+            <VisibilityToggle
+              contentType="quiz"
+              slug={quiz.slug}
+              isPublic={quiz.isPublic || false}
+              onToggle={(newState) => {
+                setQuiz(prev => prev ? { ...prev, isPublic: newState } : null);
+              }}
+            />
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {quiz && quiz.isPublic && (
+            <ForkButton
+              contentType="quiz"
+              slug={quiz.slug}
+              isAuthenticated={isAuthenticated}
+              isOwner={isOwner}
+              onForkSuccess={(forkedContent) => {
+                toast({
+                  title: 'Quiz Forked!',
+                  description: `Successfully forked "${forkedContent.title}"`,
+                });
+              }}
+            />
+          )}
+          <button
+            onClick={handleShare}
+            className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-800"
+          >
+            <Share2 className="w-4 h-4 mr-2" />
+            Share
+          </button>
+        </div>
       </div>
 
       {/* Quiz Info */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+        <div className="mb-4">
+          <ContentAttribution
+            forkedFrom={quiz.forkedFrom}
+            contentType="quiz"
+          />
+        </div>
+        
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{quiz.title}</h1>
         <p className="text-gray-600 dark:text-gray-300 mb-4">Topic: {quiz.keyword}</p>
 

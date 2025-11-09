@@ -16,7 +16,10 @@ import {
   Plus,
   Clock,
   BarChart3,
-  Loader2
+  Loader2,
+  Globe,
+  Lock,
+  GitFork
 } from 'lucide-react';
 import type { Quiz } from '@/types/quiz';
 import {
@@ -30,6 +33,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface QuizListProps {
   userId: string;
@@ -43,6 +47,7 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [deletingQuiz, setDeletingQuiz] = useState<string | null>(null);
+  const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'public' | 'private'>('all');
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -54,12 +59,19 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
 
   useEffect(() => {
     fetchQuizzes();
-  }, [currentPage]);
+  }, [currentPage, visibilityFilter]);
+
+  // Reset pagination when filter changes
+  useEffect(() => {
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [visibilityFilter]);
 
   const fetchQuizzes = async () => {
     try {
       setLoading(true);
-      const response = await QuizService.getUserQuizzes(userId, currentPage, 9);
+      const response = await QuizService.getUserQuizzes(userId, currentPage, 9, visibilityFilter);
       
       if (response.success) {
         setQuizzes(response.data);
@@ -148,12 +160,34 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Quizzes</h1>
           <p className="text-gray-600 dark:text-gray-300">Manage your AI-generated quizzes</p>
         </div>
-        <Button asChild>
-          <Link to="/dashboard/create-quiz">
-            <Plus className="w-4 h-4 mr-2" />
-            Create Quiz
-          </Link>
-        </Button>
+        <div className="flex items-center gap-3">
+          <Select value={visibilityFilter} onValueChange={(value: 'all' | 'public' | 'private') => setVisibilityFilter(value)}>
+            <SelectTrigger className="w-[140px] h-9">
+              <SelectValue placeholder="Filter" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Quizzes</SelectItem>
+              <SelectItem value="public">
+                <div className="flex items-center">
+                  <Globe className="h-3.5 w-3.5 mr-2" />
+                  Public
+                </div>
+              </SelectItem>
+              <SelectItem value="private">
+                <div className="flex items-center">
+                  <Lock className="h-3.5 w-3.5 mr-2" />
+                  Private
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <Button asChild>
+            <Link to="/dashboard/create-quiz">
+              <Plus className="w-4 h-4 mr-2" />
+              Create Quiz
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Quiz Grid */}
@@ -187,9 +221,29 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
                         {quiz.keyword}
                       </CardDescription>
                     </div>
-                    <Badge variant="secondary" className="ml-2">
-                      {quiz.format}
-                    </Badge>
+                    <div className="flex flex-col gap-2 ml-2">
+                      <Badge variant="secondary">
+                        {quiz.format}
+                      </Badge>
+                      {quiz.isPublic !== undefined && (
+                        <Badge 
+                          variant={quiz.isPublic ? 'default' : 'outline'} 
+                          className={`text-xs px-2 py-1 ${quiz.isPublic ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}`}
+                        >
+                          {quiz.isPublic ? (
+                            <>
+                              <Globe className="h-3 w-3 mr-1" />
+                              Public
+                            </>
+                          ) : (
+                            <>
+                              <Lock className="h-3 w-3 mr-1" />
+                              Private
+                            </>
+                          )}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-between">
@@ -203,6 +257,12 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
                         <Calendar className="h-4 w-4" />
                         {formatDate(quiz.createdAt)}
                       </div>
+                      {quiz.isPublic && quiz.forkCount > 0 && (
+                        <div className="flex items-center gap-1">
+                          <GitFork className="h-4 w-4" />
+                          {quiz.forkCount}
+                        </div>
+                      )}
                     </div>
 
                     <div className="text-xs text-gray-400 dark:text-gray-500 font-mono bg-gray-50 dark:bg-gray-700 p-2 rounded">

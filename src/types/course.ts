@@ -1,10 +1,3 @@
-export interface FlashcardType {
-  front: string;
-  back: string;
-  difficulty: 'easy' | 'medium' | 'hard';
-  tags: string[];
-}
-
 export interface ForkedFrom {
   contentId: string | null;
   originalOwnerId: string | null;
@@ -12,14 +5,16 @@ export interface ForkedFrom {
   forkedAt: string | null;
 }
 
-export interface FlashcardSet {
+export interface Course {
   _id: string;
   userId: string;
-  keyword: string;
-  title: string;
+  mainTopic: string;
+  type: string;
   slug: string;
   content: string;
-  cards: FlashcardType[];
+  photo: string;
+  completed: boolean;
+  end: string;
   tokens: {
     prompt: number;
     completion: number;
@@ -29,7 +24,6 @@ export interface FlashcardSet {
   lastVisitedAt: string;
   createdAt: string;
   updatedAt: string;
-  cardCount?: number;
   // Visibility and fork fields
   isPublic: boolean;
   forkCount: number;
@@ -37,9 +31,9 @@ export interface FlashcardSet {
   ownerName: string;
 }
 
-export interface FlashcardListResponse {
+export interface CourseListResponse {
   success: boolean;
-  flashcards: FlashcardSet[];
+  courses: Course[];
   pagination: {
     currentPage: number;
     totalPages: number;
@@ -49,23 +43,28 @@ export interface FlashcardListResponse {
   };
 }
 
-export interface FlashcardResponse {
+export interface CourseResponse {
   success: boolean;
-  flashcard: FlashcardSet;
+  course: Course;
 }
 
-export interface CreateFlashcardRequest {
+export interface CreateCourseRequest {
   userId: string;
-  keyword: string;
-  title: string;
+  mainTopic: string;
+  type: string;
+  customization?: string;
   provider?: string;
   model?: string;
 }
 
-export interface CreateFlashcardResponse {
+export interface CreateCourseResponse {
   success: boolean;
   message: string;
-  flashcardId: string;
+  courseId: string;
   slug: string;
-  cards: FlashcardType[];
+  course: {
+    mainTopic: string;
+    type: string;
+    content: string;
+  };
 }

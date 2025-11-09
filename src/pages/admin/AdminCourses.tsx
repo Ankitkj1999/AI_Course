@@ -8,6 +8,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Pagination, PaginationInfo } from '@/components/ui/pagination';
 import { useAdminPagination } from '@/hooks/useAdminPagination';
 
+interface ForkedFrom {
+  contentId: string | null;
+  originalOwnerId: string | null;
+  originalOwnerName: string | null;
+  forkedAt: string | null;
+}
+
 interface Course {
   _id: string;
   mainTopic: string;
@@ -15,6 +22,11 @@ interface Course {
   type: string;
   date: string;
   completed: boolean;
+  // Visibility and fork fields
+  isPublic: boolean;
+  forkCount: number;
+  forkedFrom?: ForkedFrom;
+  ownerName: string;
 }
 
 const AdminCourses = () => {

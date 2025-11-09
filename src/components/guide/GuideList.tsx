@@ -10,7 +10,10 @@ import {
   BookOpen,
   Plus,
   Loader2,
-  Tag
+  Tag,
+  Globe,
+  Lock,
+  GitFork
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { guideService } from '@/services/guideService';
@@ -164,7 +167,27 @@ const GuideList: React.FC = () => {
                         {guide.keyword}
                       </CardDescription>
                     </div>
-                    <BookOpen className="h-6 w-6 text-blue-600 dark:text-blue-400 shrink-0 ml-2" />
+                    <div className="flex flex-col gap-2 ml-2 shrink-0 items-end">
+                      <BookOpen className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                      {guide.isPublic !== undefined && (
+                        <Badge 
+                          variant={guide.isPublic ? 'default' : 'outline'} 
+                          className={`text-xs px-2 py-1 ${guide.isPublic ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}`}
+                        >
+                          {guide.isPublic ? (
+                            <>
+                              <Globe className="h-3 w-3 mr-1" />
+                              Public
+                            </>
+                          ) : (
+                            <>
+                              <Lock className="h-3 w-3 mr-1" />
+                              Private
+                            </>
+                          )}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-between px-6 pb-6 pt-0">
@@ -194,6 +217,12 @@ const GuideList: React.FC = () => {
                         <Calendar className="h-4 w-4" />
                         {formatDate(guide.createdAt)}
                       </div>
+                      {guide.isPublic && guide.forkCount > 0 && (
+                        <div className="flex items-center gap-1">
+                          <GitFork className="h-4 w-4" />
+                          {guide.forkCount}
+                        </div>
+                      )}
                     </div>
                   </div>
 

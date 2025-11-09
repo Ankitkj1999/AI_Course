@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Clock, Users, BookOpen, Sparkles, ArrowRight, BookPlus, FileQuestion, Loader, MoreVertical, Share, Trash2, Grid3X3, List } from 'lucide-react';
+import { Clock, Users, BookOpen, Sparkles, ArrowRight, BookPlus, FileQuestion, Loader, MoreVertical, Share, Trash2, Grid3X3, List, Globe, Lock, GitFork } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Link, useNavigate } from 'react-router-dom';
 import SEO from '@/components/SEO';
@@ -14,6 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useToast } from '@/hooks/use-toast';
 import ShareOnSocial from 'react-share-on-social';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const Courses = () => {
 
@@ -28,6 +29,7 @@ const Courses = () => {
   const [lessons, setTotalLessons] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'public' | 'private'>('all');
   const { toast } = useToast();
 
   function redirectCreate() {
@@ -99,16 +101,17 @@ const Courses = () => {
   const fetchUserCourses = useCallback(async () => {
     setIsLoading(page === 1);
     setLoadingMore(page > 1);
-    const postURL = `${serverURL}/api/courses?userId=${userId}&page=${page}&limit=9`;
+    const postURL = `${serverURL}/api/courses?userId=${userId}&page=${page}&limit=9&visibility=${visibilityFilter}`;
     try {
       const response = await axios.get(postURL);
-      if (response.data.length === 0) {
+      const coursesData = response.data.courses || response.data || [];
+      if (coursesData.length === 0) {
         setHasMore(false);
       } else {
         const progressMap = { ...courseProgress }; // Spread existing state
         const modulesMap = { ...modules }; // Spread existing state
         const lessonsMap = { ...lessons }; // Spread existing state
-        for (const course of response.data) {
+        for (const course of coursesData) {
           const progress = await CountDoneTopics(course.content, course.mainTopic, course._id);
           const totalModules = await CountTotalModules(course.content, course.mainTopic);
           const totalLessons = await CountTotalLessons(course.content, course.mainTopic);
@@ -119,7 +122,7 @@ const Courses = () => {
         setCourseProgress(progressMap);
         setTotalModules(modulesMap);
         setTotalLessons(lessonsMap);
-        await setCourses((prevCourses) => [...prevCourses, ...response.data]);
+        await setCourses((prevCourses) => [...prevCourses, ...coursesData]);
       }
     } catch (error) {
       console.error(error);
@@ -127,11 +130,18 @@ const Courses = () => {
       setIsLoading(false);
       setLoadingMore(false);
     }
-  }, [userId, page]);
+  }, [page, userId, visibilityFilter, courseProgress, modules, lessons, CountDoneTopics]);
 
   useEffect(() => {
     fetchUserCourses();
   }, [fetchUserCourses]);
+
+  // Reset pagination when filter changes
+  useEffect(() => {
+    setCourses([]);
+    setPage(1);
+    setHasMore(true);
+  }, [visibilityFilter]);
 
   const handleScroll = useCallback(() => {
     if (!hasMore || loadingMore) return;
@@ -219,6 +229,26 @@ const Courses = () => {
             <p className="text-muted-foreground mt-1">Continue learning where you left off</p>
           </div>
           <div className="flex items-center gap-3">
+            <Select value={visibilityFilter} onValueChange={(value: 'all' | 'public' | 'private') => setVisibilityFilter(value)}>
+              <SelectTrigger className="w-[140px] h-9">
+                <SelectValue placeholder="Filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Courses</SelectItem>
+                <SelectItem value="public">
+                  <div className="flex items-center">
+                    <Globe className="h-3.5 w-3.5 mr-2" />
+                    Public
+                  </div>
+                </SelectItem>
+                <SelectItem value="private">
+                  <div className="flex items-center">
+                    <Lock className="h-3.5 w-3.5 mr-2" />
+                    Private
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
             <TooltipProvider>
               <div className="flex items-center border rounded-lg p-1">
                 <Tooltip>
@@ -327,10 +357,28 @@ const Courses = () => {
                           alt={course.mainTopic}
                           className="object-cover w-full h-full group-hover:scale-[1.02] transition-transform duration-300"
                         />
-                        <div className="absolute top-3 right-3">
+                        <div className="absolute top-3 right-3 flex gap-2">
                           <Badge variant={course.completed === true ? 'default' : 'secondary'} className="text-xs px-2 py-1">
                             {course.completed === true ? 'Completed' : 'In Progress'}
                           </Badge>
+                          {course.isPublic !== undefined && (
+                            <Badge 
+                              variant={course.isPublic ? 'default' : 'outline'} 
+                              className={`text-xs px-2 py-1 ${course.isPublic ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}`}
+                            >
+                              {course.isPublic ? (
+                                <>
+                                  <Globe className="h-3 w-3 mr-1" />
+                                  Public
+                                </>
+                              ) : (
+                                <>
+                                  <Lock className="h-3 w-3 mr-1" />
+                                  Private
+                                </>
+                              )}
+                            </Badge>
+                          )}
                         </div>
                         <div className="absolute top-3 left-3">
                           <DropdownMenu>
@@ -382,6 +430,15 @@ const Courses = () => {
                           </div>
                           <span>•</span>
                           <span>{lessons[course._id] || 0} lessons</span>
+                          {course.isPublic && course.forkCount > 0 && (
+                            <>
+                              <span>•</span>
+                              <div className="flex items-center">
+                                <GitFork className="mr-1 h-3.5 w-3.5" />
+                                {course.forkCount}
+                              </div>
+                            </>
+                          )}
                         </div>
                       </CardContent>
                       <CardFooter className="pt-0">
@@ -418,9 +475,29 @@ const Courses = () => {
                                 <CardDescription className="text-xs capitalize mt-1">{course.type}</CardDescription>
                               </div>
                               <div className="flex items-center justify-between w-full sm:w-auto mt-2 sm:mt-0 sm:ml-4 sm:gap-2">
-                                <Badge variant={course.completed === true ? 'default' : 'secondary'} className="text-xs px-2 py-1">
-                                  {course.completed === true ? 'Completed' : 'In Progress'}
-                                </Badge>
+                                <div className="flex gap-2">
+                                  <Badge variant={course.completed === true ? 'default' : 'secondary'} className="text-xs px-2 py-1">
+                                    {course.completed === true ? 'Completed' : 'In Progress'}
+                                  </Badge>
+                                  {course.isPublic !== undefined && (
+                                    <Badge 
+                                      variant={course.isPublic ? 'default' : 'outline'} 
+                                      className={`text-xs px-2 py-1 ${course.isPublic ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}`}
+                                    >
+                                      {course.isPublic ? (
+                                        <>
+                                          <Globe className="h-3 w-3 mr-1" />
+                                          Public
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Lock className="h-3 w-3 mr-1" />
+                                          Private
+                                        </>
+                                      )}
+                                    </Badge>
+                                  )}
+                                </div>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-muted">
@@ -467,6 +544,15 @@ const Courses = () => {
                               </div>
                               <span>•</span>
                               <span>{lessons[course._id] || 0} lessons</span>
+                              {course.isPublic && course.forkCount > 0 && (
+                                <>
+                                  <span>•</span>
+                                  <div className="flex items-center">
+                                    <GitFork className="mr-1 h-3.5 w-3.5" />
+                                    {course.forkCount}
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </CardContent>
                           <CardFooter className="pt-0">

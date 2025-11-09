@@ -51,6 +51,9 @@ import CoursesPage from "./pages/dashboard/Courses";
 // LLM Test imports
 import TestLLM from "./pages/TestLLM";
 
+// Public Content imports
+import PublicContent from "./pages/PublicContent";
+
 // Admin imports
 import AdminLayout from "./components/layouts/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -173,6 +176,13 @@ const App = () => {
                 {/* Backward Compatibility Redirects */}
                 <Route path="/dashboard/flashcard/:slug" element={<RedirectToFlashcard />} />
                 <Route path="/dashboard/guide/:slug" element={<RedirectToGuide />} />
+
+                {/* Public Content Discovery */}
+                <Route path="/discover" element={
+                  <AppLayout mode="public">
+                    <PublicContent />
+                  </AppLayout>
+                } />
 
                 {/* Payment Routes */}
                 <Route path="/payment-success/:planId" element={<PaymentSuccess />} />

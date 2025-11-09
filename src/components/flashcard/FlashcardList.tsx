@@ -9,7 +9,10 @@ import {
   ExternalLink, 
   Brain,
   Plus,
-  Loader2
+  Loader2,
+  Globe,
+  Lock,
+  GitFork
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { flashcardService } from '@/services/flashcardService';
@@ -26,6 +29,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const FlashcardList: React.FC = () => {
   const [flashcards, setFlashcards] = useState<FlashcardSet[]>([]);
@@ -33,6 +37,7 @@ const FlashcardList: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'public' | 'private'>('all');
   const { toast } = useToast();
 
   const userId = localStorage.getItem('uid');
@@ -42,7 +47,7 @@ const FlashcardList: React.FC = () => {
 
     try {
       setIsLoading(true);
-      const response = await flashcardService.getUserFlashcards(userId, page, 9);
+      const response = await flashcardService.getUserFlashcards(userId, page, 9, visibilityFilter);
       
       if (response.success) {
         setFlashcards(response.flashcards);
@@ -63,7 +68,14 @@ const FlashcardList: React.FC = () => {
 
   useEffect(() => {
     fetchFlashcards();
-  }, [userId]);
+  }, [userId, visibilityFilter]);
+
+  // Reset pagination when filter changes
+  useEffect(() => {
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [visibilityFilter]);
 
   const handleDelete = async (slug: string, title: string) => {
     if (!userId) return;
@@ -172,9 +184,29 @@ const FlashcardList: React.FC = () => {
                         {flashcard.keyword}
                       </CardDescription>
                     </div>
-                    <Badge variant="secondary" className="ml-2 shrink-0">
-                      {flashcard.cardCount || flashcard.cards.length} cards
-                    </Badge>
+                    <div className="flex flex-col gap-2 ml-2 shrink-0">
+                      <Badge variant="secondary">
+                        {flashcard.cardCount || flashcard.cards.length} cards
+                      </Badge>
+                      {flashcard.isPublic !== undefined && (
+                        <Badge 
+                          variant={flashcard.isPublic ? 'default' : 'outline'} 
+                          className={`text-xs px-2 py-1 ${flashcard.isPublic ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}`}
+                        >
+                          {flashcard.isPublic ? (
+                            <>
+                              <Globe className="h-3 w-3 mr-1" />
+                              Public
+                            </>
+                          ) : (
+                            <>
+                              <Lock className="h-3 w-3 mr-1" />
+                              Private
+                            </>
+                          )}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-between px-6 pb-6 pt-0">
@@ -187,6 +219,12 @@ const FlashcardList: React.FC = () => {
                       <Calendar className="h-4 w-4" />
                       {formatDate(flashcard.createdAt)}
                     </div>
+                    {flashcard.isPublic && flashcard.forkCount > 0 && (
+                      <div className="flex items-center gap-1">
+                        <GitFork className="h-4 w-4" />
+                        {flashcard.forkCount}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex gap-2 justify-between items-center mt-auto">

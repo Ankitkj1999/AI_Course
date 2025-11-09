@@ -30,6 +30,7 @@ import {
   TestTube,
   UserPlus,
   LogIn,
+  Compass,
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
@@ -149,6 +150,22 @@ export const AppSidebar = ({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
+              
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  tooltip="Discover Public Content"
+                  isActive={isActive('/discover')}
+                >
+                  <Link
+                    to="/discover"
+                    className={cn(isActive('/discover') && 'text-primary')}
+                  >
+                    <Compass />
+                    <span>Discover</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

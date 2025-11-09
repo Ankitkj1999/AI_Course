@@ -1,3 +1,10 @@
+export interface ForkedFrom {
+  contentId: string | null;
+  originalOwnerId: string | null;
+  originalOwnerName: string | null;
+  forkedAt: string | null;
+}
+
 export interface Quiz {
   _id: string;
   userId: string;
@@ -16,6 +23,11 @@ export interface Quiz {
   questionAndAnswers: QuestionAnswer[];
   createdAt: string;
   updatedAt: string;
+  // Visibility and fork fields
+  isPublic: boolean;
+  forkCount: number;
+  forkedFrom?: ForkedFrom;
+  ownerName: string;
 }
 
 export interface QuestionAnswer {
