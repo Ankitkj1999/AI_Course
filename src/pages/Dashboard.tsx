@@ -30,6 +30,16 @@ const Dashboard = () => {
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   const { toast } = useToast();
 
+  const getQuiz = async (courseId: string) => {
+    const postURL = serverURL + '/api/getmyresult';
+    const response = await axios.post(postURL, { courseId });
+    if (response.data.success) {
+      return response.data.message;
+    } else {
+      return false;
+    }
+  };
+
   const fetchUserCourses = useCallback(async () => {
     setIsLoading(page === 1);
     setLoadingMore(page > 1);
@@ -186,15 +196,6 @@ const Dashboard = () => {
     }
   };
 
-  async function getQuiz(courseId: string) {
-    const postURL = serverURL + '/api/getmyresult';
-    const response = await axios.post(postURL, { courseId });
-    if (response.data.success) {
-      return response.data.message;
-    } else {
-      return false;
-    }
-  }
 
 
 
