@@ -11,6 +11,7 @@ import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
 import Dashboard from "./pages/Dashboard";
 import CoursePage from "./pages/CoursePage";
+import { CourseIdRedirect } from "./pages/CourseRedirect";
 import GenerateCourse from "./pages/GenerateCourse";
 import { AppLayout } from "./components/layouts/AppLayout";
 import ProfilePricing from "./pages/ProfilePricing";
@@ -143,9 +144,12 @@ const App = () => {
                 </Route>
 
                 {/* Course Routes */}
-                <Route path="/course/:courseId" element={<CoursePage />} />
-                <Route path="/course/:courseId/certificate" element={<Certificate />} />
-                <Route path="/course/:courseId/quiz" element={<QuizPage />} />
+                {/* ID-based redirect route (for backward compatibility) */}
+                <Route path="/course/id/:id" element={<CourseIdRedirect />} />
+                {/* Slug-based route (primary) - matches kebab-case slugs */}
+                <Route path="/course/:slug" element={<CoursePage />} />
+                <Route path="/course/:slug/certificate" element={<Certificate />} />
+                <Route path="/course/:slug/quiz" element={<QuizPage />} />
 
                 {/* Quiz Routes */}
                 <Route path="/quiz/:slug" element={

@@ -36,7 +36,7 @@ const Courses = () => {
     navigate("/dashboard/generate-course");
   }
 
-  async function redirectCourse(content: string, mainTopic: string, type: string, courseId: string, completed: string, end: string) {
+  async function redirectCourse(content: string, mainTopic: string, type: string, courseId: string, completed: string, end: string, slug: string) {
     const postURL = serverURL + '/api/getmyresult';
     const response = await axios.post(postURL, { courseId });
     if (response.data.success) {
@@ -46,7 +46,8 @@ const Courses = () => {
       localStorage.setItem('jsonData', JSON.stringify(jsonData));
       let ending = '';
       if (completed) ending = end;
-      navigate('/course/' + courseId, {
+      // Use slug for navigation (primary method)
+      navigate('/course/' + slug, {
         state: {
           jsonData,
           mainTopic: mainTopic.toUpperCase(),
@@ -64,7 +65,8 @@ const Courses = () => {
       localStorage.setItem('jsonData', JSON.stringify(jsonData));
       let ending = '';
       if (completed) ending = end;
-      navigate('/course/' + courseId, {
+      // Use slug for navigation (primary method)
+      navigate('/course/' + slug, {
         state: {
           jsonData,
           mainTopic: mainTopic.toUpperCase(),
@@ -239,7 +241,7 @@ const Courses = () => {
       setIsLoading(false);
       setLoadingMore(false);
     }
-  }, [page, userId, visibilityFilter]);
+  }, [CountDoneTopics, courseProgress, lessons, modules, page, userId, visibilityFilter]);
 
   useEffect(() => {
     fetchUserCourses();
@@ -510,7 +512,7 @@ const Courses = () => {
                       </CardContent>
                       <CardFooter className="pt-0">
                         <Button
-                          onClick={() => redirectCourse(course.content, course.mainTopic, course.type, course._id, course.completed, course.end)}
+                          onClick={() => redirectCourse(course.content, course.mainTopic, course.type, course._id, course.completed, course.end, course.slug)}
                           variant="ghost"
                           size="sm"
                           className="w-full bg-accent/10 border border-border/50 group-hover:bg-accent transition-colors justify-between text-xs h-8"
@@ -640,7 +642,7 @@ const Courses = () => {
                           </CardContent>
                           <CardFooter className="pt-0">
                             <Button
-                              onClick={() => redirectCourse(course.content, course.mainTopic, course.type, course._id, course.completed, course.end)}
+                              onClick={() => redirectCourse(course.content, course.mainTopic, course.type, course._id, course.completed, course.end, course.slug)}
                               variant="ghost"
                               size="sm"
                               className="group-hover:bg-primary/5 transition-colors justify-between text-xs h-8 px-4"

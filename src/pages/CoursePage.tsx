@@ -59,7 +59,12 @@ import html2pdf from "html2pdf.js";
 const CoursePage = () => {
   //ADDED FROM v4.0
   const { state } = useLocation();
-  const { mainTopic, type, courseId, end, pass, lang } = state || {};
+  const { slug: urlSlug } = useParams(); // Changed from courseId to slug
+
+  // Handle navigation from Discover screen - fetch course data if not in state
+  const [courseData, setCourseData] = useState(null);
+  const [isFetchingCourse, setIsFetchingCourse] = useState(false);
+
   const jsonData = JSON.parse(localStorage.getItem("jsonData"));
   const [selected, setSelected] = useState("");
   const [theory, setTheory] = useState("");
@@ -72,8 +77,18 @@ const CoursePage = () => {
   const [newMessage, setNewMessage] = useState("");
   const [exporting, setExporting] = useState(false);
   const [saving, setSaving] = useState(false);
-  const defaultMessage = `Hey there! I'm your AI teacher. If you have any questions about your ${mainTopic} course, whether it's about videos, images, or theory, just ask me. I'm here to clear your doubts.`;
-  const defaultPrompt = `I have a doubt about this topic :- ${mainTopic}. Please clarify my doubt in very short :- `;
+
+  // State variables for course data when fetched from server
+  const [mainTopic, setMainTopic] = useState(state?.mainTopic || "");
+  const [type, setType] = useState(state?.type || "");
+  const [courseId, setCourseId] = useState(state?.courseId || "");
+  const [courseSlug, setCourseSlug] = useState(urlSlug || "");
+  const [end, setEnd] = useState(state?.end || "");
+  const [pass, setPass] = useState(state?.pass || false);
+  const [lang, setLang] = useState(state?.lang || "english");
+
+  const defaultMessage = `Hey there! I'm your AI teacher. If you have any questions about your ${mainTopic || 'this'} course, whether it's about videos, images, or theory, just ask me. I'm here to clear your doubts.`;
+  const defaultPrompt = `I have a doubt about this topic :- ${mainTopic || 'this topic'}. Please clarify my doubt in very short :- `;
 
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(true);
@@ -87,7 +102,7 @@ const CoursePage = () => {
   const [activeAccordionItem, setActiveAccordionItem] = useState("");
 
   const getTotalLessons = () => {
-    if (!jsonData || !mainTopic) return 0;
+    if (!jsonData || !mainTopic || !jsonData[mainTopic.toLowerCase()]) return 0;
     return jsonData[mainTopic.toLowerCase()].reduce(
       (total, topic) => total + topic.subtopics.length,
       0
@@ -95,7 +110,7 @@ const CoursePage = () => {
   };
 
   const getCurrentLessonNumber = () => {
-    if (!jsonData || !mainTopic || !selected) return 0;
+    if (!jsonData || !mainTopic || !selected || !jsonData[mainTopic.toLowerCase()]) return 0;
     let lessonNumber = 0;
     let found = false;
     for (const topic of jsonData[mainTopic.toLowerCase()]) {
@@ -245,12 +260,115 @@ const CoursePage = () => {
     }
   }, [isMobile]);
 
-  // Main topic validation effect
+  // Fetch course data if navigating from Discover screen or direct URL
   useEffect(() => {
-    if (!mainTopic) {
-      navigate("/create");
+    const fetchCourseData = async () => {
+      // Skip if we already have mainTopic from state
+      if (mainTopic) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Determine if we have a slug or ID to fetch
+      const identifier = urlSlug;
+      if (!identifier) {
+        console.log("No identifier found, redirecting to discover");
+        navigate("/discover");
+        return;
+      }
+
+      try {
+        setIsFetchingCourse(true);
+        console.log("Fetching course data for:", identifier);
+        
+        // Try fetching by slug first (primary method)
+        const response = await fetch(`${serverURL}/api/course/${identifier}`, {
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log("Course API response:", data);
+
+          if (data.success && data.course) {
+            const course = data.course;
+            setCourseData(course);
+            console.log("Course data fetched:", course);
+            
+            // Parse the content JSON
+            const parsedContent = JSON.parse(course.content);
+            localStorage.setItem('jsonData', JSON.stringify(parsedContent));
+            localStorage.setItem('courseId', course._id);
+            
+            // Set all course state
+            setMainTopic(course.mainTopic);
+            setType(course.type);
+            setCourseId(course._id);
+            setCourseSlug(course.slug);
+            setEnd(course.end || "");
+            setLang(course.lang || "english");
+            
+            // Check if course is completed
+            setIsCompleted(course.completed || false);
+            
+            setIsLoading(false);
+          } else {
+            console.error("Invalid response structure:", data);
+            toast({
+              title: "Error",
+              description: "Failed to load course data",
+              variant: "destructive",
+            });
+            navigate("/discover");
+          }
+        } else if (response.status === 403) {
+          toast({
+            title: "Access Denied",
+            description: "This course is private",
+            variant: "destructive",
+          });
+          navigate("/discover");
+        } else if (response.status === 404) {
+          toast({
+            title: "Not Found",
+            description: "Course not found",
+            variant: "destructive",
+          });
+          navigate("/discover");
+        } else {
+          console.error('Failed to fetch course data, status:', response.status);
+          toast({
+            title: "Error",
+            description: "Failed to load course",
+            variant: "destructive",
+          });
+          navigate("/discover");
+        }
+      } catch (error) {
+        console.error('Error fetching course data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load course",
+          variant: "destructive",
+        });
+        navigate("/discover");
+      } finally {
+        setIsFetchingCourse(false);
+      }
+    };
+
+    fetchCourseData();
+  }, [mainTopic, urlSlug, navigate, toast]);
+
+  // Main topic validation effect - only redirect if we're not fetching course data
+  useEffect(() => {
+    console.log("Main topic validation - mainTopic:", mainTopic, "isFetchingCourse:", isFetchingCourse, "urlSlug:", urlSlug);
+    // Only redirect if we don't have mainTopic, not fetching, and no slug to fetch
+    if (!mainTopic && !isFetchingCourse && !urlSlug) {
+      console.log("Navigating to /discover because no mainTopic and no slug to fetch");
+      navigate("/discover");
     }
-  }, [mainTopic, navigate]);
+  }, [mainTopic, navigate, isFetchingCourse, urlSlug]);
 
   // Data processing effect - runs when jsonData changes initially
   useEffect(() => {
@@ -420,6 +538,9 @@ const CoursePage = () => {
 
   // Find current lesson position
   const findCurrentLessonPosition = () => {
+    if (!mainTopic || !jsonData || !jsonData[mainTopic.toLowerCase()]) {
+      return { currentTopicIndex: -1, currentSubtopicIndex: -1 };
+    }
     let currentTopicIndex = -1;
     let currentSubtopicIndex = -1;
 
@@ -450,6 +571,7 @@ const CoursePage = () => {
 
   // Check if there's a next lesson or quiz
   const hasNextLesson = () => {
+    if (!jsonData || !mainTopic || !jsonData[mainTopic.toLowerCase()]) return false;
     const { currentTopicIndex, currentSubtopicIndex } =
       findCurrentLessonPosition();
     const topics = jsonData[mainTopic.toLowerCase()];
@@ -468,6 +590,7 @@ const CoursePage = () => {
 
   // Check if we're on the last lesson (should show "Take Quiz" instead of "Next Lesson")
   const isLastLesson = () => {
+    if (!jsonData || !mainTopic || !jsonData[mainTopic.toLowerCase()]) return false;
     const { currentTopicIndex, currentSubtopicIndex } =
       findCurrentLessonPosition();
     const topics = jsonData[mainTopic.toLowerCase()];
@@ -482,6 +605,7 @@ const CoursePage = () => {
 
   // Handle navigation between lessons
   const handleNavigateLesson = (direction) => {
+    if (!jsonData || !mainTopic || !jsonData[mainTopic.toLowerCase()]) return;
     const { currentTopicIndex, currentSubtopicIndex } =
       findCurrentLessonPosition();
     const topics = jsonData[mainTopic.toLowerCase()];
@@ -828,6 +952,7 @@ const CoursePage = () => {
   async function htmlDownload() {
     setExporting(true);
     // Generate the combined HTML content
+    if (!jsonData || !mainTopic || !jsonData[mainTopic.toLowerCase()]) return;
     const combinedHtml = await getCombinedHtml(
       mainTopic,
       jsonData[mainTopic.toLowerCase()]
@@ -978,6 +1103,7 @@ const CoursePage = () => {
   async function redirectExam() {
     if (!isLoading) {
       setIsLoading(true);
+      if (!jsonData || !mainTopic || !jsonData[mainTopic.toLowerCase()]) return;
       const mainTopicExam = jsonData[mainTopic.toLowerCase()];
       let subtopicsString = "";
       mainTopicExam.map((topicTemp) => {
@@ -1317,6 +1443,20 @@ const CoursePage = () => {
       </Accordion>
     );
   };
+  // Show loading state while fetching course data
+  if (isFetchingCourse) {
+    return (
+      <div className="flex flex-col h-screen bg-background overflow-hidden">
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading course...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden">
       <header className="border-b border-border/40 py-3 px-4 flex justify-between items-center sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
@@ -1327,7 +1467,7 @@ const CoursePage = () => {
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
               <span>Lesson {getCurrentLessonNumber()} of {getTotalLessons()}</span>
               <span>•</span>
-              <span>{jsonData[mainTopic.toLowerCase()].length} modules</span>
+              <span>{jsonData && mainTopic && jsonData[mainTopic.toLowerCase()] ? jsonData[mainTopic.toLowerCase()].length : 0} modules</span>
               <span>•</span>
               <span className="text-green-600 font-semibold">
                 {percentage}% complete
@@ -1436,18 +1576,18 @@ const CoursePage = () => {
                 textToShare={
                   localStorage.getItem("mName") +
                   " shared you course on " +
-                  mainTopic
+                  (mainTopic || "this course")
                 }
                 link={websiteURL + "/shareable?id=" + courseId}
                 linkTitle={
                   localStorage.getItem("mName") +
                   " shared you course on " +
-                  mainTopic
+                  (mainTopic || "this course")
                 }
                 linkMetaDesc={
                   localStorage.getItem("mName") +
                   " shared you course on " +
-                  mainTopic
+                  (mainTopic || "this course")
                 }
                 linkFavicon={appLogo}
                 noReferer
@@ -1509,7 +1649,7 @@ const CoursePage = () => {
             >
               <ScrollArea className="h-full">
                 <div className="p-4">
-                  {jsonData &&
+                  {jsonData && mainTopic && jsonData[mainTopic.toLowerCase()] &&
                     renderTopicsAndSubtopicsMobile(
                       jsonData[mainTopic.toLowerCase()]
                     )}
@@ -1522,13 +1662,13 @@ const CoursePage = () => {
                     ) : (
                       <></>
                     )}
-                    {mainTopic
+                    {mainTopic ? mainTopic
                       .toLowerCase()
                       .split(" ")
                       .map(
                         (word) => word.charAt(0).toUpperCase() + word.slice(1)
                       )
-                      .join(" ")}{" "}
+                      .join(" ") : "Course"}{" "}
                     Quiz
                   </p>
                 </div>
@@ -1551,7 +1691,7 @@ const CoursePage = () => {
                           <h1 className="text-3xl font-bold">{selected}</h1>
                         </div>
                         <div>
-                          {jsonData[mainTopic.toLowerCase()]
+                          {jsonData && mainTopic && jsonData[mainTopic.toLowerCase()]
                             .flatMap((topic) => topic.subtopics)
                             .find((subtopic) => subtopic.title === selected)
                             ?.done ? (
@@ -1701,7 +1841,7 @@ const CoursePage = () => {
                 <h2 className="text-xl font-bold mb-4">Course Content</h2>
                 <ScrollArea className="h-[60vh]">
                   <div className="pr-4">
-                    {jsonData &&
+                    {jsonData && mainTopic && jsonData[mainTopic.toLowerCase()] &&
                       renderTopicsAndSubtopics(
                         jsonData[mainTopic.toLowerCase()]
                       )}
@@ -1714,7 +1854,7 @@ const CoursePage = () => {
                       ) : (
                         <></>
                       )}
-                      {mainTopic} Quiz
+                      {mainTopic ? mainTopic : "Course"} Quiz
                     </p>
                   </div>
                 </ScrollArea>
@@ -1791,18 +1931,18 @@ const CoursePage = () => {
                   textToShare={
                     sessionStorage.getItem("mName") +
                     " shared you course on " +
-                    mainTopic
+                    (mainTopic || "this course")
                   }
                   link={websiteURL + "/shareable?id=" + courseId}
                   linkTitle={
                     sessionStorage.getItem("mName") +
                     " shared you course on " +
-                    mainTopic
+                    (mainTopic || "this course")
                   }
                   linkMetaDesc={
                     sessionStorage.getItem("mName") +
                     " shared you course on " +
-                    mainTopic
+                    (mainTopic || "this course")
                   }
                   linkFavicon={appLogo}
                   noReferer

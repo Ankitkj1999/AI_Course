@@ -113,12 +113,8 @@ export const PublicContentBrowser: React.FC<PublicContentBrowserProps> = ({
   const handleContentClick = (content: ContentItem & { contentType?: ContentType }) => {
     const type = getContentType(content);
     
-    // Course uses _id instead of slug in the route
-    if (type === 'course') {
-      navigate(`/course/${content._id}`);
-    } else {
-      navigate(`/${type}/${content.slug}`);
-    }
+    // All content types now use slug for navigation
+    navigate(`/${type}/${content.slug}`);
   };
 
   // Get content type from content item
