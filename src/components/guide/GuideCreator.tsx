@@ -10,6 +10,8 @@ import { guideService } from '@/services/guideService';
 import { useNavigate } from 'react-router-dom';
 import ProviderSelector from '@/components/ProviderSelector';
 import { useProviderPreferences } from '@/hooks/useProviderPreferences';
+import { useVisibilityPreference } from '@/hooks/useVisibilityPreference';
+import { CreationVisibilityToggle } from '@/components/CreationVisibilityToggle';
 
 const GuideCreator: React.FC = () => {
   const [keyword, setKeyword] = useState('');
@@ -22,6 +24,10 @@ const GuideCreator: React.FC = () => {
     setSelectedProvider,
     setSelectedModel
   } = useProviderPreferences('guide');
+
+  // Use visibility preference hook
+  const { isPublic, setIsPublic } = useVisibilityPreference('guide', true);
+
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -57,13 +63,14 @@ const GuideCreator: React.FC = () => {
         title: title.trim(),
         customization: customization.trim() || undefined,
         provider: selectedProvider,
-        model: selectedModel
+        model: selectedModel,
+        isPublic: isPublic
       });
 
       if (response.success) {
         toast({
           title: "Guide Created!",
-          description: `Successfully created "${response.guide.title}".`,
+          description: `Successfully created "${response.guide.title}" as ${isPublic ? 'public' : 'private'} content.`,
         });
         
         // Navigate to the guide viewer
@@ -166,6 +173,13 @@ const GuideCreator: React.FC = () => {
                 Specify any particular focus, difficulty level, or special requirements
               </p>
             </div>
+
+            {/* Visibility Toggle */}
+            <CreationVisibilityToggle
+              contentType="guide"
+              isPublic={isPublic}
+              onChange={setIsPublic}
+            />
 
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
               <div className="flex items-start gap-3">

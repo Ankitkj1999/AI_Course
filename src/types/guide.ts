@@ -55,6 +55,7 @@ export interface CreateGuideRequest {
   customization?: string;
   provider?: string;
   model?: string;
+  isPublic?: boolean;
 }
 
 export interface CreateGuideResponse {

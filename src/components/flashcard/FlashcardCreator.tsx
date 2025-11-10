@@ -10,6 +10,8 @@ import { flashcardService } from '@/services/flashcardService';
 import { useNavigate } from 'react-router-dom';
 import ProviderSelector from '@/components/ProviderSelector';
 import { useProviderPreferences } from '@/hooks/useProviderPreferences';
+import { useVisibilityPreference } from '@/hooks/useVisibilityPreference';
+import { CreationVisibilityToggle } from '@/components/CreationVisibilityToggle';
 
 const FlashcardCreator: React.FC = () => {
   const [keyword, setKeyword] = useState('');
@@ -25,6 +27,9 @@ const FlashcardCreator: React.FC = () => {
     setSelectedProvider,
     setSelectedModel
   } = useProviderPreferences('flashcard');
+
+  // Use visibility preference hook
+  const { isPublic, setIsPublic } = useVisibilityPreference('flashcard', true);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,13 +61,14 @@ const FlashcardCreator: React.FC = () => {
         keyword: keyword.trim(),
         title: title.trim(),
         provider: selectedProvider,
-        model: selectedModel
+        model: selectedModel,
+        isPublic: isPublic
       });
 
       if (response.success) {
         toast({
           title: "Flashcards Created!",
-          description: `Successfully created ${response.cards.length} flashcards.`,
+          description: `Successfully created ${response.cards.length} flashcards as ${isPublic ? 'public' : 'private'} content.`,
         });
         
         // Navigate to the flashcard viewer
@@ -148,6 +154,13 @@ const FlashcardCreator: React.FC = () => {
                 A descriptive title for your flashcard set
               </p>
             </div>
+
+            {/* Visibility Toggle */}
+            <CreationVisibilityToggle
+              contentType="flashcard"
+              isPublic={isPublic}
+              onChange={setIsPublic}
+            />
 
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
               <div className="flex items-start gap-3">

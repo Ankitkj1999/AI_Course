@@ -110,18 +110,45 @@ export const PublicContentBrowser: React.FC<PublicContentBrowserProps> = ({
   };
 
   // Handle content click
-  const handleContentClick = (content: ContentItem) => {
+  const handleContentClick = (content: ContentItem & { contentType?: ContentType }) => {
     const type = getContentType(content);
-    const slug = content.slug;
-    navigate(`/${type}/${slug}`);
+    
+    // Course uses _id instead of slug in the route
+    if (type === 'course') {
+      navigate(`/course/${content._id}`);
+    } else {
+      navigate(`/${type}/${content.slug}`);
+    }
   };
 
   // Get content type from content item
-  const getContentType = (content: ContentItem): ContentType => {
-    if ('questions' in content) return 'quiz';
+  const getContentType = (content: ContentItem & { contentType?: ContentType }): ContentType => {
+    // Use the contentType field added by the backend
+    if (content.contentType) {
+      return content.contentType;
+    }
+    
+    // Fallback to property detection if contentType is not present
+    if ('questionAndAnswers' in content) return 'quiz';
     if ('cards' in content) return 'flashcard';
-    if ('sections' in content && 'modules' in content) return 'course';
+    if ('mainTopic' in content && 'type' in content) return 'course';
     return 'guide';
+  };
+
+  // Get display title for content item
+  const getContentTitle = (content: ContentItem): string => {
+    if ('mainTopic' in content) {
+      return content.mainTopic; // Course
+    }
+    return content.title; // Quiz, Flashcard, Guide
+  };
+
+  // Get display description for content item
+  const getContentDescription = (content: ContentItem): string => {
+    if ('mainTopic' in content && 'type' in content) {
+      return content.type; // Course type (e.g., "Text & Image Course")
+    }
+    return content.keyword || 'No description available';
   };
 
   // Get content type icon
@@ -297,10 +324,10 @@ export const PublicContentBrowser: React.FC<PublicContentBrowserProps> = ({
                           )}
                         </div>
                         <CardTitle className="text-lg line-clamp-2">
-                          {content.title}
+                          {getContentTitle(content)}
                         </CardTitle>
                         <CardDescription className="line-clamp-2">
-                          {content.keyword || 'No description available'}
+                          {getContentDescription(content)}
                         </CardDescription>
                       </CardHeader>
                       <CardFooter className="flex flex-col items-start gap-2 text-sm text-gray-500 dark:text-gray-400">

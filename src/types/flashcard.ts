@@ -60,6 +60,7 @@ export interface CreateFlashcardRequest {
   title: string;
   provider?: string;
   model?: string;
+  isPublic?: boolean;
 }
 
 export interface CreateFlashcardResponse {

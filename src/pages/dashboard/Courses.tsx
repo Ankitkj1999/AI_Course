@@ -98,6 +98,43 @@ const Courses = () => {
     }
   };
 
+  const handleToggleVisibility = async (courseId: string, slug: string, currentVisibility: boolean) => {
+    const newVisibility = !currentVisibility;
+    
+    try {
+      const response = await axios.patch(
+        `${serverURL}/api/course/${slug}/visibility`,
+        { isPublic: newVisibility },
+        { withCredentials: true }
+      );
+
+      if (response.data.success) {
+        // Update the course in the local state
+        setCourses(prevCourses =>
+          prevCourses.map(course =>
+            course._id === courseId
+              ? { ...course, isPublic: newVisibility }
+              : course
+          )
+        );
+
+        toast({
+          title: "Visibility Updated",
+          description: `Course is now ${newVisibility ? 'public' : 'private'}.`,
+        });
+      } else {
+        throw new Error('Failed to update visibility');
+      }
+    } catch (error) {
+      console.error('Error updating visibility:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update course visibility. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getQuiz = async (courseId: string) => {
     const postURL = serverURL + '/api/getmyresult';
     const response = await axios.post(postURL, { courseId });
@@ -401,7 +438,23 @@ const Courses = () => {
                                 <MoreVertical className="h-3.5 w-3.5" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent className="w-36">
+                            <DropdownMenuContent className="w-44">
+                              <DropdownMenuItem 
+                                onClick={() => handleToggleVisibility(course._id, course.slug, course.isPublic)}
+                                className="text-xs"
+                              >
+                                {course.isPublic ? (
+                                  <>
+                                    <Lock className="h-3.5 w-3.5 mr-2" />
+                                    Make Private
+                                  </>
+                                ) : (
+                                  <>
+                                    <Globe className="h-3.5 w-3.5 mr-2" />
+                                    Make Public
+                                  </>
+                                )}
+                              </DropdownMenuItem>
                               <ShareOnSocial
                                 textToShare={localStorage.getItem('mName') + " shared you course on " + course.mainTopic}
                                 link={websiteURL + '/shareable?id=' + course._id}
@@ -415,7 +468,7 @@ const Courses = () => {
                                   Share
                                 </DropdownMenuItem>
                               </ShareOnSocial>
-                              <DropdownMenuItem onClick={() => handleDeleteCourse(course._id)} className="text-xs">
+                              <DropdownMenuItem onClick={() => handleDeleteCourse(course._id)} className="text-xs text-destructive">
                                 <Trash2 className="h-3.5 w-3.5 mr-2" />
                                 Delete
                               </DropdownMenuItem>
@@ -518,7 +571,23 @@ const Courses = () => {
                                       <MoreVertical className="h-3.5 w-3.5" />
                                     </Button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent className="w-36">
+                                  <DropdownMenuContent className="w-44">
+                                    <DropdownMenuItem 
+                                      onClick={() => handleToggleVisibility(course._id, course.slug, course.isPublic)}
+                                      className="text-xs"
+                                    >
+                                      {course.isPublic ? (
+                                        <>
+                                          <Lock className="h-3.5 w-3.5 mr-2" />
+                                          Make Private
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Globe className="h-3.5 w-3.5 mr-2" />
+                                          Make Public
+                                        </>
+                                      )}
+                                    </DropdownMenuItem>
                                     <ShareOnSocial
                                       textToShare={localStorage.getItem('mName') + " shared you course on " + course.mainTopic}
                                       link={websiteURL + '/shareable?id=' + course._id}
@@ -532,7 +601,7 @@ const Courses = () => {
                                         Share
                                       </DropdownMenuItem>
                                     </ShareOnSocial>
-                                    <DropdownMenuItem onClick={() => handleDeleteCourse(course._id)} className="text-xs">
+                                    <DropdownMenuItem onClick={() => handleDeleteCourse(course._id)} className="text-xs text-destructive">
                                       <Trash2 className="h-3.5 w-3.5 mr-2" />
                                       Delete
                                     </DropdownMenuItem>

@@ -28,6 +28,8 @@ import { serverURL } from "@/constants";
 import axios from "axios";
 import ProviderSelector from "@/components/ProviderSelector";
 import { useProviderPreferences, setGlobalProviderPreferences } from "@/hooks/useProviderPreferences";
+import { useVisibilityPreference } from "@/hooks/useVisibilityPreference";
+import { CreationVisibilityToggle } from "@/components/CreationVisibilityToggle";
 
 const courseFormSchema = z.object({
   topic: z.string().min(3, { message: "Topic must be at least 3 characters" }),
@@ -59,6 +61,9 @@ const GenerateCourse = () => {
     setSelectedProvider: setSelectedProviderInternal,
     setSelectedModel: setSelectedModelInternal
   } = useProviderPreferences('course');
+
+  // Use visibility preference hook
+  const { isPublic, setIsPublic } = useVisibilityPreference('course', true);
 
   // Wrapper functions that also sync to global preferences
   const setSelectedProvider = (provider: string) => {
@@ -283,6 +288,7 @@ const GenerateCourse = () => {
           onClose={handleEditTopics}
           selectedProvider={selectedProvider}
           selectedModel={selectedModel}
+          isPublic={isPublic}
         />
       </>
     );
@@ -523,6 +529,13 @@ const GenerateCourse = () => {
                       Choose your preferred AI provider for course generation. Performance and cost information is shown to help you decide.
                     </p>
                   </div>
+
+                  {/* Visibility Toggle */}
+                  <CreationVisibilityToggle
+                    contentType="course"
+                    isPublic={isPublic}
+                    onChange={setIsPublic}
+                  />
 
                   <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                     <div className="flex items-start gap-3">

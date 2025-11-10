@@ -89,7 +89,7 @@ const corsOptions = {
             callback(new Error(`Origin ${origin} not allowed by CORS`));
         }
     },
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true
 };
@@ -1198,7 +1198,7 @@ app.post('/api/transcript', async (req, res) => {
 
 //STORE COURSE
 app.post('/api/course', requireAuth, async (req, res) => {
-    const { user, content, type, mainTopic, lang } = req.body;
+    const { user, content, type, mainTopic, lang, isPublic } = req.body;
     
     // Generate request ID for logging correlation
     const requestId = logger.llm.generateRequestId();
@@ -1243,7 +1243,15 @@ app.post('/api/course', requireAuth, async (req, res) => {
             const title = extractTitleFromContent(content, mainTopic);
             const slug = await generateUniqueSlug(title, Course);
             
-            const newCourse = new Course({ user, content, type, mainTopic, slug, photo });
+            const newCourse = new Course({ 
+                user, 
+                content, 
+                type, 
+                mainTopic, 
+                slug, 
+                photo,
+                isPublic: isPublic ?? false // Default to false for backward compatibility
+            });
             await newCourse.save();
             const newLang = new LangSchema({ course: newCourse._id, lang: lang });
             await newLang.save();
@@ -1255,14 +1263,16 @@ app.post('/api/course', requireAuth, async (req, res) => {
                 courseId: newCourse._id,
                 slug,
                 hasPhoto: !!photo,
-                mainTopic
+                mainTopic,
+                isPublic: newCourse.isPublic
             }, duration, user, 'unsplash');
             
             res.json({ 
                 success: true, 
                 message: 'Course created successfully', 
                 courseId: newCourse._id,
-                slug: slug
+                slug: slug,
+                isPublic: newCourse.isPublic
             });
         } catch (error) {
             // Log course creation error with context
@@ -3892,7 +3902,7 @@ app.post('/api/quiz/create', requireAuth, async (req, res) => {
     const startTime = Date.now();
     
     try {
-        const { userId, keyword, title, format, provider, model, questionAndAnswers } = req.body;
+        const { userId, keyword, title, format, provider, model, questionAndAnswers, isPublic } = req.body;
         
         // Log request start
         logger.llm.logRequestStart(requestId, '/api/quiz/create', {
@@ -3964,7 +3974,8 @@ app.post('/api/quiz/create', requireAuth, async (req, res) => {
             viewCount: 0,
             lastVisitedAt: new Date(),
             createdAt: new Date(),
-            updatedAt: new Date()
+            updatedAt: new Date(),
+            isPublic: isPublic ?? false // Default to false for backward compatibility
         });
 
         await newQuiz.save();
@@ -3988,7 +3999,8 @@ app.post('/api/quiz/create', requireAuth, async (req, res) => {
                 _id: newQuiz._id,
                 slug: newQuiz.slug,
                 title: newQuiz.title,
-                keyword: newQuiz.keyword
+                keyword: newQuiz.keyword,
+                isPublic: newQuiz.isPublic
             }
         });
 
@@ -4194,7 +4206,7 @@ app.post('/api/flashcard/create', requireAuth, async (req, res) => {
     const startTime = Date.now();
     
     try {
-        const { userId, keyword, title, provider, model } = req.body;
+        const { userId, keyword, title, provider, model, isPublic } = req.body;
         
         // Log request start
         logger.llm.logRequestStart(requestId, '/api/flashcard/create', {
@@ -4296,7 +4308,8 @@ app.post('/api/flashcard/create', requireAuth, async (req, res) => {
                 prompt: prompt.length,
                 completion: generatedText.length,
                 total: prompt.length + generatedText.length
-            }
+            },
+            isPublic: isPublic ?? false // Default to false for backward compatibility
         });
 
         await newFlashcard.save();
@@ -4319,7 +4332,8 @@ app.post('/api/flashcard/create', requireAuth, async (req, res) => {
             message: 'Flashcard set created successfully',
             flashcardId: newFlashcard._id,
             slug: slug,
-            cards: cards
+            cards: cards,
+            isPublic: newFlashcard.isPublic
         });
 
     } catch (error) {
@@ -4488,7 +4502,7 @@ app.post('/api/guide/create', requireAuth, async (req, res) => {
     const startTime = Date.now();
     
     try {
-        const { userId, keyword, title, customization, provider, model } = req.body;
+        const { userId, keyword, title, customization, provider, model, isPublic } = req.body;
         
         // Log request start
         logger.llm.logRequestStart(requestId, '/api/guide/create', {
@@ -4674,7 +4688,8 @@ app.post('/api/guide/create', requireAuth, async (req, res) => {
                 prompt: prompt.length,
                 completion: generatedText.length,
                 total: prompt.length + generatedText.length
-            }
+            },
+            isPublic: isPublic ?? false // Default to false for backward compatibility
         });
 
         await newGuide.save();
@@ -4704,7 +4719,8 @@ app.post('/api/guide/create', requireAuth, async (req, res) => {
                 keyword: newGuide.keyword,
                 relatedTopics: newGuide.relatedTopics,
                 deepDiveTopics: newGuide.deepDiveTopics,
-                questions: newGuide.questions
+                questions: newGuide.questions,
+                isPublic: newGuide.isPublic
             }
         });
 

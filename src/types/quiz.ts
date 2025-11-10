@@ -60,6 +60,7 @@ export interface CreateQuizRequest {
   provider?: string;
   model?: string;
   questionAndAnswers?: QuestionAnswer[];
+  isPublic?: boolean;
 }
 
 export interface CreateQuizResponse {

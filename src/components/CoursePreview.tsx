@@ -20,6 +20,7 @@ interface CoursePreviewProps {
     onClose?: () => void;
     selectedProvider?: string;
     selectedModel?: string;
+    isPublic?: boolean;
 }
 
 const CoursePreview: React.FC<CoursePreviewProps> = ({
@@ -31,6 +32,7 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
     onClose,
     selectedProvider,
     selectedModel,
+    isPublic = false,
 }) => {
     const navigate = useNavigate();
     const [isLoadingCourse, setIsLoadingCourse] = useState(false);
@@ -133,11 +135,15 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
         const user = localStorage.getItem('uid');
         const content = JSON.stringify(topics);
         const postURL = serverURL + '/api/course';
-        const response = await axios.post(postURL, { user, content, type, mainTopic: courseName, lang }, {
+        const response = await axios.post(postURL, { user, content, type, mainTopic: courseName, lang, isPublic }, {
             withCredentials: true
         });
 
         if (response.data.success) {
+            toast({
+                title: "Course Created!",
+                description: `Course has been created as ${isPublic ? 'public' : 'private'} content.`,
+            });
             localStorage.setItem('courseId', response.data.courseId);
             localStorage.setItem('first', response.data.completed);
             localStorage.setItem('jsonData', JSON.stringify(topics));
@@ -169,11 +175,15 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
         const user = localStorage.getItem('uid');
         const content = JSON.stringify(topics);
         const postURL = serverURL + '/api/course';
-        const response = await axios.post(postURL, { user, content, type, mainTopic: courseName, lang }, {
+        const response = await axios.post(postURL, { user, content, type, mainTopic: courseName, lang, isPublic }, {
             withCredentials: true
         });
 
         if (response.data.success) {
+            toast({
+                title: "Course Created!",
+                description: `Course has been created as ${isPublic ? 'public' : 'private'} content.`,
+            });
             localStorage.setItem('courseId', response.data.courseId);
             localStorage.setItem('first', response.data.completed);
             localStorage.setItem('jsonData', JSON.stringify(topics));

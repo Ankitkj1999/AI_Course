@@ -11,6 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import ProviderSelector from '@/components/ProviderSelector';
 import { useProviderPreferences } from '@/hooks/useProviderPreferences';
+import { useVisibilityPreference } from '@/hooks/useVisibilityPreference';
+import { CreationVisibilityToggle } from '@/components/CreationVisibilityToggle';
 
 interface QuizCreatorProps {
   userId: string;
@@ -35,6 +37,9 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
     setSelectedModel
   } = useProviderPreferences('quiz');
 
+  // Use visibility preference hook
+  const { isPublic, setIsPublic } = useVisibilityPreference('quiz', true);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -53,13 +58,14 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
         title: formData.title.trim(),
         format: formData.format,
         provider: selectedProvider,
-        model: selectedModel
+        model: selectedModel,
+        isPublic: isPublic
       });
 
       if (response.success) {
         toast({
           title: "Quiz Created!",
-          description: `"${response.quiz.title}" has been created successfully.`,
+          description: `"${response.quiz.title}" has been created as ${isPublic ? 'public' : 'private'} content.`,
         });
         const quizURL = getQuizURL({ slug: response.quiz.slug, _id: response.quiz._id });
         navigate(quizURL);
@@ -175,6 +181,13 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
                 Choose the type of questions for your quiz
               </p>
             </div>
+
+            {/* Visibility Toggle */}
+            <CreationVisibilityToggle
+              contentType="quiz"
+              isPublic={isPublic}
+              onChange={setIsPublic}
+            />
 
             {/* Error Message */}
             {error && (
