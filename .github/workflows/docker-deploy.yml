@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - production
-  pull_request:
-    branches:
-      - production
 
 env:
   DOCKER_USERNAME: ankitkj199
@@ -36,7 +33,6 @@ jobs:
         images: ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}
         tags: |
           type=ref,event=branch
-          type=ref,event=pr
           type=sha,prefix={{branch}}-
           type=raw,value=latest,enable={{is_default_branch}}
 
@@ -45,7 +41,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        platforms: linux/amd64,linux/arm64
+        platforms: linux/amd64
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
@@ -55,11 +51,3 @@ jobs:
           NPM_CONFIG_FETCH_TIMEOUT=600000
           NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
           NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
-
-    - name: Generate artifact attestation
-      if: github.event_name == 'push' && github.ref == 'refs/heads/production'
-      uses: actions/attest-build-provenance@v1
-      with:
-        subject-name: ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME}}
-        subject-digest: ${{ steps.build-push.outputs.digest }}
-        push-to-registry: true
