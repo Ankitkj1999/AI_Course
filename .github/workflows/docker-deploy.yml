@@ -57,6 +57,7 @@ jobs:
           NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
 
     - name: Generate artifact attestation
+      if: github.event_name == 'push' && github.ref == 'refs/heads/production'
       uses: actions/attest-build-provenance@v1
       with:
         subject-name: ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME}}
