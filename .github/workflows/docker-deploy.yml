@@ -41,6 +41,7 @@ jobs:
           type=raw,value=latest,enable={{is_default_branch}}
 
     - name: Build and push Docker image
+      id: build-push
       uses: docker/build-push-action@v5
       with:
         context: .
@@ -50,10 +51,14 @@ jobs:
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        build-args: |
+          NPM_CONFIG_FETCH_TIMEOUT=600000
+          NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
+          NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
 
     - name: Generate artifact attestation
       uses: actions/attest-build-provenance@v1
       with:
         subject-name: ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME}}
-        subject-digest: ${{ steps.push.outputs.digest }}
+        subject-digest: ${{ steps.build-push.outputs.digest }}
         push-to-registry: true

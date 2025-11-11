@@ -12,6 +12,14 @@ WORKDIR /app
 COPY package*.json ./
 COPY server/package*.json ./server/
 
+# Configure npm for better reliability
+ARG NPM_CONFIG_FETCH_TIMEOUT=600000
+ARG NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
+ARG NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
+ENV NPM_CONFIG_FETCH_TIMEOUT=$NPM_CONFIG_FETCH_TIMEOUT
+ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=$NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT
+ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=$NPM_CONFIG_FETCH_RETRY_MINTIMEOUT
+
 # Install dependencies
 RUN npm ci --only=production && npm cache clean --force
 RUN cd server && npm install --only=production && npm cache clean --force
