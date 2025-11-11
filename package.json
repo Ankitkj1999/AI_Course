@@ -8,7 +8,7 @@
     "dev": "vite",
     "dev:port": "vite --port",
     "dev:full": "concurrently --names \"SERVER,CLIENT\" --prefix-colors \"blue,green\" \"npm run server\" \"npm run dev\"",
-    "dev:clean": "./scripts/dev.sh",
+    "dev:clean": "./scripts/unused/dev-setup.sh",
     "server": "cd server && npm start",
     "server:dev": "cd server && NODE_ENV=development npm start",
     "server:prod": "cd server && NODE_ENV=production npm start",
