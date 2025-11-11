@@ -1,70 +1,70 @@
-# 🎓 AiCourse - AI-Powered Course Generator
+# AiCourse
 
-An intelligent course generation platform that uses AI to create comprehensive educational content automatically. Built with React, Node.js, and Google's Generative AI.
+## Deployment
 
-![AiCourse](https://firebasestorage.googleapis.com/v0/b/aicourse-81b42.appspot.com/o/aicouse.png?alt=media&token=7175cdbe-64b4-4fe4-bb6d-b519347ad8af)
+### Automated Docker Build (GitHub Actions)
 
-## ✨ Features
+The project uses GitHub Actions for automated Docker image building and pushing to Docker Hub.
 
-### 🤖 AI-Powered Content Generation
+#### Workflow Configuration
 
-- **Automated Course Creation**: Generate complete courses using Google's Gemini AI
-- **Smart Content Structure**: AI creates organized lessons, topics, and subtopics
-- **Multi-Language Support**: Generate courses in different languages
-- **Rich Media Integration**: Automatic image and video suggestions
+- **Trigger**: Pushes to the `production` branch
+- **Platforms**: Multi-platform build (linux/amd64, linux/arm64)
+- **Image**: `ankitkj199/aicourse`
+- **Tags**: Branch name, SHA, and `latest` for production branch
 
-### 📚 Course Management
+#### Required GitHub Secrets
 
-- **Interactive Course Builder**: Create, edit, and manage courses
-- **Progress Tracking**: Monitor learning progress and completion
-- **Certificate Generation**: Automated certificate creation upon completion
-- **Course Sharing**: Share courses with shareable links
-- **Notes & Annotations**: Take and save notes during learning
+Add these secrets to your GitHub repository settings:
 
-### 💳 Payment Integration
+- `DOCKER_USERNAME`: Your Docker Hub username
+- `DOCKER_PASSWORD`: Your Docker Hub password or access token
 
-- **Multiple Payment Gateways**: Stripe, PayPal, Razorpay, Paystack, Flutterwave
-- **Subscription Management**: Monthly and yearly plans
-- **Free Tier Available**: Basic features without payment
+#### Manual Deployment Scripts (Legacy)
 
-### 🔐 Authentication & Security
+For manual deployment, use these npm scripts:
 
-- **Social Login**: Google and Facebook authentication
-- **Email Authentication**: Traditional email/password login
-- **Password Recovery**: Secure password reset functionality
-- **User Profiles**: Customizable user profiles and preferences
+```bash
+# Build and push to Docker Hub
+npm run docker:build:push [tag]
 
-### 🎨 Modern UI/UX
+# Deploy on server from Docker Hub
+npm run docker:deploy:production [tag]
+```
 
-- **Responsive Design**: Works on desktop, tablet, and mobile
-- **Dark/Light Mode**: Theme switching capability
-- **Rich Text Editor**: TipTap-based content editor
-- **Interactive Components**: Built with Radix UI components
+#### Next Phase: EC2 Deployment
 
-## 🚀 Tech Stack
+The next phase will involve pulling the Docker image on EC2 and running it automatically.
 
-### Frontend
+## Development
 
-- **React 18** - Modern React with hooks
-- **TypeScript** - Type-safe development
-- **Vite** - Fast build tool and dev server
-- **Tailwind CSS** - Utility-first CSS framework
-- **Radix UI** - Accessible component library
-- **TanStack Query** - Data fetching and caching
-- **React Router** - Client-side routing
+### Prerequisites
 
-### Backend
+- Node.js 20+
+- Docker
+- Docker Compose
 
-- **Node.js** - JavaScript runtime
-- **Express.js** - Web application framework
-- **MongoDB** - NoSQL database with Mongoose ODM
-- **Google Generative AI** - AI content generation
-- **Nodemailer** - Email functionality
-- **JWT** - Authentication tokens
+### Local Development
 
-### APIs & Services
+```bash
+# Install dependencies
+npm install
 
-- **Google Gemini AI** - Course content generation
+# Start development server
+npm run dev
+
+# Or start both server and client
+npm run dev:full
+```
+
+### Docker Development
+
+```bash
+# Build and run with Docker Compose
+npm run docker:up
+
+# View logs
+npm run docker:logs
 - **Unsplash API** - Course cover images
 - **YouTube API** - Video content integration
 - **Multiple Payment APIs** - Stripe, PayPal, etc.
