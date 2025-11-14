@@ -474,7 +474,7 @@ const optionalAuth = async (req, res, next) => {
 //REQUEST
 
 //HEALTH CHECK
-app.get('/health', async (req, res) => {
+app.get('/api/health', async (req, res) => {
     try {
         // Check database connection
         const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
@@ -3862,7 +3862,7 @@ const startServer = async () => {
             logger.info(`🚀 Server started successfully!`);
             logger.info(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
             logger.info(`🌐 Server URL: ${serverURL}`);
-            logger.info(`❤️  Health check: ${serverURL}/health`);
+            logger.info(`❤️  Health check: ${serverURL}/api/health`);
             logger.info(`🔗 API Base URL: ${serverURL}/api`);
             
             // Initialize settings cache
