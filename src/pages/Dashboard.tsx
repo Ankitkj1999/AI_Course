@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import ShareOnSocial from 'react-share-on-social';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import CourseImage from '@/components/CourseImage';
+import { Progress } from '@/components/ui/progress';
 
 const Dashboard = () => {
 
@@ -362,12 +363,7 @@ const Dashboard = () => {
                       </CardHeader>
                       <CardContent className="pb-3 pt-0">
                         <div className="mb-3">
-                          <div className="h-1.5 bg-secondary/60 rounded-full">
-                            <div
-                              className="h-1.5 bg-gradient-to-r from-primary to-indigo-500 rounded-full transition-all duration-300"
-                              style={{ width: `${courseProgress[course._id] || 0}%` }}
-                            ></div>
-                          </div>
+                          <Progress value={courseProgress[course._id] || 0} className="h-1.5" />
                           <p className="text-xs text-muted-foreground mt-1.5">{courseProgress[course._id] || 0}% complete</p>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -447,12 +443,7 @@ const Dashboard = () => {
                           </CardHeader>
                           <CardContent className="pb-3 pt-0 flex-1">
                             <div className="mb-3">
-                              <div className="h-1.5 bg-secondary/60 rounded-full">
-                                <div
-                                  className="h-1.5 bg-gradient-to-r from-primary to-indigo-500 rounded-full transition-all duration-300"
-                                  style={{ width: `${courseProgress[course._id] || 0}%` }}
-                                ></div>
-                              </div>
+                              <Progress value={courseProgress[course._id] || 0} className="h-1.5" />
                               <p className="text-xs text-muted-foreground mt-1.5">{courseProgress[course._id] || 0}% complete</p>
                             </div>
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
