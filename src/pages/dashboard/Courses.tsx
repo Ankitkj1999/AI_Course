@@ -137,7 +137,7 @@ const Courses = () => {
     }
   };
 
-  const getQuiz = async (courseId: string) => {
+  const getQuiz = useCallback(async (courseId: string) => {
     const postURL = serverURL + '/api/getmyresult';
     const response = await axios.post(postURL, { courseId });
     if (response.data.success) {
@@ -145,9 +145,9 @@ const Courses = () => {
     } else {
       return false;
     }
-  };
+  }, []);
 
-  const CountDoneTopics = async (json: string, mainTopic: string, courseId: string) => {
+  const CountDoneTopics = useCallback(async (json: string, mainTopic: string, courseId: string) => {
     try {
       const jsonData = JSON.parse(json);
       let doneCount = 0;
@@ -171,9 +171,9 @@ const Courses = () => {
       console.error(error);
       return 0;
     }
-  };
+  }, [getQuiz]);
 
-  const CountTotalModules = async (json: string, mainTopic: string) => {
+  const CountTotalModules = useCallback(async (json: string, mainTopic: string) => {
     try {
       const jsonData = JSON.parse(json);
       return jsonData[mainTopic.toLowerCase()].length;
@@ -181,9 +181,9 @@ const Courses = () => {
       console.error(error);
       return 0;
     }
-  };
+  }, []);
 
-  const CountTotalLessons = async (json: string, mainTopic: string) => {
+  const CountTotalLessons = useCallback(async (json: string, mainTopic: string) => {
     try {
       const jsonData = JSON.parse(json);
       return jsonData[mainTopic.toLowerCase()].reduce(
@@ -194,7 +194,7 @@ const Courses = () => {
       console.error(error);
       return 0;
     }
-  };
+  }, []);
 
   const fetchUserCourses = useCallback(async () => {
     setIsLoading(page === 1);
@@ -206,10 +206,6 @@ const Courses = () => {
       if (coursesData.length === 0) {
         setHasMore(false);
       } else {
-        const progressMap = { ...courseProgress }; // Spread existing state
-        const modulesMap = { ...modules }; // Spread existing state
-        const lessonsMap = { ...lessons }; // Spread existing state
-
         // Parallelize the async operations for better performance
         const promises = coursesData.map(async (course) => {
           const [progress, totalModules, totalLessons] = await Promise.all([
@@ -221,15 +217,33 @@ const Courses = () => {
         });
 
         const results = await Promise.all(promises);
-        results.forEach(({ courseId, progress, totalModules, totalLessons }) => {
-          progressMap[courseId] = progress;
-          modulesMap[courseId] = totalModules;
-          lessonsMap[courseId] = totalLessons;
+        
+        // Use functional updates to avoid dependency on current state
+        setCourseProgress((prev) => {
+          const progressMap = { ...prev };
+          results.forEach(({ courseId, progress }) => {
+            progressMap[courseId] = progress;
+          });
+          return progressMap;
         });
-        setCourseProgress(progressMap);
-        setTotalModules(modulesMap);
-        setTotalLessons(lessonsMap);
-        await setCourses((prevCourses) => {
+        
+        setTotalModules((prev) => {
+          const modulesMap = { ...prev };
+          results.forEach(({ courseId, totalModules }) => {
+            modulesMap[courseId] = totalModules;
+          });
+          return modulesMap;
+        });
+        
+        setTotalLessons((prev) => {
+          const lessonsMap = { ...prev };
+          results.forEach(({ courseId, totalLessons }) => {
+            lessonsMap[courseId] = totalLessons;
+          });
+          return lessonsMap;
+        });
+        
+        setCourses((prevCourses) => {
           const existingIds = new Set(prevCourses.map(course => course._id));
           const newCourses = coursesData.filter(course => !existingIds.has(course._id));
           return [...prevCourses, ...newCourses];
@@ -241,7 +255,7 @@ const Courses = () => {
       setIsLoading(false);
       setLoadingMore(false);
     }
-  }, [CountDoneTopics, courseProgress, lessons, modules, page, userId, visibilityFilter]);
+  }, [CountDoneTopics, CountTotalModules, CountTotalLessons, page, userId, visibilityFilter]);
 
   useEffect(() => {
     fetchUserCourses();
