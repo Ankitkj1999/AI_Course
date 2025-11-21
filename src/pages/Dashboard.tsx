@@ -249,7 +249,7 @@ const Dashboard = () => {
                 </Tooltip>
               </div>
             </TooltipProvider>
-            <Button onClick={() => redirectCreate()} className="shadow-md bg-gradient-to-r from-primary to-indigo-500 hover:from-indigo-500 hover:to-primary hover:shadow-lg transition-all">
+            <Button size="lg" className="shadow-md hover:shadow-lg" onClick={() => redirectCreate()}>
               <Sparkles className="mr-2 h-4 w-4" />
               Generate New Course
             </Button>
