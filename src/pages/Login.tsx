@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowRight, Mail, Lock, AlertTriangle } from "lucide-react";
@@ -148,22 +148,23 @@ const Login = () => {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-          <Link to="/" className="inline-flex items-center space-x-2">
-            <div className="h-10 w-10 rounded-md bg-primary flex items-center justify-center">
-              <img src={Logo} alt="Logo" className="h-6 w-6" />
-            </div>
-            <span className="font-display font-medium text-lg">{appName}</span>
-          </Link>
-          <h1 className="mt-6 text-3xl font-bold">Welcome back</h1>
-          <p className="mt-2 text-muted-foreground">
-            Sign in to your account to continue
-          </p>
-        </div>
-
+      <div className="w-full max-w-md">
         <Card>
-          <CardContent className="pt-6">
+          <CardHeader className="space-y-1">
+            <div className="flex justify-center mb-4">
+              <Link to="/" className="inline-flex items-center space-x-2">
+                <div className="h-10 w-10 rounded-md bg-primary flex items-center justify-center">
+                  <img src={Logo} alt="Logo" className="h-6 w-6" />
+                </div>
+                <span className="font-display font-medium text-lg">{appName}</span>
+              </Link>
+            </div>
+            <CardTitle className="text-2xl font-bold text-center">Welcome back</CardTitle>
+            <CardDescription className="text-center">
+              Sign in to your account to continue
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
             {error && (
               <Alert variant="destructive" className="mb-4">
                 <AlertTriangle className="h-4 w-4" />
@@ -241,64 +242,64 @@ const Login = () => {
                       size="large"
                       width="100%"
                       logo_alignment="left"
-                    onSuccess={async (credentialResponse) => {
-                      const decoded = jwtDecode<DecodedToken>(
-                        credentialResponse.credential
-                      );
-                      const email = decoded.email;
-                      const name = decoded.name;
-                      const postURL = serverURL + "/api/social";
-                      try {
-                        setIsLoading(true);
-                        const response = await axios.post(postURL, {
-                          email,
-                          name,
-                        }, { withCredentials: true });
-                        if (response.data.success) {
-                          // Token is now stored in httpOnly cookie automatically
+                      onSuccess={async (credentialResponse) => {
+                        const decoded = jwtDecode<DecodedToken>(
+                          credentialResponse.credential
+                        );
+                        const email = decoded.email;
+                        const name = decoded.name;
+                        const postURL = serverURL + "/api/social";
+                        try {
+                          setIsLoading(true);
+                          const response = await axios.post(postURL, {
+                            email,
+                            name,
+                          }, { withCredentials: true });
+                          if (response.data.success) {
+                            // Token is now stored in httpOnly cookie automatically
 
-                          toast({
-                            title: "Login successful",
-                            description: "Welcome back to " + appName,
-                          });
-                          setIsLoading(false);
-                          localStorage.setItem("email", decoded.email);
-                          localStorage.setItem("mName", decoded.name);
-                          localStorage.setItem("auth", "true");
-                          localStorage.setItem(
-                            "uid",
-                            response.data.userData._id
-                          );
-                          localStorage.setItem(
-                            "type",
-                            response.data.userData.type
-                          );
-                          
-                          // Check for pending fork operation using utility
-                          const pendingFork = getPendingFork();
-                          if (pendingFork) {
-                            console.log('Found pending fork operation after Google login, redirecting to:', pendingFork.returnUrl);
-                            clearPendingFork();
-                            navigate(pendingFork.returnUrl, { replace: true });
-                            return;
+                            toast({
+                              title: "Login successful",
+                              description: "Welcome back to " + appName,
+                            });
+                            setIsLoading(false);
+                            localStorage.setItem("email", decoded.email);
+                            localStorage.setItem("mName", decoded.name);
+                            localStorage.setItem("auth", "true");
+                            localStorage.setItem(
+                              "uid",
+                              response.data.userData._id
+                            );
+                            localStorage.setItem(
+                              "type",
+                              response.data.userData.type
+                            );
+                            
+                            // Check for pending fork operation using utility
+                            const pendingFork = getPendingFork();
+                            if (pendingFork) {
+                              console.log('Found pending fork operation after Google login, redirecting to:', pendingFork.returnUrl);
+                              clearPendingFork();
+                              navigate(pendingFork.returnUrl, { replace: true });
+                              return;
+                            }
+                            
+                            redirectHome();
+                          } else {
+                            setIsLoading(false);
+                            setError(response.data.message);
                           }
-                          
-                          redirectHome();
-                        } else {
+                        } catch (error) {
+                          console.error(error);
                           setIsLoading(false);
-                          setError(response.data.message);
+                          setError("Internal Server Error");
                         }
-                      } catch (error) {
-                        console.error(error);
+                      }}
+                      onError={() => {
                         setIsLoading(false);
                         setError("Internal Server Error");
-                      }
-                    }}
-                    onError={() => {
-                      setIsLoading(false);
-                      setError("Internal Server Error");
-                    }}
-                  />
+                      }}
+                    />
                   </div>
                 </div>
               )}

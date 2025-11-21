@@ -255,7 +255,7 @@ const Dashboard = () => {
         </div>
         {isLoading ? (
           viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {[1, 2, 3].map((i) => (
                 <Card key={i} className="overflow-hidden border-border/40 bg-card/50">
                   <div className="aspect-[16/10] relative overflow-hidden">
@@ -312,9 +312,9 @@ const Dashboard = () => {
           <>
             {courses.length > 0 ? (
               viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {courses.map((course) => (
-                    <Card key={course._id} className="overflow-hidden hover:shadow-md transition-all duration-200 border-border/40 hover:border-primary/30 group bg-card/50 backdrop-blur-sm">
+                    <Card key={course._id} className="group bg-card/50 backdrop-blur-sm border-border/40">
                       <div className="aspect-[16/10] relative overflow-hidden">
                         <img
                           src={course.photo}
@@ -322,7 +322,7 @@ const Dashboard = () => {
                           className="object-cover w-full h-full group-hover:scale-[1.02] transition-transform duration-300"
                         />
                         <div className="absolute top-3 right-3">
-                          <Badge variant={course.completed === true ? 'default' : 'secondary'} className="text-xs px-2 py-1">
+                          <Badge variant={course.completed === true ? 'success' : 'secondary'}>
                             {course.completed === true ? 'Completed' : 'In Progress'}
                           </Badge>
                         </div>
@@ -412,9 +412,9 @@ const Dashboard = () => {
                                 <CardDescription className="text-xs capitalize mt-1">{course.type}</CardDescription>
                               </div>
                               <div className="flex items-center justify-between w-full sm:w-auto mt-2 sm:mt-0 sm:ml-4 sm:gap-2">
-                                <Badge variant={course.completed === true ? 'default' : 'secondary'} className="text-xs px-2 py-1">
-                                  {course.completed === true ? 'Completed' : 'In Progress'}
-                                </Badge>
+                                  <Badge variant={course.completed === true ? 'success' : 'secondary'}>
+                                    {course.completed === true ? 'Completed' : 'In Progress'}
+                                  </Badge>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-muted">
@@ -499,7 +499,7 @@ const Dashboard = () => {
             )}
             {loadingMore && (
               viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {[1, 2, 3].map((i) => (
                     <Card key={i} className="overflow-hidden border-border/40 bg-card/50">
                       <div className="aspect-[16/10] relative overflow-hidden">

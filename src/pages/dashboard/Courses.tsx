@@ -358,7 +358,7 @@ const Courses = () => {
         </div>
         {isLoading ? (
           viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {[1, 2, 3].map((i) => (
                 <Card key={i} className="overflow-hidden border-border/40 bg-card/50">
                   <div className="aspect-[16/10] relative overflow-hidden">
@@ -415,9 +415,9 @@ const Courses = () => {
           <>
             {courses.length > 0 ? (
               viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {courses.map((course) => (
-                    <Card key={course._id} className="overflow-hidden hover:shadow-lg transition-all duration-200 border-border/40 hover:border-primary/30 group bg-card/50 backdrop-blur-sm flex flex-col min-h-[280px]">
+                    <Card key={course._id} className="group bg-card/50 backdrop-blur-sm border-border/40 flex flex-col min-h-[280px]">
                       <div className="aspect-[16/9] relative overflow-hidden">
                         <img
                           src={course.photo}
@@ -425,13 +425,12 @@ const Courses = () => {
                           className="object-cover w-full h-full group-hover:scale-[1.02] transition-transform duration-300"
                         />
                         <div className="absolute top-3 right-3 flex gap-2">
-                          <Badge variant={course.completed === true ? 'default' : 'secondary'} className="text-xs px-2 py-1">
+                          <Badge variant={course.completed === true ? 'success' : 'secondary'}>
                             {course.completed === true ? 'Completed' : 'In Progress'}
                           </Badge>
                           {course.isPublic !== undefined && (
                             <Badge 
-                              variant={course.isPublic ? 'default' : 'outline'} 
-                              className={`text-xs px-2 py-1 ${course.isPublic ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}`}
+                              variant={course.isPublic ? 'success' : 'secondary'} 
                             >
                               {course.isPublic ? (
                                 <>
@@ -559,13 +558,12 @@ const Courses = () => {
                               </div>
                               <div className="flex items-center justify-between w-full sm:w-auto mt-2 sm:mt-0 sm:ml-4 sm:gap-2">
                                 <div className="flex gap-2">
-                                  <Badge variant={course.completed === true ? 'default' : 'secondary'} className="text-xs px-2 py-1">
+                                  <Badge variant={course.completed === true ? 'success' : 'secondary'}>
                                     {course.completed === true ? 'Completed' : 'In Progress'}
                                   </Badge>
                                   {course.isPublic !== undefined && (
                                     <Badge 
-                                      variant={course.isPublic ? 'default' : 'outline'} 
-                                      className={`text-xs px-2 py-1 ${course.isPublic ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}`}
+                                      variant={course.isPublic ? 'success' : 'secondary'} 
                                     >
                                       {course.isPublic ? (
                                         <>
@@ -690,7 +688,7 @@ const Courses = () => {
             )}
             {loadingMore && (
               viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {[1, 2, 3].map((i) => (
                     <Card key={i} className="overflow-hidden border-border/40 bg-card/50">
                       <div className="aspect-[16/10] relative overflow-hidden">
