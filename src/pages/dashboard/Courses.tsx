@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import ShareOnSocial from 'react-share-on-social';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import CourseImage from '@/components/CourseImage';
 
 const Courses = () => {
 
@@ -419,7 +420,7 @@ const Courses = () => {
                   {courses.map((course) => (
                     <Card key={course._id} className="group bg-card/50 backdrop-blur-sm border-border/40 flex flex-col min-h-[280px]">
                       <div className="aspect-[16/9] relative overflow-hidden">
-                        <img
+                        <CourseImage
                           src={course.photo}
                           alt={course.mainTopic}
                           className="object-cover w-full h-full group-hover:scale-[1.02] transition-transform duration-300"
@@ -543,7 +544,7 @@ const Courses = () => {
                     <Card key={course._id} className="overflow-hidden hover:shadow-md transition-all duration-200 border-border/40 hover:border-primary/30 group bg-card/50 backdrop-blur-sm">
                       <div className="flex min-h-[140px]">
                         <div className="w-32 sm:w-48 relative overflow-hidden flex-shrink-0">
-                          <img
+                          <CourseImage
                             src={course.photo}
                             alt={course.mainTopic}
                             className="object-cover w-full h-full group-hover:scale-[1.02] transition-transform duration-300"
