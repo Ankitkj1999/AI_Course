@@ -208,7 +208,12 @@ export const AppSidebar = ({
 
       {isAuthenticated && (
         <SidebarFooter className="border-t border-border/40">
-          <NavUser onLogout={Logout} userName={localStorage.getItem('mName') || undefined} />
+          <NavUser 
+            onLogout={Logout} 
+            userName={localStorage.getItem('mName') || 'User'} 
+            userEmail={localStorage.getItem('email') || ''}
+            userAvatar={localStorage.getItem('photo') || ''}
+          />
         </SidebarFooter>
       )}
       <SidebarRail />
