@@ -3,10 +3,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowRight, Mail, Lock, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { appName, facebookClientId, serverURL } from "@/constants";
 import { useSettings } from "@/hooks/useSettings";
 import { getPendingFork, clearPendingFork } from "@/utils/forkRedirect";
@@ -42,7 +42,6 @@ const Login = () => {
     const auth = localStorage.getItem("auth");
     const uid = localStorage.getItem("uid");
     if (auth && uid) {
-      // Check for pending fork operation using utility
       const pendingFork = getPendingFork();
       if (pendingFork) {
         console.log('Found pending fork operation, redirecting to:', pendingFork.returnUrl);
@@ -50,7 +49,6 @@ const Login = () => {
         navigate(pendingFork.returnUrl, { replace: true });
         return;
       }
-      // Use navigate instead of window.location to avoid triggering full page reload
       navigate("/dashboard", { replace: true });
     }
   }, [navigate]);
@@ -64,21 +62,16 @@ const Login = () => {
     setError("");
     setIsLoading(true);
 
-    // Simple validation
     if (!email || !password) {
       setError("Please enter both email and password");
       setIsLoading(false);
       return;
     }
 
-    // This is where you would integrate authentication logic
     try {
-      // Simulate authentication delay
       const postURL = serverURL + "/api/signin";
       const response = await axios.post(postURL, { email, password }, { withCredentials: true });
       if (response.data.success) {
-        // Token is now stored in httpOnly cookie automatically
-
         localStorage.setItem("email", response.data.userData.email);
         localStorage.setItem("mName", response.data.userData.mName);
         localStorage.setItem("auth", "true");
@@ -90,7 +83,6 @@ const Login = () => {
           description: "Welcome back to " + appName,
         });
         
-        // Check for pending fork operation using utility
         const pendingFork = getPendingFork();
         if (pendingFork) {
           console.log('Found pending fork operation after login, redirecting to:', pendingFork.returnUrl);
@@ -147,254 +139,224 @@ const Login = () => {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
-      <div className="w-full max-w-md">
+    <div className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
+      <div className="flex w-full max-w-sm flex-col gap-6">
+        <Link to="/" className="flex items-center gap-2 self-center font-medium">
+          <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
+            <img src={Logo} alt="Logo" className="size-4 invert dark:invert-0" />
+          </div>
+          {appName}
+        </Link>
+        
         <Card>
-          <CardHeader className="space-y-1">
-            <div className="flex justify-center mb-4">
-              <Link to="/" className="inline-flex items-center space-x-2">
-                <div className="h-10 w-10 rounded-md bg-primary flex items-center justify-center">
-                  <img src={Logo} alt="Logo" className="h-6 w-6" />
-                </div>
-                <span className="font-display font-medium text-lg">{appName}</span>
-              </Link>
-            </div>
-            <CardTitle className="text-2xl font-bold text-center">Welcome back</CardTitle>
-            <CardDescription className="text-center">
-              Sign in to your account to continue
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl">Welcome back</CardTitle>
+            <CardDescription>
+              {(googleLoginEnabled || facebookLoginEnabled) 
+                ? "Login with your Google or Facebook account" 
+                : "Sign in to your account to continue"}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {error && (
-              <Alert variant="destructive" className="mb-4">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+            <form onSubmit={handleSubmit}>
+              <div className="flex flex-col gap-6">
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
 
-            <form onSubmit={handleSubmit} className="space-y-4 mb-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
-                    disabled={isLoading}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  <Link
-                    to="/forgot-password"
-                    className="text-sm font-medium text-primary hover:underline"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10"
-                    disabled={isLoading}
-                  />
-                </div>
-              </div>
-
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Signing in..." : "Sign in"}
-                {!isLoading && <ArrowRight className="ml-2 h-4 w-4" />}
-              </Button>
-            </form>
-
-            <div className="space-y-3">
-              {(googleLoginEnabled || facebookLoginEnabled) && (
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
-                      Or continue with
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {googleLoginEnabled && (
-                <div className="w-full overflow-hidden">
-                  <div className="w-full max-w-full">
-                    <GoogleLogin
-                      theme="outline"
-                      type="standard"
-                      size="large"
-                      width="100%"
-                      logo_alignment="left"
-                      onSuccess={async (credentialResponse) => {
-                        const decoded = jwtDecode<DecodedToken>(
-                          credentialResponse.credential
-                        );
-                        const email = decoded.email;
-                        const name = decoded.name;
-                        const postURL = serverURL + "/api/social";
-                        try {
-                          setIsLoading(true);
-                          const response = await axios.post(postURL, {
-                            email,
-                            name,
-                          }, { withCredentials: true });
-                          if (response.data.success) {
-                            // Token is now stored in httpOnly cookie automatically
-
-                            toast({
-                              title: "Login successful",
-                              description: "Welcome back to " + appName,
-                            });
-                            setIsLoading(false);
-                            localStorage.setItem("email", decoded.email);
-                            localStorage.setItem("mName", decoded.name);
-                            localStorage.setItem("auth", "true");
-                            localStorage.setItem(
-                              "uid",
-                              response.data.userData._id
-                            );
-                            localStorage.setItem(
-                              "type",
-                              response.data.userData.type
-                            );
-                            
-                            // Check for pending fork operation using utility
-                            const pendingFork = getPendingFork();
-                            if (pendingFork) {
-                              console.log('Found pending fork operation after Google login, redirecting to:', pendingFork.returnUrl);
-                              clearPendingFork();
-                              navigate(pendingFork.returnUrl, { replace: true });
-                              return;
+                {(googleLoginEnabled || facebookLoginEnabled) && (
+                  <>
+                    <div className="flex flex-col gap-3">
+                      {googleLoginEnabled && (
+                        <GoogleLogin
+                          theme="outline"
+                          type="standard"
+                          size="large"
+                          width="100%"
+                          logo_alignment="left"
+                          onSuccess={async (credentialResponse) => {
+                            const decoded = jwtDecode<DecodedToken>(credentialResponse.credential);
+                            const email = decoded.email;
+                            const name = decoded.name;
+                            const postURL = serverURL + "/api/social";
+                            try {
+                              setIsLoading(true);
+                              const response = await axios.post(postURL, { email, name }, { withCredentials: true });
+                              if (response.data.success) {
+                                toast({
+                                  title: "Login successful",
+                                  description: "Welcome back to " + appName,
+                                });
+                                setIsLoading(false);
+                                localStorage.setItem("email", decoded.email);
+                                localStorage.setItem("mName", decoded.name);
+                                localStorage.setItem("auth", "true");
+                                localStorage.setItem("uid", response.data.userData._id);
+                                localStorage.setItem("type", response.data.userData.type);
+                                
+                                const pendingFork = getPendingFork();
+                                if (pendingFork) {
+                                  console.log('Found pending fork operation after Google login, redirecting to:', pendingFork.returnUrl);
+                                  clearPendingFork();
+                                  navigate(pendingFork.returnUrl, { replace: true });
+                                  return;
+                                }
+                                
+                                redirectHome();
+                              } else {
+                                setIsLoading(false);
+                                setError(response.data.message);
+                              }
+                            } catch (error) {
+                              console.error(error);
+                              setIsLoading(false);
+                              setError("Internal Server Error");
                             }
-                            
-                            redirectHome();
-                          } else {
+                          }}
+                          onError={() => {
                             setIsLoading(false);
-                            setError(response.data.message);
-                          }
-                        } catch (error) {
-                          console.error(error);
-                          setIsLoading(false);
-                          setError("Internal Server Error");
-                        }
-                      }}
-                      onError={() => {
-                        setIsLoading(false);
-                        setError("Internal Server Error");
-                      }}
+                            setError("Internal Server Error");
+                          }}
+                        />
+                      )}
+
+                      {facebookLoginEnabled && (
+                        <FacebookLogin
+                          appId={facebookClientIdDynamic}
+                          style={{
+                            backgroundColor: "#1877F2",
+                            color: "#fff",
+                            fontSize: "14px",
+                            padding: "12px 24px",
+                            width: "100%",
+                            height: "40px",
+                            border: "none",
+                            borderRadius: "0.375rem",
+                            fontWeight: 500,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                            transition: "background-color 0.2s",
+                          }}
+                          onFail={(error) => {
+                            console.error(error);
+                            setIsLoading(false);
+                            setError("Internal Server Error");
+                          }}
+                          onProfileSuccess={async (response) => {
+                            const email = response.email;
+                            const name = response.name;
+                            const postURL = serverURL + "/api/social";
+                            try {
+                              setIsLoading(true);
+                              const response = await axios.post(postURL, { email, name }, { withCredentials: true });
+                              if (response.data.success) {
+                                toast({
+                                  title: "Login successful",
+                                  description: "Welcome back to " + appName,
+                                });
+                                setIsLoading(false);
+                                localStorage.setItem("email", email);
+                                localStorage.setItem("mName", name);
+                                localStorage.setItem("auth", "true");
+                                localStorage.setItem("uid", response.data.userData._id);
+                                localStorage.setItem("type", response.data.userData.type);
+                                
+                                const pendingFork = getPendingFork();
+                                if (pendingFork) {
+                                  console.log('Found pending fork operation after Facebook login, redirecting to:', pendingFork.returnUrl);
+                                  clearPendingFork();
+                                  navigate(pendingFork.returnUrl, { replace: true });
+                                  return;
+                                }
+                                
+                                redirectHome();
+                              } else {
+                                setIsLoading(false);
+                                setError(response.data.message);
+                              }
+                            } catch (error) {
+                              console.error(error);
+                              setIsLoading(false);
+                              setError("Internal Server Error");
+                            }
+                          }}
+                        />
+                      )}
+                    </div>
+
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-card px-2 text-muted-foreground">
+                          Or continue with
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="flex flex-col gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="m@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      disabled={isLoading}
+                      required
                     />
                   </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="password">Password</Label>
+                      <Link
+                        to="/forgot-password"
+                        className="text-sm underline-offset-4 hover:underline"
+                      >
+                        Forgot your password?
+                      </Link>
+                    </div>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      disabled={isLoading}
+                      required
+                    />
+                  </div>
+
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? "Signing in..." : "Login"}
+                  </Button>
+
+                  <div className="text-center text-sm text-muted-foreground">
+                    Don&apos;t have an account?{" "}
+                    <Link to="/signup" className="underline underline-offset-4 hover:text-primary">
+                      Sign up
+                    </Link>
+                  </div>
                 </div>
-              )}
-
-              {facebookLoginEnabled && (
-                <FacebookLogin
-                  appId={facebookClientIdDynamic}
-                  style={{
-                    backgroundColor: "#1877F2",
-                    color: "#fff",
-                    fontSize: "14px",
-                    padding: "12px 24px",
-                    width: "100%",
-                    height: "40px",
-                    border: "none",
-                    borderRadius: "0.375rem",
-                    fontWeight: 500,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    transition: "background-color 0.2s",
-                  }}
-                  onFail={(error) => {
-                    console.error(error);
-                    setIsLoading(false);
-                    setError("Internal Server Error");
-                  }}
-                  onProfileSuccess={async (response) => {
-                    const email = response.email;
-                    const name = response.name;
-                    const postURL = serverURL + "/api/social";
-                    try {
-                      setIsLoading(true);
-                      const response = await axios.post(postURL, {
-                        email,
-                        name,
-                      }, { withCredentials: true });
-                      if (response.data.success) {
-                        // Token is now stored in httpOnly cookie automatically
-
-                        toast({
-                          title: "Login successful",
-                          description: "Welcome back to " + appName,
-                        });
-                        setIsLoading(false);
-                        localStorage.setItem("email", email);
-                        localStorage.setItem("mName", name);
-                        localStorage.setItem("auth", "true");
-                        localStorage.setItem(
-                          "uid",
-                          response.data.userData._id
-                        );
-                        localStorage.setItem(
-                          "type",
-                          response.data.userData.type
-                        );
-                        
-                        // Check for pending fork operation using utility
-                        const pendingFork = getPendingFork();
-                        if (pendingFork) {
-                          console.log('Found pending fork operation after Facebook login, redirecting to:', pendingFork.returnUrl);
-                          clearPendingFork();
-                          navigate(pendingFork.returnUrl, { replace: true });
-                          return;
-                        }
-                        
-                        redirectHome();
-                      } else {
-                        setIsLoading(false);
-                        setError(response.data.message);
-                      }
-                    } catch (error) {
-                      console.error(error);
-                      setIsLoading(false);
-                      setError("Internal Server Error");
-                    }
-                  }}
-                />
-              )}
-            </div>
+              </div>
+            </form>
           </CardContent>
-
-          <CardFooter className="flex flex-col space-y-4 border-t p-6">
-            <div className="text-center text-sm">
-              Don't have an account?{" "}
-              <Link
-                to="/signup"
-                className="font-medium text-primary hover:underline"
-              >
-                Sign up
-              </Link>
-            </div>
-          </CardFooter>
         </Card>
+
+        <div className="text-balance text-center text-xs text-muted-foreground [&_a]:underline [&_a]:underline-offset-4 hover:[&_a]:text-primary">
+          By clicking continue, you agree to our{" "}
+          <Link to="/terms">Terms of Service</Link> and{" "}
+          <Link to="/privacy-policy">Privacy Policy</Link>.
+        </div>
       </div>
     </div>
   );
