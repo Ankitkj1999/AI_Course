@@ -58,7 +58,7 @@ export const AppLayout = ({
               <SidebarTrigger>
                 <PanelLeftOpen className="h-6 w-6" />
               </SidebarTrigger>
-              <h1 className="text-xl font-semibold bg-gradient-to-r from-primary to-indigo-500 text-gradient">
+              <h1 className="text-xl font-semibold text-foreground">
                 {appName}
               </h1>
               <ThemeToggle variant="ghost" size="sm" />

@@ -557,7 +557,7 @@ const GenerateCourse = () => {
                   <Button
                     onClick={() => onSubmit}
                     type="submit"
-                    className="w-full bg-gradient-to-r from-primary to-indigo-500 hover:from-indigo-500 hover:to-primary"
+                    className="w-full"
                   >
                     <Sparkles className="mr-2 h-4 w-4" />
                     Generate Course

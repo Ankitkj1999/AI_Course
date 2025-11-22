@@ -360,7 +360,7 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
     return (
         <div className="space-y-6 py-8 animate-fade-in">
             <div className="text-center mb-8">
-                <h1 className="text-3xl font-bold tracking-tight text-gradient bg-gradient-to-r from-primary to-indigo-500 mb-4">
+                <h1 className="text-2xl font-bold tracking-tight mb-4">
                     {courseName.toUpperCase()}
                 </h1>
                 <p className="text-muted-foreground max-w-lg mx-auto">

@@ -202,7 +202,7 @@ const GuideCreator: React.FC = () => {
             <Button
               type="submit"
               disabled={isLoading || !keyword.trim() || !title.trim()}
-              className="w-full bg-gradient-to-r from-primary to-blue-600 hover:from-blue-600 hover:to-primary"
+              className="w-full"
             >
               {isLoading ? (
                 <>

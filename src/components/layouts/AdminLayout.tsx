@@ -64,7 +64,7 @@ const AdminLayout = () => {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-gradient-to-br from-background to-muted/20">
+      <div className="flex min-h-screen w-full bg-background">
         <Sidebar className="border-r border-border/40">
           <SidebarHeader className="border-b border-border/40">
             <Link to="/admin" className="flex items-center space-x-2 px-4 py-3">

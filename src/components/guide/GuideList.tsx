@@ -119,14 +119,14 @@ const GuideList: React.FC = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
             My Study Guides
           </h1>
           <p className="text-gray-600 dark:text-gray-300">
             Manage and access your comprehensive study guides
           </p>
         </div>
-        <Button asChild className="bg-gradient-to-r from-primary to-blue-600 hover:from-blue-600 hover:to-primary">
+        <Button asChild>
           <Link to="/dashboard/create-guide">
             <Plus className="mr-2 h-4 w-4" />
             Create New
@@ -144,7 +144,7 @@ const GuideList: React.FC = () => {
             <p className="text-gray-600 dark:text-gray-300 mb-6">
               Create your first study guide to start learning!
             </p>
-            <Button asChild className="bg-gradient-to-r from-primary to-blue-600 hover:from-blue-600 hover:to-primary">
+            <Button asChild>
               <Link to="/dashboard/create-guide">
                 <Plus className="mr-2 h-4 w-4" />
                 Create Study Guide
@@ -227,7 +227,7 @@ const GuideList: React.FC = () => {
                   </div>
 
                   <div className="flex gap-2 justify-between items-center mt-auto">
-                    <Button asChild variant="default" size="sm" className="flex-1 bg-gradient-to-r from-primary to-blue-600 hover:from-blue-600 hover:to-primary">
+                    <Button asChild variant="default" size="sm" className="flex-1">
                       <Link to={`/dashboard/guide/${guide.slug}`}>
                         <ExternalLink className="mr-2 h-4 w-4" />
                         Read Guide

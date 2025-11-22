@@ -90,7 +90,7 @@ const DashboardLayout = () => {
               <div className="h-8 w-8 rounded-md bg-primary from-primary flex items-center justify-center">
                 <img src={Logo} alt="Logo" className='h-6 w-6' />
               </div>
-              <span className="font-display text-lg font-bold bg-primary text-gradient">{appName}</span>
+              <span className="font-display text-lg font-bold text-primary">{appName}</span>
             </Link>
           </SidebarHeader>
 
@@ -169,7 +169,7 @@ const DashboardLayout = () => {
               <SidebarGroupContent>
                 <div className="px-2 space-y-2">
                   <Button
-                    className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-indigo-500 hover:to-blue-500 shadow-md transition-all"
+                    className="w-full shadow-sm"
                     size="sm"
                     asChild
                   >
@@ -179,7 +179,8 @@ const DashboardLayout = () => {
                     </Link>
                   </Button>
                   <Button
-                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-pink-500 hover:to-purple-500 shadow-md transition-all"
+                    className="w-full shadow-sm"
+                    variant="secondary"
                     size="sm"
                     asChild
                   >
@@ -189,7 +190,8 @@ const DashboardLayout = () => {
                     </Link>
                   </Button>
                   <Button
-                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-teal-500 hover:to-emerald-500 shadow-md transition-all"
+                    className="w-full shadow-sm"
+                    variant="outline"
                     size="sm"
                     asChild
                   >
@@ -199,7 +201,8 @@ const DashboardLayout = () => {
                     </Link>
                   </Button>
                   <Button
-                    className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-red-500 hover:to-orange-500 shadow-md transition-all"
+                    className="w-full shadow-sm"
+                    variant="ghost"
                     size="sm"
                     asChild
                   >
@@ -320,7 +323,7 @@ const DashboardLayout = () => {
               <SidebarTrigger>
                 <PanelLeftOpen className="h-6 w-6" />
               </SidebarTrigger>
-              <h1 className="text-xl font-semibold bg-gradient-to-r from-primary to-indigo-500 text-gradient">{appName}</h1>
+              <h1 className="text-xl font-semibold text-foreground">{appName}</h1>
               <ThemeToggle
                 variant="ghost"
                 size="sm"

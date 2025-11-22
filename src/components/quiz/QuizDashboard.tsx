@@ -101,13 +101,13 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({ userId }) => {
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-6 text-white">
+      <div className="bg-card rounded-lg p-6 shadow-sm border border-border">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold mb-2">Quiz Dashboard</h1>
-            <p className="text-blue-100">Create and manage your AI-generated quizzes</p>
+            <h1 className="text-2xl font-bold mb-2 text-foreground">Quiz Dashboard</h1>
+            <p className="text-muted-foreground">Create and manage your AI-generated quizzes</p>
           </div>
-          <Brain className="h-16 w-16 text-blue-200" />
+          <Brain className="h-16 w-16 text-primary/20" />
         </div>
       </div>
 

@@ -294,7 +294,7 @@ const Courses = () => {
       <div className="space-y-8 animate-fade-in">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-gradient bg-gradient-to-r from-primary to-indigo-500">My Courses</h1>
+            <h1 className="text-2xl font-bold tracking-tight">My Courses</h1>
             <p className="text-muted-foreground mt-1">Continue learning where you left off</p>
           </div>
           <div className="flex items-center gap-3">

@@ -62,7 +62,7 @@ const AdminDashboard = () => {
     <div className="space-y-6 sm:space-y-8 animate-fade-in">
       {/* Header Section */}
       <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
           Admin Dashboard
         </h1>
         <p className="text-muted-foreground">

@@ -216,7 +216,7 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
             <Button
               type="submit"
               disabled={isCreating || !formData.keyword.trim() || !formData.title.trim()}
-              className="w-full bg-gradient-to-r from-primary to-blue-600 hover:from-blue-600 hover:to-primary"
+              className="w-full"
             >
               {isCreating ? (
                 <>
