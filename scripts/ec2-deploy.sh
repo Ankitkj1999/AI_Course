@@ -11,8 +11,8 @@ IMAGE_NAME="${IMAGE_NAME:-aicourse}"
 CONTAINER_NAME="${CONTAINER_NAME:-aicourse-app}"
 APP_PORT="${APP_PORT:-5010}"
 INTERNAL_PORT="5010"
-ENV_FILE="${ENV_FILE:-~/aicourse/server/.env.production}"
-LOG_DIR="${LOG_DIR:-~/aicourse/server/logs}"
+ENV_FILE="${ENV_FILE:-~/AI_Course/server/.env.production}"
+LOG_DIR="${LOG_DIR:-~/AI_Course/server/logs}"
 
 echo "🚀 Starting AiCourse deployment on EC2..."
 echo "📦 Image: $DOCKER_USERNAME/$IMAGE_NAME:latest"
@@ -21,8 +21,8 @@ echo "🔌 Port: $APP_PORT:$INTERNAL_PORT"
 
 # Ensure required directories exist
 echo "📁 Ensuring directories exist..."
-mkdir -p ~/aicourse/server/logs
-mkdir -p ~/aicourse/server
+mkdir -p ~/AI_Course/server/logs
+mkdir -p ~/AI_Course/server
 
 # Check if env file exists
 if [ ! -f "$ENV_FILE" ]; then

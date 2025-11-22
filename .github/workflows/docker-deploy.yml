@@ -42,7 +42,8 @@ jobs:
         tags: |
           type=ref,event=branch
           type=sha,prefix={{branch}}-
-          type=raw,value=latest,enable={{is_default_branch}}
+          type=raw,value=latest
+          type=raw,value=production
 
     - name: Build and push Docker image
       id: build-push
@@ -108,14 +109,25 @@ jobs:
           # Brief pause for OS to release resources
           sleep 2
 
+          # Ensure directories exist
+          echo "Ensuring directories exist..."
+          mkdir -p ~/AI_Course/server/logs
+          
+          # Check if env file exists
+          if [ ! -f ~/AI_Course/server/.env.production ]; then
+            echo "ERROR: Environment file not found at ~/AI_Course/server/.env.production"
+            echo "Please create this file before deployment"
+            exit 1
+          fi
+
           # Run new container
           echo "Starting new container..."
           docker run -d \
             --name $CONTAINER_NAME \
             --restart unless-stopped \
             -p $APP_PORT:5010 \
-            -v ~/aicourse/server/logs:/app/server/logs \
-            --env-file ~/aicourse/server/.env.production \
+            -v ~/AI_Course/server/logs:/app/server/logs \
+            --env-file ~/AI_Course/server/.env.production \
             $DOCKER_USERNAME/$IMAGE_NAME:latest
 
           # Clean up old images
