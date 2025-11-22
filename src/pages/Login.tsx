@@ -169,78 +169,81 @@ const Login = () => {
 
                 {(googleLoginEnabled || facebookLoginEnabled) && (
                   <>
-                    <div className="flex flex-col gap-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
                       {googleLoginEnabled && (
-                        <GoogleLogin
-                          theme="outline"
-                          type="standard"
-                          size="large"
-                          width="100%"
-                          logo_alignment="left"
-                          onSuccess={async (credentialResponse) => {
-                            const decoded = jwtDecode<DecodedToken>(credentialResponse.credential);
-                            const email = decoded.email;
-                            const name = decoded.name;
-                            const postURL = serverURL + "/api/social";
-                            try {
-                              setIsLoading(true);
-                              const response = await axios.post(postURL, { email, name }, { withCredentials: true });
-                              if (response.data.success) {
-                                toast({
-                                  title: "Login successful",
-                                  description: "Welcome back to " + appName,
-                                });
-                                setIsLoading(false);
-                                localStorage.setItem("email", decoded.email);
-                                localStorage.setItem("mName", decoded.name);
-                                localStorage.setItem("auth", "true");
-                                localStorage.setItem("uid", response.data.userData._id);
-                                localStorage.setItem("type", response.data.userData.type);
-                                
-                                const pendingFork = getPendingFork();
-                                if (pendingFork) {
-                                  console.log('Found pending fork operation after Google login, redirecting to:', pendingFork.returnUrl);
-                                  clearPendingFork();
-                                  navigate(pendingFork.returnUrl, { replace: true });
-                                  return;
+                        <div className="w-full [&>div]:w-full [&_iframe]:!w-full">
+                          <GoogleLogin
+                            theme="outline"
+                            type="standard"
+                            size="large"
+                            width="100%"
+                            logo_alignment="left"
+                            text="continue_with"
+                            onSuccess={async (credentialResponse) => {
+                              const decoded = jwtDecode<DecodedToken>(credentialResponse.credential);
+                              const email = decoded.email;
+                              const name = decoded.name;
+                              const postURL = serverURL + "/api/social";
+                              try {
+                                setIsLoading(true);
+                                const response = await axios.post(postURL, { email, name }, { withCredentials: true });
+                                if (response.data.success) {
+                                  toast({
+                                    title: "Login successful",
+                                    description: "Welcome back to " + appName,
+                                  });
+                                  setIsLoading(false);
+                                  localStorage.setItem("email", decoded.email);
+                                  localStorage.setItem("mName", decoded.name);
+                                  localStorage.setItem("auth", "true");
+                                  localStorage.setItem("uid", response.data.userData._id);
+                                  localStorage.setItem("type", response.data.userData.type);
+                                  
+                                  const pendingFork = getPendingFork();
+                                  if (pendingFork) {
+                                    console.log('Found pending fork operation after Google login, redirecting to:', pendingFork.returnUrl);
+                                    clearPendingFork();
+                                    navigate(pendingFork.returnUrl, { replace: true });
+                                    return;
+                                  }
+                                  
+                                  redirectHome();
+                                } else {
+                                  setIsLoading(false);
+                                  setError(response.data.message);
                                 }
-                                
-                                redirectHome();
-                              } else {
+                              } catch (error) {
+                                console.error(error);
                                 setIsLoading(false);
-                                setError(response.data.message);
+                                setError("Internal Server Error");
                               }
-                            } catch (error) {
-                              console.error(error);
+                            }}
+                            onError={() => {
                               setIsLoading(false);
                               setError("Internal Server Error");
-                            }
-                          }}
-                          onError={() => {
-                            setIsLoading(false);
-                            setError("Internal Server Error");
-                          }}
-                        />
+                            }}
+                          />
+                        </div>
                       )}
 
                       {facebookLoginEnabled && (
                         <FacebookLogin
                           appId={facebookClientIdDynamic}
                           style={{
-                            backgroundColor: "#1877F2",
-                            color: "#fff",
+                            backgroundColor: "transparent",
+                            color: "hsl(var(--foreground))",
                             fontSize: "14px",
-                            padding: "12px 24px",
+                            padding: "0px",
                             width: "100%",
                             height: "40px",
-                            border: "none",
+                            border: "1px solid hsl(var(--border))",
                             borderRadius: "0.375rem",
                             fontWeight: 500,
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
                             cursor: "pointer",
-                            transition: "background-color 0.2s",
+                            transition: "background-color 0.2s, border-color 0.2s",
                           }}
                           onFail={(error) => {
                             console.error(error);
@@ -285,7 +288,15 @@ const Login = () => {
                               setError("Internal Server Error");
                             }
                           }}
-                        />
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-4 w-4 mr-2">
+                            <path
+                              d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"
+                              fill="currentColor"
+                            />
+                          </svg>
+                          Facebook
+                        </FacebookLogin>
                       )}
                     </div>
 
