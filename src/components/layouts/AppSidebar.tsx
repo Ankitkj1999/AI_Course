@@ -55,6 +55,7 @@ export const AppSidebar = ({
 }: AppSidebarProps) => {
   const { toast } = useToast();
 
+
   // Navigation data structure
   const navMain = isAuthenticated
     ? [
