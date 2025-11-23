@@ -99,13 +99,13 @@ const FlashcardCreator: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <Card className="bg-white dark:bg-gray-800 shadow-lg">
+      <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+          <CardTitle className="flex items-center gap-2">
             <Brain className="h-5 w-5 text-primary" />
             Create Flashcards
           </CardTitle>
-          <CardDescription className="text-gray-600 dark:text-gray-300">
+          <CardDescription>
             Generate AI-powered flashcards for any topic to enhance your learning
           </CardDescription>
         </CardHeader>
@@ -122,7 +122,7 @@ const FlashcardCreator: React.FC = () => {
               className="mb-6"
             />
             <div className="space-y-2">
-              <Label htmlFor="keyword" className="text-gray-700 dark:text-gray-300">
+              <Label htmlFor="keyword">
                 Topic/Keyword *
               </Label>
               <Input
@@ -133,13 +133,13 @@ const FlashcardCreator: React.FC = () => {
                 onChange={(e) => setKeyword(e.target.value)}
                 disabled={isLoading}
               />
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 The main topic you want to create flashcards about
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="title" className="text-gray-700 dark:text-gray-300">
+              <Label htmlFor="title">
                 Flashcard Set Title *
               </Label>
               <Input
@@ -150,7 +150,7 @@ const FlashcardCreator: React.FC = () => {
                 onChange={(e) => setTitle(e.target.value)}
                 disabled={isLoading}
               />
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 A descriptive title for your flashcard set
               </p>
             </div>

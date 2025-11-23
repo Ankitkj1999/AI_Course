@@ -100,13 +100,13 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <Card className="bg-white dark:bg-gray-800 shadow-lg">
+      <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+          <CardTitle className="flex items-center gap-2">
             <Brain className="h-5 w-5 text-primary" />
             Create Quiz
           </CardTitle>
-          <CardDescription className="text-gray-600 dark:text-gray-300">
+          <CardDescription>
             Generate AI-powered quizzes for any topic to enhance learning
           </CardDescription>
         </CardHeader>
@@ -124,7 +124,7 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
             />
 
             <div className="space-y-2">
-              <Label htmlFor="keyword" className="text-gray-700 dark:text-gray-300">
+              <Label htmlFor="keyword">
                 Topic/Keyword *
               </Label>
               <Input
@@ -137,13 +137,13 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
                 disabled={isCreating}
                 required
               />
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 The main topic you want to create a quiz about
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="title" className="text-gray-700 dark:text-gray-300">
+              <Label htmlFor="title">
                 Quiz Title *
               </Label>
               <Input
@@ -156,13 +156,13 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
                 disabled={isCreating}
                 required
               />
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 A descriptive title for your quiz
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="format" className="text-gray-700 dark:text-gray-300">
+              <Label htmlFor="format">
                 Quiz Format
               </Label>
               <select
@@ -170,14 +170,14 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
                 name="format"
                 value={formData.format}
                 onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-ring bg-background text-foreground"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={isCreating}
               >
                 <option value="mixed">Mixed Questions</option>
                 <option value="multiple-choice">Multiple Choice Only</option>
                 <option value="open-ended">Open-Ended Questions</option>
               </select>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 Choose the type of questions for your quiz
               </p>
             </div>
@@ -191,8 +191,8 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
 
             {/* Error Message */}
             {error && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-                <p className="text-red-800 dark:text-red-400 text-sm">{error}</p>
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                <p className="text-destructive text-sm">{error}</p>
               </div>
             )}
 

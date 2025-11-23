@@ -101,13 +101,13 @@ const GuideCreator: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <Card className="bg-white dark:bg-gray-800 shadow-lg">
+      <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+          <CardTitle className="flex items-center gap-2">
             <BookOpen className="h-5 w-5 text-primary" />
             Create Study Guide
           </CardTitle>
-          <CardDescription className="text-gray-600 dark:text-gray-300">
+          <CardDescription>
             Generate comprehensive study guides for any topic with AI assistance
           </CardDescription>
         </CardHeader>
@@ -124,7 +124,7 @@ const GuideCreator: React.FC = () => {
               className="mb-6"
             />
             <div className="space-y-2">
-              <Label htmlFor="keyword" className="text-gray-700 dark:text-gray-300">
+              <Label htmlFor="keyword">
                 Topic/Keyword *
               </Label>
               <Input
@@ -135,13 +135,13 @@ const GuideCreator: React.FC = () => {
                 onChange={(e) => setKeyword(e.target.value)}
                 disabled={isLoading}
               />
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 The main topic you want to create a study guide about
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="title" className="text-gray-700 dark:text-gray-300">
+              <Label htmlFor="title">
                 Guide Title *
               </Label>
               <Input
@@ -152,13 +152,13 @@ const GuideCreator: React.FC = () => {
                 onChange={(e) => setTitle(e.target.value)}
                 disabled={isLoading}
               />
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 A descriptive title for your study guide
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="customization" className="text-gray-700 dark:text-gray-300">
+              <Label htmlFor="customization">
                 Additional Requirements (Optional)
               </Label>
               <Textarea
@@ -169,7 +169,7 @@ const GuideCreator: React.FC = () => {
                 disabled={isLoading}
                 rows={3}
               />
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 Specify any particular focus, difficulty level, or special requirements
               </p>
             </div>
