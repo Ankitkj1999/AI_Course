@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { QuizService } from '@/services/quizService';
 import { getQuizURL, getQuizShareURL } from '@/utils/config';
-import { InlineLoader } from '@/components/ui/loading';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -14,12 +13,11 @@ import {
   Share2,
   Trash2,
   Plus,
-  Clock,
-  BarChart3,
   Loader2,
   Globe,
   Lock,
-  GitFork
+  GitFork,
+  ExternalLink
 } from 'lucide-react';
 import type { Quiz } from '@/types/quiz';
 import {
@@ -34,6 +32,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface QuizListProps {
   userId: string;
@@ -90,7 +89,6 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
   const handleShare = (quiz: Quiz) => {
     const shareUrls = getQuizShareURL(quiz);
     
-    // Simple implementation - copy to clipboard
     navigator.clipboard.writeText(shareUrls.copy).then(() => {
       toast({
         title: "Link Copied!",
@@ -116,7 +114,6 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
           description: `"${title}" has been deleted successfully.`,
         });
 
-        // Refresh the list
         fetchQuizzes();
       } else {
         toast({
@@ -138,13 +135,53 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
   };
 
   if (loading) {
-    return <InlineLoader message="Loading your quizzes..." />;
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">My Quizzes</h1>
+            <p className="text-muted-foreground mt-1">Manage your AI-generated quizzes</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Skeleton className="w-[140px] h-9" />
+            <Skeleton className="w-32 h-10" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="overflow-hidden border-border/40 bg-card/50">
+              <CardHeader className="pb-3 pt-4">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <Skeleton className="w-3/4 h-5 mb-2" />
+                    <Skeleton className="w-1/2 h-3" />
+                  </div>
+                  <Skeleton className="h-5 w-5 rounded" />
+                </div>
+              </CardHeader>
+              <CardContent className="pb-3 pt-0">
+                <div className="flex items-center gap-3 mb-4">
+                  <Skeleton className="w-12 h-3" />
+                  <Skeleton className="w-16 h-3" />
+                </div>
+                <Skeleton className="w-16 h-5 rounded-full" />
+              </CardContent>
+              <CardFooter className="pt-0 flex gap-2">
+                <Skeleton className="flex-1 h-8" />
+                <Skeleton className="h-8 w-8" />
+                <Skeleton className="h-8 w-8" />
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (error) {
     return (
       <div className="text-center py-8">
-        <p className="text-red-600 mb-4">{error}</p>
+        <p className="text-destructive mb-4">{error}</p>
         <Button onClick={fetchQuizzes}>
           Retry
         </Button>
@@ -157,8 +194,8 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Quizzes</h1>
-          <p className="text-gray-600 dark:text-gray-300">Manage your AI-generated quizzes</p>
+          <h1 className="text-2xl font-bold tracking-tight">My Quizzes</h1>
+          <p className="text-muted-foreground mt-1">Manage your AI-generated quizzes</p>
         </div>
         <div className="flex items-center gap-3">
           <Select value={visibilityFilter} onValueChange={(value: 'all' | 'public' | 'private') => setVisibilityFilter(value)}>
@@ -192,144 +229,140 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
 
       {/* Quiz Grid */}
       {quizzes.length === 0 ? (
-        <div className="text-center py-12">
-          <Brain className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No quizzes yet</h3>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">Create your first AI-generated quiz to get started</p>
-          <Button asChild>
-            <Link to="/dashboard/create-quiz">
-              <Plus className="w-5 h-5 mr-2" />
-              Create Your First Quiz
-            </Link>
-          </Button>
-        </div>
+        <Card className="text-center py-12">
+          <CardContent>
+            <Brain className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-semibold mb-2">No quizzes yet</h3>
+            <p className="text-muted-foreground mb-6">Create your first AI-generated quiz to get started</p>
+            <Button asChild>
+              <Link to="/dashboard/create-quiz">
+                <Plus className="w-5 h-5 mr-2" />
+                Create Your First Quiz
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {quizzes.map((quiz) => {
             const quizURL = getQuizURL(quiz);
             const isDeleting = deletingQuiz === quiz.slug;
 
             return (
-              <Card key={quiz._id} className="bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow flex flex-col">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white line-clamp-2">
-                        {quiz.title}
-                      </CardTitle>
-                      <CardDescription className="text-gray-600 dark:text-gray-300 mt-1">
-                        {quiz.keyword}
-                      </CardDescription>
+              <Card key={quiz._id} className="group bg-card/50 backdrop-blur-sm border-border/40 flex flex-col">
+                <CardHeader className="pb-3 pt-4">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-lg leading-tight line-clamp-2">{quiz.title}</CardTitle>
+                      <CardDescription className="text-xs mt-1 line-clamp-1">{quiz.keyword}</CardDescription>
                     </div>
-                    <div className="flex flex-col gap-2 ml-2">
-                      <Badge variant="secondary">
-                        {quiz.format}
-                      </Badge>
-                      {quiz.isPublic !== undefined && (
-                        <Badge 
-                          variant={quiz.isPublic ? 'default' : 'outline'} 
-                          className={`text-xs px-2 py-1 ${quiz.isPublic ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}`}
-                        >
-                          {quiz.isPublic ? (
-                            <>
-                              <Globe className="h-3 w-3 mr-1" />
-                              Public
-                            </>
-                          ) : (
-                            <>
-                              <Lock className="h-3 w-3 mr-1" />
-                              Private
-                            </>
-                          )}
-                        </Badge>
-                      )}
-                    </div>
+                    <Brain className="h-5 w-5 text-primary shrink-0" />
                   </div>
                 </CardHeader>
-                <CardContent className="flex-1 flex flex-col justify-between">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                <CardContent className="pb-3 pt-0 flex-1 flex flex-col">
+                  <div className="space-y-3 flex-1">
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       <div className="flex items-center gap-1">
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-3.5 w-3.5" />
                         {quiz.viewCount}
                       </div>
+                      <span>•</span>
                       <div className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
+                        <Calendar className="h-3.5 w-3.5" />
                         {formatDate(quiz.createdAt)}
                       </div>
                       {quiz.isPublic && quiz.forkCount > 0 && (
-                        <div className="flex items-center gap-1">
-                          <GitFork className="h-4 w-4" />
-                          {quiz.forkCount}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="text-xs text-gray-400 dark:text-gray-500 font-mono bg-gray-50 dark:bg-gray-700 p-2 rounded">
-                      {quiz.slug ? (
-                        <span className="text-green-600 dark:text-green-400">✓ SEO: {quizURL}</span>
-                      ) : (
-                        <span className="text-orange-600 dark:text-orange-400">⚠ ID: {quizURL}</span>
+                        <>
+                          <span>•</span>
+                          <div className="flex items-center gap-1">
+                            <GitFork className="h-3.5 w-3.5" />
+                            {quiz.forkCount}
+                          </div>
+                        </>
                       )}
                     </div>
                   </div>
 
-                  <div className="flex gap-2 justify-between items-center">
-                    <Button asChild variant="default" size="sm" className="flex-1">
-                      <Link to={quizURL}>
-                        Take Quiz
-                      </Link>
-                    </Button>
-
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => handleShare(quiz)}
-                        className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white transition-colors"
-                        title="Share quiz"
+                  <div className="flex items-center gap-2 mt-4">
+                    <Badge variant="secondary" className="text-xs">
+                      {quiz.format}
+                    </Badge>
+                    {quiz.isPublic !== undefined && (
+                      <Badge 
+                        variant={quiz.isPublic ? 'success' : 'secondary'} 
+                        className="text-xs"
                       >
-                        <Share2 className="w-4 h-4" />
-                      </button>
-
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={isDeleting}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
-                          >
-                            {isDeleting ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent className="bg-white dark:bg-gray-800">
-                          <AlertDialogHeader>
-                            <AlertDialogTitle className="text-gray-900 dark:text-white">
-                              Delete Quiz
-                            </AlertDialogTitle>
-                            <AlertDialogDescription className="text-gray-600 dark:text-gray-300">
-                              Are you sure you want to delete "{quiz.title}"? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel className="dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
-                              Cancel
-                            </AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDelete(quiz.slug, quiz.title)}
-                              className="bg-red-600 hover:bg-red-700 text-white"
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
+                        {quiz.isPublic ? (
+                          <>
+                            <Globe className="h-3 w-3 mr-1" />
+                            Public
+                          </>
+                        ) : (
+                          <>
+                            <Lock className="h-3 w-3 mr-1" />
+                            Private
+                          </>
+                        )}
+                      </Badge>
+                    )}
                   </div>
                 </CardContent>
+                <CardFooter className="pt-0 flex gap-2">
+                  <Button asChild variant="outline" size="sm" className="flex-1 bg-accent/10 border border-border/50 group-hover:bg-accent transition-colors text-xs h-8">
+                    <Link to={quizURL}>
+                      <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                      Take Quiz
+                    </Link>
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleShare(quiz)}
+                    className="h-8 w-8 p-0"
+                    title="Share quiz"
+                  >
+                    <Share2 className="h-3.5 w-3.5" />
+                  </Button>
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isDeleting}
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        {isDeleting ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          Delete Quiz
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete "{quiz.title}"? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>
+                          Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDelete(quiz.slug, quiz.title)}
+                          className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </CardFooter>
               </Card>
             );
           })}
@@ -348,7 +381,7 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
             Previous
           </Button>
 
-          <span className="px-4 py-2 text-sm text-gray-600">
+          <span className="px-4 py-2 text-sm text-muted-foreground">
             Page {currentPage} of {totalPages}
           </span>
 

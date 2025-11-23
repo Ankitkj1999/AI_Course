@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -30,6 +30,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const FlashcardList: React.FC = () => {
   const [flashcards, setFlashcards] = useState<FlashcardSet[]>([]);
@@ -90,7 +91,6 @@ const FlashcardList: React.FC = () => {
           description: `"${title}" has been deleted successfully.`,
         });
         
-        // Refresh the list
         fetchFlashcards(currentPage);
       }
     } catch (error: unknown) {
@@ -113,20 +113,51 @@ const FlashcardList: React.FC = () => {
     });
   };
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'easy': return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
-      case 'medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400';
-      case 'hard': return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              My Flashcards
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Manage and study your flashcard collections
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Skeleton className="w-[140px] h-9" />
+            <Skeleton className="w-32 h-10" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="overflow-hidden border-border/40 bg-card/50">
+              <CardHeader className="pb-3 pt-4">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <Skeleton className="w-3/4 h-5 mb-2" />
+                    <Skeleton className="w-1/2 h-3" />
+                  </div>
+                  <Skeleton className="h-5 w-5 rounded" />
+                </div>
+              </CardHeader>
+              <CardContent className="pb-3 pt-0">
+                <div className="flex items-center gap-3 mb-4">
+                  <Skeleton className="w-12 h-3" />
+                  <Skeleton className="w-16 h-3" />
+                </div>
+                <div className="flex gap-2">
+                  <Skeleton className="w-16 h-5 rounded-full" />
+                  <Skeleton className="w-16 h-5 rounded-full" />
+                </div>
+              </CardContent>
+              <CardFooter className="pt-0 flex gap-2">
+                <Skeleton className="flex-1 h-8" />
+                <Skeleton className="h-8 w-8" />
+              </CardFooter>
+            </Card>
+          ))}
         </div>
       </div>
     );
@@ -136,29 +167,51 @@ const FlashcardList: React.FC = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+          <h1 className="text-2xl font-bold tracking-tight">
             My Flashcards
           </h1>
-          <p className="text-gray-600 dark:text-gray-300">
+          <p className="text-muted-foreground mt-1">
             Manage and study your flashcard collections
           </p>
         </div>
-        <Button asChild>
-          <Link to="/dashboard/create-flashcard">
-            <Plus className="mr-2 h-4 w-4" />
-            Create New
-          </Link>
-        </Button>
+        <div className="flex items-center gap-3">
+          <Select value={visibilityFilter} onValueChange={(value: 'all' | 'public' | 'private') => setVisibilityFilter(value)}>
+            <SelectTrigger className="w-[140px] h-9">
+              <SelectValue placeholder="Filter" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Flashcards</SelectItem>
+              <SelectItem value="public">
+                <div className="flex items-center">
+                  <Globe className="h-3.5 w-3.5 mr-2" />
+                  Public
+                </div>
+              </SelectItem>
+              <SelectItem value="private">
+                <div className="flex items-center">
+                  <Lock className="h-3.5 w-3.5 mr-2" />
+                  Private
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <Button asChild>
+            <Link to="/dashboard/create-flashcard">
+              <Plus className="mr-2 h-4 w-4" />
+              Create New
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {flashcards.length === 0 ? (
-        <Card className="bg-white dark:bg-gray-800 text-center py-12">
+        <Card className="text-center py-12">
           <CardContent>
-            <Brain className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            <Brain className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-semibold mb-2">
               No flashcards yet
             </h3>
-            <p className="text-gray-600 dark:text-gray-300 mb-6">
+            <p className="text-muted-foreground mb-6">
               Create your first flashcard set to start learning!
             </p>
             <Button asChild>
@@ -171,109 +224,112 @@ const FlashcardList: React.FC = () => {
         </Card>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {flashcards.map((flashcard) => (
-              <Card key={flashcard._id} className="bg-white dark:bg-gray-800 hover:shadow-lg transition-all duration-200 border-border/40 hover:border-primary/30 group bg-card/50 backdrop-blur-sm flex flex-col min-h-[280px]">
-                <CardHeader className="pb-3 pt-6">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white line-clamp-2">
-                        {flashcard.title}
-                      </CardTitle>
-                      <CardDescription className="text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">
-                        {flashcard.keyword}
-                      </CardDescription>
+              <Card key={flashcard._id} className="group bg-card/50 backdrop-blur-sm border-border/40 flex flex-col">
+                <CardHeader className="pb-3 pt-4">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-lg leading-tight line-clamp-2">{flashcard.title}</CardTitle>
+                      <CardDescription className="text-xs mt-1 line-clamp-1">{flashcard.keyword}</CardDescription>
                     </div>
-                    <div className="flex flex-col gap-2 ml-2 shrink-0">
-                      <Badge variant="secondary">
-                        {flashcard.cardCount || flashcard.cards.length} cards
-                      </Badge>
-                      {flashcard.isPublic !== undefined && (
-                        <Badge 
-                          variant={flashcard.isPublic ? 'default' : 'outline'} 
-                          className={`text-xs px-2 py-1 ${flashcard.isPublic ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}`}
-                        >
-                          {flashcard.isPublic ? (
-                            <>
-                              <Globe className="h-3 w-3 mr-1" />
-                              Public
-                            </>
-                          ) : (
-                            <>
-                              <Lock className="h-3 w-3 mr-1" />
-                              Private
-                            </>
-                          )}
-                        </Badge>
+                    <Brain className="h-5 w-5 text-primary shrink-0" />
+                  </div>
+                </CardHeader>
+                <CardContent className="pb-3 pt-0 flex-1 flex flex-col">
+                  <div className="space-y-3 flex-1">
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Eye className="h-3.5 w-3.5" />
+                        {flashcard.viewCount}
+                      </div>
+                      <span>•</span>
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3.5 w-3.5" />
+                        {formatDate(flashcard.createdAt)}
+                      </div>
+                      {flashcard.isPublic && flashcard.forkCount > 0 && (
+                        <>
+                          <span>•</span>
+                          <div className="flex items-center gap-1">
+                            <GitFork className="h-3.5 w-3.5" />
+                            {flashcard.forkCount}
+                          </div>
+                        </>
                       )}
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent className="flex-1 flex flex-col justify-between px-6 pb-6 pt-0">
-                  <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mb-4">
-                    <div className="flex items-center gap-1">
-                      <Eye className="h-4 w-4" />
-                      {flashcard.viewCount}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
-                      {formatDate(flashcard.createdAt)}
-                    </div>
-                    {flashcard.isPublic && flashcard.forkCount > 0 && (
-                      <div className="flex items-center gap-1">
-                        <GitFork className="h-4 w-4" />
-                        {flashcard.forkCount}
-                      </div>
+
+                  <div className="flex items-center gap-2 mt-4">
+                    <Badge variant="secondary" className="text-xs">
+                      {flashcard.cardCount || flashcard.cards.length} cards
+                    </Badge>
+                    {flashcard.isPublic !== undefined && (
+                      <Badge 
+                        variant={flashcard.isPublic ? 'success' : 'secondary'} 
+                        className="text-xs"
+                      >
+                        {flashcard.isPublic ? (
+                          <>
+                            <Globe className="h-3 w-3 mr-1" />
+                            Public
+                          </>
+                        ) : (
+                          <>
+                            <Lock className="h-3 w-3 mr-1" />
+                            Private
+                          </>
+                        )}
+                      </Badge>
                     )}
                   </div>
-
-                  <div className="flex gap-2 justify-between items-center mt-auto">
-                    <Button asChild variant="default" size="sm" className="flex-1">
-                      <Link to={`/dashboard/flashcard/${flashcard.slug}`}>
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Study
-                      </Link>
-                    </Button>
-
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={isDeleting === flashcard.slug}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 shrink-0"
-                        >
-                          {isDeleting === flashcard.slug ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent className="bg-white dark:bg-gray-800">
-                        <AlertDialogHeader>
-                          <AlertDialogTitle className="text-gray-900 dark:text-white">
-                            Delete Flashcard Set
-                          </AlertDialogTitle>
-                          <AlertDialogDescription className="text-gray-600 dark:text-gray-300">
-                            Are you sure you want to delete "{flashcard.title}"? This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel className="dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
-                            Cancel
-                          </AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDelete(flashcard.slug, flashcard.title)}
-                            className="bg-red-600 hover:bg-red-700 text-white"
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
                 </CardContent>
+                <CardFooter className="pt-0 flex gap-2">
+                  <Button asChild variant="outline" size="sm" className="flex-1 bg-accent/10 border border-border/50 group-hover:bg-accent transition-colors text-xs h-8">
+                    <Link to={`/dashboard/flashcard/${flashcard.slug}`}>
+                      <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                      Study
+                    </Link>
+                  </Button>
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isDeleting === flashcard.slug}
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        {isDeleting === flashcard.slug ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          Delete Flashcard Set
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete "{flashcard.title}"? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>
+                          Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDelete(flashcard.slug, flashcard.title)}
+                          className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </CardFooter>
               </Card>
             ))}
           </div>
@@ -284,18 +340,16 @@ const FlashcardList: React.FC = () => {
                 variant="outline"
                 onClick={() => fetchFlashcards(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600"
               >
                 Previous
               </Button>
-              <span className="flex items-center px-4 text-gray-600 dark:text-gray-300">
+              <span className="flex items-center px-4 text-muted-foreground">
                 Page {currentPage} of {totalPages}
               </span>
               <Button
                 variant="outline"
                 onClick={() => fetchFlashcards(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600"
               >
                 Next
               </Button>
