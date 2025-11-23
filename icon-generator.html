@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Icon Generator</title>
+</head>
+<body>
+  <h1>Icon Generator from SVG Logo</h1>
+  <p>Background Color:</p>
+  <input type="radio" id="white" name="bg" value="white" checked>
+  <label for="white">White</label>
+  <input type="radio" id="black" name="bg" value="black">
+  <label for="black">Black</label>
+  <br><br>
+  <button onclick="generateFavicon()">Generate favicon.ico</button>
+  <button onclick="generateAppleTouch()">Generate apple-touch-icon.png</button>
+  <button onclick="generatePWA192()">Generate pwa-192x192.png</button>
+  <button onclick="generatePWA512()">Generate pwa-512x512.png</button>
+  <canvas id="canvas" style="display:none;"></canvas>
+  <script>
+    // SVG string
+    const svgString = `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <path d="M 100 10
+               C 115 60, 140 85, 190 100
+               C 140 115, 115 140, 100 190
+               C 85 140, 60 115, 10 100
+               C 60 85, 85 60, 100 10 Z"
+            fill="black"/>
+    </svg>`;
+
+    // Function to get background color
+    function getBgColor() {
+      return document.querySelector('input[name="bg"]:checked').value;
+    }
+
+    // Function to get SVG with adjusted fill
+    function getSvgString(bg) {
+      if (bg === 'black') {
+        return svgString.replace('fill="black"', 'fill="white"');
+      }
+      return svgString;
+    }
+
+    // Function to create image from SVG
+    function createSvgImage(svgStr, callback) {
+      const img = new Image();
+      img.onload = () => callback(img);
+      img.src = 'data:image/svg+xml;base64,' + btoa(svgStr);
+    }
+
+    // Function to draw rounded rect
+    function drawRoundedRect(ctx, x, y, w, h, r, color) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(x, y, w, h, r);
+      } else {
+        // Fallback for older browsers
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+      }
+      ctx.fill();
+    }
+
+    // Function to draw icon on canvas
+    function drawIcon(canvas, size, bgColor) {
+      return new Promise((resolve) => {
+        const ctx = canvas.getContext('2d');
+        canvas.width = size;
+        canvas.height = size;
+        const r = size * 0.1; // 10% radius
+        drawRoundedRect(ctx, 0, 0, size, size, r, bgColor);
+        const svgStr = getSvgString(bgColor);
+        createSvgImage(svgStr, (img) => {
+          const iconSize = size * 0.8; // 80% of canvas
+          const x = (size - iconSize) / 2;
+          const y = (size - iconSize) / 2;
+          ctx.drawImage(img, x, y, iconSize, iconSize);
+          resolve();
+        });
+      });
+    }
+
+    // Download function
+    function download(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Generate PNG
+    async function generatePNG(size, filename) {
+      const canvas = document.getElementById('canvas');
+      const bg = getBgColor();
+      await drawIcon(canvas, size, bg);
+      canvas.toBlob((blob) => {
+        download(blob, filename);
+      }, 'image/png');
+    }
+
+    // Generate favicon as PNG (since ICO generation in browser is complex)
+    function generateFavicon() {
+      generatePNG(32, 'favicon.ico'); // Note: This generates a PNG, rename to .ico if needed or use online converter
+    }
+
+    // Specific generators
+    function generateAppleTouch() {
+      generatePNG(180, 'apple-touch-icon.png');
+    }
+
+    function generatePWA192() {
+      generatePNG(192, 'pwa-192x192.png');
+    }
+
+    function generatePWA512() {
+      generatePNG(512, 'pwa-512x512.png');
+    }
+  </script>
+</body>
+</html>

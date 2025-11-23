@@ -200,7 +200,7 @@ const Signup = () => {
                       {googleLoginEnabled && (
                         <div className="relative w-full">
                           {/* Hidden Google Login button */}
-                          <div className="absolute opacity-0 pointer-events-none w-full">
+                          <div id="google-login-wrapper" className="absolute opacity-0 pointer-events-none w-full">
                             <GoogleLogin
                               theme='outline'
                               type='standard'
@@ -252,10 +252,16 @@ const Signup = () => {
                             disabled={isLoading}
                             className="w-full"
                             onClick={() => {
+                              console.log('Google button clicked in Signup');
+                              console.log('googleClientId:', googleClientId);
                               // Trigger the hidden Google button
-                              const googleBtn = document.querySelector('div[role="button"][aria-labelledby]') as HTMLElement;
+                              const googleBtn = document.querySelector('#google-login-wrapper div[role="button"]') as HTMLElement;
+                              console.log('googleBtn found:', googleBtn);
                               if (googleBtn) {
+                                console.log('Clicking googleBtn');
                                 googleBtn.click();
+                              } else {
+                                console.log('googleBtn not found');
                               }
                             }}
                           >
