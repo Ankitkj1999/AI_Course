@@ -29,6 +29,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Skeleton } from '@/components/ui/skeleton';
 
 const GuideList: React.FC = () => {
   const [guides, setGuides] = useState<Guide[]>([]);
@@ -107,8 +108,51 @@ const GuideList: React.FC = () => {
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              My Study Guides
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Manage and access your comprehensive study guides
+            </p>
+          </div>
+          <Button asChild>
+            <Link to="/dashboard/create-guide">
+              <Plus className="mr-2 h-4 w-4" />
+              Create New
+            </Link>
+          </Button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="overflow-hidden border-border/40 bg-card/50">
+              <CardHeader className="pb-3 pt-4">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <Skeleton className="w-3/4 h-5 mb-2" />
+                    <Skeleton className="w-1/2 h-3" />
+                  </div>
+                  <Skeleton className="h-5 w-5 rounded" />
+                </div>
+              </CardHeader>
+              <CardContent className="pb-3 pt-0">
+                <div className="flex flex-wrap gap-1 mb-3">
+                  <Skeleton className="w-16 h-5 rounded-full" />
+                  <Skeleton className="w-20 h-5 rounded-full" />
+                </div>
+                <div className="flex items-center gap-3 mb-4">
+                  <Skeleton className="w-12 h-3" />
+                  <Skeleton className="w-16 h-3" />
+                </div>
+                <Skeleton className="w-16 h-5 rounded-full" />
+              </CardContent>
+              <CardFooter className="pt-0 flex gap-2">
+                <Skeleton className="flex-1 h-8" />
+                <Skeleton className="h-8 w-8" />
+              </CardFooter>
+            </Card>
+          ))}
         </div>
       </div>
     );
