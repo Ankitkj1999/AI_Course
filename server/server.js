@@ -3848,6 +3848,11 @@ app.get('/api/blogs/public', async (req, res) => {
 // Serve static files from the dist directory
 app.use(express.static('dist'));
 
+// Catch-all handler: send back index.html for client-side routing
+app.get('*', (req, res) => {
+    res.sendFile('index.html', { root: 'dist' });
+});
+
 //LISTEN
 // Error handling middleware (must be last)
 app.use(errorHandler);
