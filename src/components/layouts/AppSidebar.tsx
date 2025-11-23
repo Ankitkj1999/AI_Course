@@ -36,6 +36,9 @@ import { NavSecondary } from '@/components/nav-secondary';
 import { NavUser } from '@/components/nav-user';
 import { NavQuickCreate } from '@/components/nav-quick-create';
 import { NavDevTools } from '@/components/nav-dev-tools';
+import { Button } from '@/components/ui/button';
+import { DownloadIcon } from '@radix-ui/react-icons';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface AppSidebarProps {
   isAuthenticated: boolean;
@@ -54,6 +57,26 @@ export const AppSidebar = ({
   isAdmin,
 }: AppSidebarProps) => {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
+  const [installPrompt, setInstallPrompt] = useState(null);
+
+  useEffect(() => {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault()
+      setInstallPrompt(e)
+    });
+  }, []);
+
+  const handleInstallClick = () => {
+    if (!installPrompt) return
+    installPrompt.prompt()
+    installPrompt.userChoice.then((choice) => {
+      if (choice.outcome === 'accepted') {
+        console.log('User accepted install')
+      }
+      setInstallPrompt(null)
+    })
+  }
 
 
   // Navigation data structure
@@ -208,13 +231,28 @@ export const AppSidebar = ({
       </SidebarContent>
 
       {isAuthenticated && (
-        <SidebarFooter className="border-t border-border/40">
-          <NavUser 
-            onLogout={Logout} 
-            userName={localStorage.getItem('mName') || 'User'} 
-            userEmail={localStorage.getItem('email') || ''}
-            userAvatar={localStorage.getItem('photo') || ''}
-          />
+        <SidebarFooter className="border-t border-border/40 p-4">
+          <div className="space-y-2">
+            {/* Install App Button */}
+            {installPrompt && (
+              <Button
+                onClick={handleInstallClick}
+                variant="outline"
+                size="sm"
+                className="w-full justify-start"
+              >
+                <DownloadIcon className="mr-2 h-4 w-4" />
+                {isMobile ? 'Install Mobile App' : 'Install Desktop App'}
+              </Button>
+            )}
+
+            <NavUser
+              onLogout={Logout}
+              userName={localStorage.getItem('mName') || 'User'}
+              userEmail={localStorage.getItem('email') || ''}
+              userAvatar={localStorage.getItem('photo') || ''}
+            />
+          </div>
         </SidebarFooter>
       )}
       <SidebarRail />
