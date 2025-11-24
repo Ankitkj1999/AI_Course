@@ -5007,8 +5007,29 @@ app.post('/api/document/upload', requireAuth, uploadSingle, async (req, res) => 
 
         logger.info(`Document upload started: ${file.originalname} by user ${userId}`);
 
-        // Trigger document extraction
-        const result = await extractDocument(file.path, file.mimetype, file.originalname, userId);
+        // Determine file type from mimetype
+        let fileType;
+        if (file.mimetype === 'application/pdf') {
+            fileType = 'pdf';
+        } else if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+            fileType = 'docx';
+        } else if (file.mimetype === 'text/plain') {
+            fileType = 'txt';
+        } else {
+            return res.status(400).json({
+                success: false,
+                message: 'Unsupported file type'
+            });
+        }
+
+        // Trigger document extraction with options object
+        const result = await extractDocument({
+            filePath: file.path,
+            fileType: fileType,
+            userId: userId,
+            filename: file.originalname,
+            fileSize: file.size
+        });
 
         res.json({
             success: true,
@@ -5051,8 +5072,13 @@ app.post('/api/document/extract-url', requireAuth, async (req, res) => {
 
         logger.info(`URL extraction started: ${url} by user ${userId}`);
 
-        // Trigger URL extraction
-        const result = await extractFromURL(url, userId);
+        // Trigger URL extraction using extractDocument
+        const result = await extractDocument({
+            url: url,
+            fileType: 'url',
+            userId: userId,
+            filename: new URL(url).hostname
+        });
 
         res.json({
             success: true,
