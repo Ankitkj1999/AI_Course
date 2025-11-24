@@ -30,6 +30,8 @@ import ProviderSelector from "@/components/ProviderSelector";
 import { useProviderPreferences, setGlobalProviderPreferences } from "@/hooks/useProviderPreferences";
 import { useVisibilityPreference } from "@/hooks/useVisibilityPreference";
 import { CreationVisibilityToggle } from "@/components/CreationVisibilityToggle";
+import DocumentBasedCreation from "@/components/DocumentBasedCreation";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const courseFormSchema = z.object({
   topic: z.string().min(3, { message: "Topic must be at least 3 characters" }),
@@ -313,9 +315,16 @@ const GenerateCourse = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  <FormField
+            <Tabs defaultValue="traditional" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="traditional">From Topic</TabsTrigger>
+                <TabsTrigger value="document">From Document</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="traditional">
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                    <FormField
                     control={form.control}
                     name="topic"
                     render={({ field }) => (
@@ -562,8 +571,20 @@ const GenerateCourse = () => {
                     <Sparkles className="mr-2 h-4 w-4" />
                     Generate Course
                   </Button>
-              </form>
-            </Form>
+                  </form>
+                </Form>
+              </TabsContent>
+              
+              <TabsContent value="document">
+                <DocumentBasedCreation 
+                  onGenerateContent={(contentType, source) => {
+                    // Handle document-based course generation
+                    console.log('Generate', contentType, 'from', source);
+                    // TODO: Implement document-based course generation
+                  }}
+                />
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       </div>

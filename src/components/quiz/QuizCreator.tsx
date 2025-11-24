@@ -13,6 +13,8 @@ import ProviderSelector from '@/components/ProviderSelector';
 import { useProviderPreferences } from '@/hooks/useProviderPreferences';
 import { useVisibilityPreference } from '@/hooks/useVisibilityPreference';
 import { CreationVisibilityToggle } from '@/components/CreationVisibilityToggle';
+import DocumentBasedCreation from '@/components/DocumentBasedCreation';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface QuizCreatorProps {
   userId: string;
@@ -111,7 +113,14 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <Tabs defaultValue="traditional" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="traditional">From Topic</TabsTrigger>
+              <TabsTrigger value="document">From Document</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="traditional">
+              <form onSubmit={handleSubmit} className="space-y-6">
             {/* Provider Selection */}
             <ProviderSelector
               selectedProvider={selectedProvider}
@@ -230,7 +239,18 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
                 </>
               )}
             </Button>
-          </form>
+              </form>
+            </TabsContent>
+            
+            <TabsContent value="document">
+              <DocumentBasedCreation 
+                onGenerateContent={(contentType, source) => {
+                  console.log('Generate', contentType, 'from', source);
+                  // TODO: Implement document-based quiz generation
+                }}
+              />
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>

@@ -134,21 +134,25 @@ export const AppSidebar = ({
       title: 'Generate Course',
       url: '/dashboard/generate-course',
       icon: Sparkles,
+      tooltip: 'Create courses from topics or upload documents (PDF, DOCX, TXT) to generate content',
     },
     {
       title: 'Create Quiz',
       url: '/dashboard/create-quiz',
       icon: Brain,
+      tooltip: 'Generate quizzes from keywords or extract from documents and web URLs',
     },
     {
       title: 'Create Flashcards',
       url: '/dashboard/create-flashcard',
       icon: CreditCard,
+      tooltip: 'Create flashcards from topics or upload documents for automatic generation',
     },
     {
       title: 'Create Guide',
       url: '/dashboard/create-guide',
       icon: FileText,
+      tooltip: 'Build comprehensive guides from keywords or document content',
     },
   ];
 

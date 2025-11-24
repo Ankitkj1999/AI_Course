@@ -21,11 +21,17 @@ import logger from './utils/logger.js';
 import errorHandler from './middleware/errorHandler.js';
 import { generateSlug, generateUniqueSlug, extractTitleFromContent } from './utils/slugify.js';
 import Settings from './models/Settings.js';
+import DocumentProcessing from './models/DocumentProcessing.js';
 import settingsCache from './services/settingsCache.js';
 import { generateCourseSEO } from './utils/seo.js';
 import { getServerPort, getServerURL, validateConfig } from './utils/config.js';
 import llmService from './services/llmService.js';
 import { safeGet, safeGetArray, safeGetFirst } from './utils/safeAccess.js';
+import { uploadSingle, uploadConfig } from './middleware/uploadMiddleware.js';
+import { extractDocument, extractFromURL } from './services/documentExtraction.js';
+import { cleanupFile } from './services/fileCleanup.js';
+import fs from 'fs/promises';
+import path from 'path';
 
 // NOTE: Google Generative AI SDK is still available for future advanced features
 // such as Gemini Live APIs, Deep Research, Google Search integration, etc.
@@ -188,7 +194,13 @@ const courseSchema = new mongoose.Schema({
         originalOwnerName: { type: String, default: null },
         forkedAt: { type: Date, default: null }
     },
-    ownerName: { type: String, default: '' }
+    ownerName: { type: String, default: '' },
+    // Document source tracking
+    sourceDocument: {
+        processingId: { type: mongoose.Schema.Types.ObjectId, ref: 'DocumentProcessing' },
+        filename: { type: String },
+        extractedFrom: { type: String, enum: ['pdf', 'docx', 'txt', 'url'] }
+    }
 });
 
 // Create compound index for efficient public content queries
@@ -270,7 +282,13 @@ const quizSchema = new mongoose.Schema({
         originalOwnerName: { type: String, default: null },
         forkedAt: { type: Date, default: null }
     },
-    ownerName: { type: String, default: '' }
+    ownerName: { type: String, default: '' },
+    // Document source tracking
+    sourceDocument: {
+        processingId: { type: mongoose.Schema.Types.ObjectId, ref: 'DocumentProcessing' },
+        filename: { type: String },
+        extractedFrom: { type: String, enum: ['pdf', 'docx', 'txt', 'url'] }
+    }
 });
 
 // Create compound index for efficient public content queries
@@ -306,7 +324,13 @@ const flashcardSchema = new mongoose.Schema({
         originalOwnerName: { type: String, default: null },
         forkedAt: { type: Date, default: null }
     },
-    ownerName: { type: String, default: '' }
+    ownerName: { type: String, default: '' },
+    // Document source tracking
+    sourceDocument: {
+        processingId: { type: mongoose.Schema.Types.ObjectId, ref: 'DocumentProcessing' },
+        filename: { type: String },
+        extractedFrom: { type: String, enum: ['pdf', 'docx', 'txt', 'url'] }
+    }
 });
 
 // Create compound index for efficient public content queries
@@ -339,7 +363,13 @@ const guideSchema = new mongoose.Schema({
         originalOwnerName: { type: String, default: null },
         forkedAt: { type: Date, default: null }
     },
-    ownerName: { type: String, default: '' }
+    ownerName: { type: String, default: '' },
+    // Document source tracking
+    sourceDocument: {
+        processingId: { type: mongoose.Schema.Types.ObjectId, ref: 'DocumentProcessing' },
+        filename: { type: String },
+        extractedFrom: { type: String, enum: ['pdf', 'docx', 'txt', 'url'] }
+    }
 });
 
 // Create compound index for efficient public content queries
@@ -3878,6 +3908,61 @@ const startServer = async () => {
                 logger.error(`❌ Settings cache initialization failed:`, error);
             }
             
+            // Initialize scheduled cleanup job for stale files
+            const CLEANUP_INTERVAL = 15 * 60 * 1000; // 15 minutes
+            const FILE_MAX_AGE = 60 * 60 * 1000; // 1 hour
+            
+            const cleanupStaleFiles = async () => {
+                try {
+                    logger.info('Running scheduled cleanup job for stale files');
+                    
+                    const tempDir = uploadConfig.tempDir;
+                    const now = Date.now();
+                    
+                    // Read all files in temp directory
+                    const files = await fs.readdir(tempDir);
+                    
+                    let deletedCount = 0;
+                    let errorCount = 0;
+                    
+                    for (const file of files) {
+                        try {
+                            const filePath = path.join(tempDir, file);
+                            const stats = await fs.stat(filePath);
+                            
+                            // Check if file is older than 1 hour
+                            const fileAge = now - stats.mtimeMs;
+                            
+                            if (fileAge > FILE_MAX_AGE) {
+                                const success = await cleanupFile(filePath);
+                                if (success) {
+                                    deletedCount++;
+                                    logger.info(`Deleted stale file: ${file} (age: ${Math.round(fileAge / 1000 / 60)} minutes)`);
+                                } else {
+                                    errorCount++;
+                                }
+                            }
+                        } catch (error) {
+                            logger.error(`Error processing file ${file} during cleanup: ${error.message}`);
+                            errorCount++;
+                        }
+                    }
+                    
+                    if (deletedCount > 0 || errorCount > 0) {
+                        logger.info(`Cleanup job completed: ${deletedCount} files deleted, ${errorCount} errors`);
+                    }
+                } catch (error) {
+                    logger.error(`Scheduled cleanup job failed: ${error.message}`);
+                }
+            };
+            
+            // Run cleanup immediately on startup
+            cleanupStaleFiles();
+            
+            // Schedule cleanup to run every 15 minutes
+            setInterval(cleanupStaleFiles, CLEANUP_INTERVAL);
+            logger.info(`🧹 Scheduled cleanup job initialized (runs every ${CLEANUP_INTERVAL / 1000 / 60} minutes)`);
+            
             // Update environment variables for other parts of the app
             process.env.ACTUAL_PORT = serverPort.toString();
             process.env.ACTUAL_SERVER_URL = serverURL;
@@ -4887,6 +4972,826 @@ app.delete('/api/guide/:slug', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to delete guide'
+        });
+    }
+});
+
+// DOCUMENT PROCESSING ENDPOINTS
+
+// Upload and extract document
+app.post('/api/document/upload', requireAuth, uploadSingle, async (req, res) => {
+    try {
+        // Check if file was uploaded
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: 'No file uploaded'
+            });
+        }
+
+        const userId = req.user._id.toString();
+        const file = req.file;
+
+        logger.info(`Document upload started: ${file.originalname} by user ${userId}`);
+
+        // Trigger document extraction
+        const result = await extractDocument(file.path, file.mimetype, file.originalname, userId);
+
+        res.json({
+            success: true,
+            processingId: result.processingId,
+            status: result.status,
+            message: 'Document uploaded successfully and extraction started'
+        });
+
+    } catch (error) {
+        logger.error(`Document upload error: ${error.message}`, { error: error.stack });
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to upload document'
+        });
+    }
+});
+
+// Extract text from URL
+app.post('/api/document/extract-url', requireAuth, async (req, res) => {
+    try {
+        const { url } = req.body;
+        const userId = req.user._id.toString();
+
+        // Validate URL
+        if (!url) {
+            return res.status(400).json({
+                success: false,
+                message: 'URL is required'
+            });
+        }
+
+        // Validate URL format (HTTP/HTTPS only)
+        const urlPattern = /^https?:\/\/.+/i;
+        if (!urlPattern.test(url)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid URL format. Only HTTP and HTTPS URLs are supported'
+            });
+        }
+
+        logger.info(`URL extraction started: ${url} by user ${userId}`);
+
+        // Trigger URL extraction
+        const result = await extractFromURL(url, userId);
+
+        res.json({
+            success: true,
+            processingId: result.processingId,
+            status: result.status,
+            message: 'URL extraction started'
+        });
+
+    } catch (error) {
+        logger.error(`URL extraction error: ${error.message}`, { error: error.stack });
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to extract from URL'
+        });
+    }
+});
+
+// Get document processing status
+app.get('/api/document/status/:id', requireAuth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user._id.toString();
+
+        // Find the processing record
+        const processing = await DocumentProcessing.findById(id);
+
+        if (!processing) {
+            return res.status(404).json({
+                success: false,
+                message: 'Processing record not found'
+            });
+        }
+
+        // Verify user ownership
+        if (processing.userId !== userId) {
+            return res.status(403).json({
+                success: false,
+                message: 'Unauthorized access to processing record'
+            });
+        }
+
+        res.json({
+            success: true,
+            status: processing.extractionStatus,
+            preview: processing.extractedTextPreview,
+            textLength: processing.extractedTextLength,
+            errorMessage: processing.errorMessage,
+            filename: processing.filename,
+            fileType: processing.fileType
+        });
+
+    } catch (error) {
+        logger.error(`Get status error: ${error.message}`, { error: error.stack });
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get processing status'
+        });
+    }
+});
+
+// Get full extracted text
+app.get('/api/document/text/:id', requireAuth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user._id.toString();
+
+        // Find the processing record
+        const processing = await DocumentProcessing.findById(id);
+
+        if (!processing) {
+            return res.status(404).json({
+                success: false,
+                message: 'Processing record not found'
+            });
+        }
+
+        // Verify user ownership
+        if (processing.userId !== userId) {
+            return res.status(403).json({
+                success: false,
+                message: 'Unauthorized access to processing record'
+            });
+        }
+
+        // Check if extraction is complete
+        if (processing.extractionStatus !== 'completed') {
+            return res.status(400).json({
+                success: false,
+                message: `Extraction not complete. Current status: ${processing.extractionStatus}`
+            });
+        }
+
+        res.json({
+            success: true,
+            text: processing.extractedText,
+            filename: processing.filename,
+            fileType: processing.fileType
+        });
+
+    } catch (error) {
+        logger.error(`Get text error: ${error.message}`, { error: error.stack });
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get extracted text'
+        });
+    }
+});
+
+// CONTENT GENERATION FROM DOCUMENTS
+
+// Generate course from document
+app.post('/api/course/from-document', requireAuth, async (req, res) => {
+    const { processingId, text, mainTopic, type, lang, isPublic } = req.body;
+    const userId = req.user._id.toString();
+    
+    const requestId = logger.llm.generateRequestId();
+    const startTime = Date.now();
+    
+    logger.llm.logRequestStart(requestId, '/api/course/from-document', {
+        hasProcessingId: !!processingId,
+        hasDirectText: !!text,
+        mainTopic,
+        type
+    }, userId, 'document-generation');
+
+    try {
+        let extractedText = text;
+        let sourceDocument = null;
+
+        // If processing ID provided, retrieve extracted text
+        if (processingId && !text) {
+            const processing = await DocumentProcessing.findById(processingId);
+            
+            if (!processing) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Processing record not found'
+                });
+            }
+
+            // Verify user ownership
+            if (processing.userId !== userId) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Unauthorized access to processing record'
+                });
+            }
+
+            // Check if extraction is complete
+            if (processing.extractionStatus !== 'completed') {
+                return res.status(400).json({
+                    success: false,
+                    message: `Extraction not complete. Current status: ${processing.extractionStatus}`
+                });
+            }
+
+            extractedText = processing.extractedText;
+            sourceDocument = {
+                processingId: processing._id,
+                filename: processing.filename,
+                extractedFrom: processing.fileType
+            };
+        }
+
+        if (!extractedText) {
+            return res.status(400).json({
+                success: false,
+                message: 'Either processingId or text must be provided'
+            });
+        }
+
+        // Generate course content using LLM
+        const prompt = `Create a comprehensive educational course based on the following content. 
+Structure it with clear sections, explanations, and examples.
+
+Topic: ${mainTopic || 'General'}
+Type: ${type || 'Course'}
+
+Content:
+${extractedText}
+
+Please create a well-structured course with:
+- Clear section headings
+- Detailed explanations
+- Practical examples where applicable
+- Summary points
+
+Format the response in markdown.`;
+
+        const result = await llmService.generateContent(prompt, {
+            temperature: 0.7
+        });
+
+        if (!result.success) {
+            logger.llm.logRequestError(requestId, '/api/course/from-document', new Error(result.error.message), {
+                userId,
+                mainTopic,
+                hasSourceDocument: !!sourceDocument
+            });
+            
+            return res.status(500).json({
+                success: false,
+                message: result.error.message || 'Failed to generate course'
+            });
+        }
+
+        const courseContent = result.data.content;
+
+        // Get course photo from Unsplash
+        let photo = null;
+        try {
+            const unsplashResult = await unsplash.search.getPhotos({
+                query: mainTopic || 'education',
+                page: 1,
+                perPage: 1,
+                orientation: 'landscape',
+            });
+
+            const firstPhoto = safeGetFirst(unsplashResult, 'response.results');
+            photo = safeGet(firstPhoto, 'urls.regular', null);
+        } catch (unsplashError) {
+            logger.warn(`Unsplash API error for course from document: ${unsplashError.message}`);
+        }
+
+        // Generate slug
+        const title = extractTitleFromContent(courseContent, mainTopic || 'Course');
+        const slug = await generateUniqueSlug(title, Course);
+
+        // Create course
+        const newCourse = new Course({
+            user: userId,
+            content: courseContent,
+            type: type || 'Course',
+            mainTopic: mainTopic || 'General',
+            slug,
+            photo,
+            isPublic: isPublic ?? false,
+            sourceDocument
+        });
+
+        await newCourse.save();
+
+        // Save language
+        if (lang) {
+            const newLang = new LangSchema({ course: newCourse._id, lang });
+            await newLang.save();
+        }
+
+        const duration = Date.now() - startTime;
+        
+        logger.llm.logRequestSuccess(requestId, '/api/course/from-document', {
+            courseId: newCourse._id,
+            slug,
+            hasPhoto: !!photo,
+            hasSourceDocument: !!sourceDocument,
+            provider: result.data.provider
+        }, duration, userId, result.data.provider);
+
+        res.json({
+            success: true,
+            message: 'Course created successfully from document',
+            courseId: newCourse._id,
+            slug,
+            isPublic: newCourse.isPublic
+        });
+
+    } catch (error) {
+        logger.llm.logRequestError(requestId, '/api/course/from-document', error, {
+            userId,
+            mainTopic,
+            hasProcessingId: !!processingId,
+            hasText: !!text
+        });
+        
+        res.status(500).json({
+            success: false,
+            message: 'Failed to create course from document'
+        });
+    }
+});
+
+// Generate quiz from document
+app.post('/api/quiz/from-document', requireAuth, async (req, res) => {
+    const { processingId, text, title, keyword } = req.body;
+    const userId = req.user._id.toString();
+    
+    const requestId = logger.llm.generateRequestId();
+    const startTime = Date.now();
+    
+    logger.llm.logRequestStart(requestId, '/api/quiz/from-document', {
+        hasProcessingId: !!processingId,
+        hasDirectText: !!text,
+        title,
+        keyword
+    }, userId, 'document-generation');
+
+    try {
+        let extractedText = text;
+        let sourceDocument = null;
+
+        // If processing ID provided, retrieve extracted text
+        if (processingId && !text) {
+            const processing = await DocumentProcessing.findById(processingId);
+            
+            if (!processing) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Processing record not found'
+                });
+            }
+
+            if (processing.userId !== userId) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Unauthorized access to processing record'
+                });
+            }
+
+            if (processing.extractionStatus !== 'completed') {
+                return res.status(400).json({
+                    success: false,
+                    message: `Extraction not complete. Current status: ${processing.extractionStatus}`
+                });
+            }
+
+            extractedText = processing.extractedText;
+            sourceDocument = {
+                processingId: processing._id,
+                filename: processing.filename,
+                extractedFrom: processing.fileType
+            };
+        }
+
+        if (!extractedText) {
+            return res.status(400).json({
+                success: false,
+                message: 'Either processingId or text must be provided'
+            });
+        }
+
+        // Check if content is sufficient for quiz generation
+        if (extractedText.length < 100) {
+            return res.status(422).json({
+                success: false,
+                message: 'Insufficient content for quiz generation. Please provide more detailed content.'
+            });
+        }
+
+        // Generate quiz using LLM
+        const prompt = `Create a multiple-choice quiz based on the following content.
+
+Title: ${title || 'Quiz'}
+Topic: ${keyword || 'General'}
+
+Content:
+${extractedText}
+
+Generate 5-10 multiple-choice questions with:
+- Clear question text
+- 4 answer options (A, B, C, D)
+- One correct answer
+- Brief explanation for the correct answer
+
+Format as JSON array with structure:
+[
+  {
+    "question": "Question text",
+    "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
+    "correctAnswer": "A",
+    "explanation": "Why this is correct"
+  }
+]`;
+
+        const result = await llmService.generateContent(prompt, {
+            temperature: 0.7
+        });
+
+        if (!result.success) {
+            logger.llm.logRequestError(requestId, '/api/quiz/from-document', new Error(result.error.message), {
+                userId,
+                title,
+                hasSourceDocument: !!sourceDocument
+            });
+            
+            return res.status(500).json({
+                success: false,
+                message: result.error.message || 'Failed to generate quiz'
+            });
+        }
+
+        // Parse quiz content
+        let quizData;
+        try {
+            const content = result.data.content;
+            // Try to extract JSON from markdown code blocks if present
+            const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || content.match(/\[[\s\S]*\]/);
+            const jsonString = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : content;
+            quizData = JSON.parse(jsonString);
+        } catch (parseError) {
+            logger.error(`Failed to parse quiz JSON: ${parseError.message}`);
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to parse generated quiz content'
+            });
+        }
+
+        // Generate slug
+        const slug = await generateUniqueSlug(title || 'Quiz', Quiz);
+
+        // Create quiz
+        const newQuiz = new Quiz({
+            userId,
+            title: title || 'Quiz',
+            keyword: keyword || 'General',
+            slug,
+            questions: quizData,
+            sourceDocument
+        });
+
+        await newQuiz.save();
+
+        const duration = Date.now() - startTime;
+        
+        logger.llm.logRequestSuccess(requestId, '/api/quiz/from-document', {
+            quizId: newQuiz._id,
+            slug,
+            questionCount: quizData.length,
+            hasSourceDocument: !!sourceDocument,
+            provider: result.data.provider
+        }, duration, userId, result.data.provider);
+
+        res.json({
+            success: true,
+            message: 'Quiz created successfully from document',
+            quizId: newQuiz._id,
+            slug
+        });
+
+    } catch (error) {
+        logger.llm.logRequestError(requestId, '/api/quiz/from-document', error, {
+            userId,
+            title,
+            hasProcessingId: !!processingId,
+            hasText: !!text
+        });
+        
+        res.status(500).json({
+            success: false,
+            message: 'Failed to create quiz from document'
+        });
+    }
+});
+
+// Generate flashcards from document
+app.post('/api/flashcard/from-document', requireAuth, async (req, res) => {
+    const { processingId, text, title, keyword } = req.body;
+    const userId = req.user._id.toString();
+    
+    const requestId = logger.llm.generateRequestId();
+    const startTime = Date.now();
+    
+    logger.llm.logRequestStart(requestId, '/api/flashcard/from-document', {
+        hasProcessingId: !!processingId,
+        hasDirectText: !!text,
+        title,
+        keyword
+    }, userId, 'document-generation');
+
+    try {
+        let extractedText = text;
+        let sourceDocument = null;
+
+        // If processing ID provided, retrieve extracted text
+        if (processingId && !text) {
+            const processing = await DocumentProcessing.findById(processingId);
+            
+            if (!processing) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Processing record not found'
+                });
+            }
+
+            if (processing.userId !== userId) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Unauthorized access to processing record'
+                });
+            }
+
+            if (processing.extractionStatus !== 'completed') {
+                return res.status(400).json({
+                    success: false,
+                    message: `Extraction not complete. Current status: ${processing.extractionStatus}`
+                });
+            }
+
+            extractedText = processing.extractedText;
+            sourceDocument = {
+                processingId: processing._id,
+                filename: processing.filename,
+                extractedFrom: processing.fileType
+            };
+        }
+
+        if (!extractedText) {
+            return res.status(400).json({
+                success: false,
+                message: 'Either processingId or text must be provided'
+            });
+        }
+
+        // Generate flashcards using LLM
+        const prompt = `Create educational flashcards based on the following content.
+
+Title: ${title || 'Flashcards'}
+Topic: ${keyword || 'General'}
+
+Content:
+${extractedText}
+
+Generate 10-15 flashcard pairs with:
+- Front: A clear question or term
+- Back: A concise answer or definition
+
+Focus on key concepts, important terms, and essential information.
+
+Format as JSON array with structure:
+[
+  {
+    "front": "Question or term",
+    "back": "Answer or definition"
+  }
+]`;
+
+        const result = await llmService.generateContent(prompt, {
+            temperature: 0.7
+        });
+
+        if (!result.success) {
+            logger.llm.logRequestError(requestId, '/api/flashcard/from-document', new Error(result.error.message), {
+                userId,
+                title,
+                hasSourceDocument: !!sourceDocument
+            });
+            
+            return res.status(500).json({
+                success: false,
+                message: result.error.message || 'Failed to generate flashcards'
+            });
+        }
+
+        // Parse flashcard content
+        let flashcardData;
+        try {
+            const content = result.data.content;
+            const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || content.match(/\[[\s\S]*\]/);
+            const jsonString = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : content;
+            flashcardData = JSON.parse(jsonString);
+        } catch (parseError) {
+            logger.error(`Failed to parse flashcard JSON: ${parseError.message}`);
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to parse generated flashcard content'
+            });
+        }
+
+        // Generate slug
+        const slug = await generateUniqueSlug(title || 'Flashcards', Flashcard);
+
+        // Create flashcard set
+        const newFlashcard = new Flashcard({
+            userId,
+            title: title || 'Flashcards',
+            keyword: keyword || 'General',
+            slug,
+            cards: flashcardData,
+            sourceDocument
+        });
+
+        await newFlashcard.save();
+
+        const duration = Date.now() - startTime;
+        
+        logger.llm.logRequestSuccess(requestId, '/api/flashcard/from-document', {
+            flashcardId: newFlashcard._id,
+            slug,
+            cardCount: flashcardData.length,
+            hasSourceDocument: !!sourceDocument,
+            provider: result.data.provider
+        }, duration, userId, result.data.provider);
+
+        res.json({
+            success: true,
+            message: 'Flashcards created successfully from document',
+            flashcardId: newFlashcard._id,
+            slug
+        });
+
+    } catch (error) {
+        logger.llm.logRequestError(requestId, '/api/flashcard/from-document', error, {
+            userId,
+            title,
+            hasProcessingId: !!processingId,
+            hasText: !!text
+        });
+        
+        res.status(500).json({
+            success: false,
+            message: 'Failed to create flashcards from document'
+        });
+    }
+});
+
+// Generate guide from document
+app.post('/api/guide/from-document', requireAuth, async (req, res) => {
+    const { processingId, text, title, keyword } = req.body;
+    const userId = req.user._id.toString();
+    
+    const requestId = logger.llm.generateRequestId();
+    const startTime = Date.now();
+    
+    logger.llm.logRequestStart(requestId, '/api/guide/from-document', {
+        hasProcessingId: !!processingId,
+        hasDirectText: !!text,
+        title,
+        keyword
+    }, userId, 'document-generation');
+
+    try {
+        let extractedText = text;
+        let sourceDocument = null;
+
+        // If processing ID provided, retrieve extracted text
+        if (processingId && !text) {
+            const processing = await DocumentProcessing.findById(processingId);
+            
+            if (!processing) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Processing record not found'
+                });
+            }
+
+            if (processing.userId !== userId) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Unauthorized access to processing record'
+                });
+            }
+
+            if (processing.extractionStatus !== 'completed') {
+                return res.status(400).json({
+                    success: false,
+                    message: `Extraction not complete. Current status: ${processing.extractionStatus}`
+                });
+            }
+
+            extractedText = processing.extractedText;
+            sourceDocument = {
+                processingId: processing._id,
+                filename: processing.filename,
+                extractedFrom: processing.fileType
+            };
+        }
+
+        if (!extractedText) {
+            return res.status(400).json({
+                success: false,
+                message: 'Either processingId or text must be provided'
+            });
+        }
+
+        // Generate guide using LLM
+        const prompt = `Create a comprehensive study guide based on the following content.
+
+Title: ${title || 'Study Guide'}
+Topic: ${keyword || 'General'}
+
+Content:
+${extractedText}
+
+Create a well-structured guide with:
+- Overview/Introduction
+- Key concepts and definitions
+- Detailed explanations
+- Important points to remember
+- Summary
+
+Format the response in markdown with clear headings and sections.`;
+
+        const result = await llmService.generateContent(prompt, {
+            temperature: 0.7
+        });
+
+        if (!result.success) {
+            logger.llm.logRequestError(requestId, '/api/guide/from-document', new Error(result.error.message), {
+                userId,
+                title,
+                hasSourceDocument: !!sourceDocument
+            });
+            
+            return res.status(500).json({
+                success: false,
+                message: result.error.message || 'Failed to generate guide'
+            });
+        }
+
+        const guideContent = result.data.content;
+
+        // Generate slug
+        const slug = await generateUniqueSlug(title || 'Guide', Guide);
+
+        // Create guide
+        const newGuide = new Guide({
+            userId,
+            title: title || 'Guide',
+            keyword: keyword || 'General',
+            slug,
+            content: guideContent,
+            sourceDocument
+        });
+
+        await newGuide.save();
+
+        const duration = Date.now() - startTime;
+        
+        logger.llm.logRequestSuccess(requestId, '/api/guide/from-document', {
+            guideId: newGuide._id,
+            slug,
+            hasSourceDocument: !!sourceDocument,
+            provider: result.data.provider
+        }, duration, userId, result.data.provider);
+
+        res.json({
+            success: true,
+            message: 'Guide created successfully from document',
+            guideId: newGuide._id,
+            slug
+        });
+
+    } catch (error) {
+        logger.llm.logRequestError(requestId, '/api/guide/from-document', error, {
+            userId,
+            title,
+            hasProcessingId: !!processingId,
+            hasText: !!text
+        });
+        
+        res.status(500).json({
+            success: false,
+            message: 'Failed to create guide from document'
         });
     }
 });

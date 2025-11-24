@@ -348,3 +348,310 @@ WEBSITE_URL=https://yourdomain.com
 - [Deployment Guide](deployment.md) - Deploy to production
 - [API Reference](api-reference.md) - Integrate with API
 - [Troubleshooting](troubleshooting.md) - Fix common issues
+
+##
+ Document Upload Configuration
+
+### File Upload Settings
+
+Configure document upload and processing behavior:
+
+```env
+# Document Upload Directory
+UPLOAD_TEMP_DIR=/path/to/temp/uploads
+# Default: server/uploads/temp
+# Directory where uploaded files are temporarily stored
+
+# Maximum File Size (in bytes)
+MAX_FILE_SIZE=10485760
+# Default: 10485760 (10MB)
+# Maximum size for uploaded documents
+# Adjust based on your server capacity
+
+# URL Fetch Timeout (in milliseconds)
+URL_FETCH_TIMEOUT=10000
+# Default: 10000 (10 seconds)
+# Maximum time to wait for URL content extraction
+
+# Cleanup Interval (in milliseconds)
+CLEANUP_INTERVAL=900000
+# Default: 900000 (15 minutes)
+# How often to run the stale file cleanup job
+
+# File Max Age (in milliseconds)
+FILE_MAX_AGE=3600000
+# Default: 3600000 (1 hour)
+# Maximum age of files before automatic cleanup
+```
+
+### Storage Configuration
+
+**Temporary File Storage:**
+- Location: `server/uploads/temp/` (configurable via `UPLOAD_TEMP_DIR`)
+- Retention: Files deleted 5 minutes after extraction
+- Cleanup: Automatic cleanup every 15 minutes for files older than 1 hour
+- Permissions: Ensure directory is writable by the server process
+
+**Database Storage:**
+- Extracted text stored in MongoDB
+- TTL index: Records expire after 1 hour
+- Collection: `documentprocessings`
+
+### File Type Configuration
+
+Supported MIME types (configured in `server/middleware/uploadMiddleware.js`):
+```javascript
+const allowedMimeTypes = [
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain'
+];
+
+const allowedExtensions = ['.pdf', '.docx', '.txt'];
+```
+
+To add support for additional file types:
+1. Update `allowedMimeTypes` array
+2. Update `allowedExtensions` array
+3. Add corresponding extraction logic in `documentExtraction.js`
+
+### Text Splitting Configuration
+
+Configure how large documents are split (in `server/services/textSplitter.js`):
+
+```javascript
+const splitter = new RecursiveCharacterTextSplitter({
+  chunkSize: 4000,        // Characters per chunk
+  chunkOverlap: 200,      // Overlap between chunks
+  separators: ["\n\n", "\n", " ", ""]
+});
+```
+
+**Recommended Settings:**
+- **chunkSize**: 4000 (optimal for most LLMs)
+- **chunkOverlap**: 200 (maintains context between chunks)
+- Adjust based on your LLM's token limits
+
+### URL Extraction Configuration
+
+Configure web content extraction behavior:
+
+**Timeout Settings:**
+```javascript
+const URL_FETCH_TIMEOUT = process.env.URL_FETCH_TIMEOUT || 10000;
+```
+
+**Content Cleaning Patterns:**
+Modify in `documentExtraction.js` to customize what gets removed:
+```javascript
+// Remove navigation patterns
+.replace(/(?:nav|menu|navigation|sidebar)[\s\S]*?(?=\n\n|\n[A-Z]|$)/gi, '')
+// Remove footer patterns
+.replace(/(?:footer|copyright|©|all rights reserved)[\s\S]*?$/gi, '')
+// Remove advertisements
+.replace(/(?:advertisement|sponsored|ad\s*:|promoted)/gi, '')
+```
+
+## Performance Tuning
+
+### Upload Performance
+
+**Optimize for Large Files:**
+```env
+# Increase if handling larger documents
+MAX_FILE_SIZE=20971520  # 20MB
+
+# Adjust Node.js memory if needed
+NODE_OPTIONS=--max-old-space-size=4096
+```
+
+**Concurrent Uploads:**
+- Multer handles one file at a time per request
+- Multiple users can upload simultaneously
+- Monitor server resources under load
+
+### Extraction Performance
+
+**PDF Processing:**
+- CPU-intensive for large PDFs
+- Consider implementing queue system for high traffic
+- Monitor memory usage
+
+**URL Fetching:**
+- Network-dependent
+- Timeout prevents hanging requests
+- Consider caching frequently accessed URLs
+
+### Cleanup Performance
+
+**Scheduled Cleanup:**
+```javascript
+// Adjust cleanup frequency
+const CLEANUP_INTERVAL = 15 * 60 * 1000; // 15 minutes
+
+// Adjust file age threshold
+const FILE_MAX_AGE = 60 * 60 * 1000; // 1 hour
+```
+
+**Database Cleanup:**
+- MongoDB TTL index handles automatic expiration
+- No manual intervention required
+- Monitor index performance
+
+## Security Configuration
+
+### File Upload Security
+
+**Validation:**
+- MIME type checking
+- File extension validation
+- File size limits
+- Authentication required
+
+**Storage Security:**
+- Temporary storage isolated from application code
+- Automatic cleanup prevents accumulation
+- No permanent storage of user documents
+
+**Access Control:**
+- User ID association for all uploads
+- Ownership verification on retrieval
+- Cookie-based authentication
+
+### URL Extraction Security
+
+**Protocol Restrictions:**
+```javascript
+// Only allow HTTP/HTTPS
+const urlPattern = /^https?:\/\/.+/i;
+```
+
+**Timeout Protection:**
+- Prevents hanging on slow/unresponsive URLs
+- Configurable timeout duration
+- Automatic cleanup on timeout
+
+**Content Sanitization:**
+- HTML parsing with Cheerio
+- Removal of scripts and dangerous content
+- Text-only extraction
+
+## Monitoring & Logging
+
+### File Upload Logging
+
+Monitor these log entries:
+```
+info: Starting PDF extraction for file: /path/to/file.pdf
+info: PDF extraction completed. Extracted 5432 characters
+info: Scheduled cleanup for file: /path/to/file.pdf
+info: Successfully deleted file: /path/to/file.pdf
+```
+
+### Error Logging
+
+Watch for these errors:
+```
+error: PDF extraction failed for /path/to/file.pdf: File is corrupted
+error: URL extraction failed for https://example.com: Request timed out
+error: Failed to delete file /path/to/file.pdf: Permission denied
+```
+
+### Cleanup Logging
+
+Monitor cleanup operations:
+```
+info: Running scheduled cleanup job for stale files
+info: Deleted stale file: test.pdf (age: 75 minutes)
+info: Cleanup job completed: 3 files deleted, 0 errors
+```
+
+## Troubleshooting Configuration
+
+### Common Issues
+
+**"ENOENT: no such file or directory"**
+- Ensure `UPLOAD_TEMP_DIR` exists
+- Check directory permissions
+- Create directory: `mkdir -p server/uploads/temp`
+
+**"File size limit exceeded"**
+- Increase `MAX_FILE_SIZE` in environment
+- Check reverse proxy limits (nginx, Apache)
+- Verify client-side limits match server
+
+**"URL fetch timeout"**
+- Increase `URL_FETCH_TIMEOUT`
+- Check network connectivity
+- Verify URL is accessible
+
+**"Permission denied" on cleanup**
+- Check file ownership
+- Verify server process permissions
+- Ensure directory is writable
+
+### Health Checks
+
+Monitor these metrics:
+- Upload success rate
+- Extraction processing time
+- Cleanup job execution
+- Disk space usage in temp directory
+- Database record count
+
+### Recommended Monitoring
+
+Set up alerts for:
+- Failed uploads (> 5% failure rate)
+- Slow extractions (> 30 seconds)
+- Cleanup failures
+- Disk space (> 80% full)
+- Database record accumulation
+
+## Production Recommendations
+
+### Resource Allocation
+
+**Disk Space:**
+- Minimum: 1GB for temp storage
+- Recommended: 5GB+ for high traffic
+- Monitor and alert at 80% capacity
+
+**Memory:**
+- Minimum: 512MB for document processing
+- Recommended: 2GB+ for concurrent processing
+- Increase for large PDF processing
+
+**CPU:**
+- PDF extraction is CPU-intensive
+- Consider dedicated processing workers
+- Scale horizontally for high load
+
+### Backup & Recovery
+
+**No Backup Needed:**
+- Temporary files are disposable
+- Extracted text expires automatically
+- No permanent data to backup
+
+**Configuration Backup:**
+- Backup environment variables
+- Document custom configurations
+- Version control middleware changes
+
+### Scaling Considerations
+
+**Horizontal Scaling:**
+- Shared temp directory (NFS, S3)
+- Distributed file cleanup
+- Load balancer configuration
+
+**Vertical Scaling:**
+- Increase memory for larger files
+- More CPU for faster processing
+- SSD for faster I/O
+
+**Queue System:**
+- Consider Redis/Bull for job queue
+- Async processing for large files
+- Better resource management

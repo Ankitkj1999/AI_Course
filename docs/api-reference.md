@@ -513,3 +513,330 @@ Delete a quiz by slug.
 - Check [Troubleshooting Guide](troubleshooting.md)
 - Review [Backend Guide](backend-guide.md)
 - Create an issue on GitHub
+
+## D
+ocument-Based Content Generation
+
+The document-based content generation feature allows users to create educational content from various document sources including PDF files, DOCX documents, plain text, and web URLs.
+
+### Upload Document
+Upload a document file for text extraction.
+
+**Endpoint:** `POST /api/document/upload`
+
+**Authentication:** Required (Cookie-based)
+
+**Content-Type:** `multipart/form-data`
+
+**Request Body:**
+- `document`: File (PDF, DOCX, or TXT)
+- Maximum file size: 10MB
+- Allowed types: `application/pdf`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `text/plain`
+
+**Response:**
+```json
+{
+  "success": true,
+  "processingId": "64f8a1b2c3d4e5f6g7h8i9j0",
+  "status": "processing",
+  "message": "Document uploaded successfully"
+}
+```
+
+**Error Responses:**
+- `400`: Invalid file type or missing file
+- `413`: File size exceeds 10MB limit
+- `401`: Authentication required
+- `500`: Server error during upload
+
+---
+
+### Extract from URL
+Extract text content from a web URL.
+
+**Endpoint:** `POST /api/document/extract-url`
+
+**Authentication:** Required (Cookie-based)
+
+**Request Body:**
+```json
+{
+  "url": "https://example.com/article"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "processingId": "64f8a1b2c3d4e5f6g7h8i9j0",
+  "status": "processing",
+  "message": "URL extraction started"
+}
+```
+
+**Error Responses:**
+- `400`: Invalid URL format (must be HTTP/HTTPS)
+- `401`: Authentication required
+- `408`: URL fetch timeout (after 10 seconds)
+- `500`: Server error during extraction
+
+---
+
+### Get Processing Status
+Check the status of document processing.
+
+**Endpoint:** `GET /api/document/status/:id`
+
+**Authentication:** Required (Cookie-based)
+
+**URL Parameters:**
+- `id`: Processing ID returned from upload or extract-url
+
+**Response:**
+```json
+{
+  "success": true,
+  "status": "completed",
+  "preview": "First 500 characters of extracted text...",
+  "textLength": 5432
+}
+```
+
+**Status Values:**
+- `pending`: Processing not yet started
+- `processing`: Currently extracting text
+- `completed`: Extraction successful
+- `failed`: Extraction failed
+
+**Error Response (Failed):**
+```json
+{
+  "success": true,
+  "status": "failed",
+  "errorMessage": "Failed to extract text from PDF: File is corrupted"
+}
+```
+
+---
+
+### Get Full Extracted Text
+Retrieve the complete extracted text from a processed document.
+
+**Endpoint:** `GET /api/document/text/:id`
+
+**Authentication:** Required (Cookie-based)
+
+**URL Parameters:**
+- `id`: Processing ID
+
+**Response:**
+```json
+{
+  "success": true,
+  "text": "Complete extracted text content...",
+  "textLength": 5432
+}
+```
+
+**Error Responses:**
+- `404`: Processing record not found
+- `403`: Unauthorized access (not the document owner)
+- `401`: Authentication required
+
+---
+
+### Generate Course from Document
+Create a course from extracted document text.
+
+**Endpoint:** `POST /api/course/from-document`
+
+**Authentication:** Required (Cookie-based)
+
+**Request Body:**
+```json
+{
+  "processingId": "64f8a1b2c3d4e5f6g7h8i9j0",
+  "title": "Course Title",
+  "provider": "gemini",
+  "model": "gemini-1.5-flash",
+  "isPublic": true
+}
+```
+
+**Alternative (Direct Text):**
+```json
+{
+  "text": "Direct text content for course generation...",
+  "title": "Course Title",
+  "provider": "gemini",
+  "model": "gemini-1.5-flash",
+  "isPublic": true
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "course": { /* Course object */ },
+  "slug": "course-title",
+  "message": "Course created successfully"
+}
+```
+
+---
+
+### Generate Quiz from Document
+Create a quiz from extracted document text.
+
+**Endpoint:** `POST /api/quiz/from-document`
+
+**Authentication:** Required (Cookie-based)
+
+**Request Body:**
+```json
+{
+  "processingId": "64f8a1b2c3d4e5f6g7h8i9j0",
+  "title": "Quiz Title",
+  "provider": "gemini",
+  "model": "gemini-1.5-flash",
+  "isPublic": true
+}
+```
+
+**Alternative (Direct Text):**
+```json
+{
+  "text": "Direct text content for quiz generation...",
+  "title": "Quiz Title",
+  "provider": "gemini",
+  "model": "gemini-1.5-flash",
+  "isPublic": true
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "quiz": { /* Quiz object */ },
+  "slug": "quiz-title",
+  "message": "Quiz created successfully"
+}
+```
+
+**Error Responses:**
+- `422`: Insufficient content for quiz generation
+- `404`: Processing record not found
+- `401`: Authentication required
+
+---
+
+### Generate Flashcards from Document
+Create flashcards from extracted document text.
+
+**Endpoint:** `POST /api/flashcard/from-document`
+
+**Authentication:** Required (Cookie-based)
+
+**Request Body:**
+```json
+{
+  "processingId": "64f8a1b2c3d4e5f6g7h8i9j0",
+  "title": "Flashcard Set Title",
+  "provider": "gemini",
+  "model": "gemini-1.5-flash",
+  "isPublic": true
+}
+```
+
+**Alternative (Direct Text):**
+```json
+{
+  "text": "Direct text content for flashcard generation...",
+  "title": "Flashcard Set Title",
+  "provider": "gemini",
+  "model": "gemini-1.5-flash",
+  "isPublic": true
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "flashcards": { /* Flashcard set object */ },
+  "slug": "flashcard-set-title",
+  "message": "Flashcards created successfully"
+}
+```
+
+---
+
+### Generate Guide from Document
+Create a guide from extracted document text.
+
+**Endpoint:** `POST /api/guide/from-document`
+
+**Authentication:** Required (Cookie-based)
+
+**Request Body:**
+```json
+{
+  "processingId": "64f8a1b2c3d4e5f6g7h8i9j0",
+  "title": "Guide Title",
+  "provider": "gemini",
+  "model": "gemini-1.5-flash",
+  "isPublic": true
+}
+```
+
+**Alternative (Direct Text):**
+```json
+{
+  "text": "Direct text content for guide generation...",
+  "title": "Guide Title",
+  "provider": "gemini",
+  "model": "gemini-1.5-flash",
+  "isPublic": true
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "guide": { /* Guide object */ },
+  "slug": "guide-title",
+  "message": "Guide created successfully"
+}
+```
+
+---
+
+## Document Processing Notes
+
+### Supported File Formats
+- **PDF**: `.pdf` files (text extraction only, no OCR)
+- **DOCX**: `.docx` Microsoft Word documents
+- **TXT**: `.txt` plain text files
+- **URLs**: HTTP/HTTPS web pages
+
+### File Size Limits
+- Maximum upload size: 10MB
+- Text input limit: 50,000 characters
+
+### Processing Timeouts
+- URL extraction timeout: 10 seconds
+- Document processing is asynchronous - poll `/api/document/status/:id` for completion
+
+### Data Retention
+- Uploaded files are deleted 5 minutes after successful extraction
+- Files older than 1 hour are automatically cleaned up
+- Database records expire after 1 hour (MongoDB TTL index)
+
+### Content Cleaning
+- Web content extraction removes navigation, ads, and footer elements
+- PDF extraction filters out non-text elements (images, objects)
+- DOCX extraction preserves paragraph structure and table content
