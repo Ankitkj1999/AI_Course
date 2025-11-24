@@ -3875,12 +3875,25 @@ app.get('/api/blogs/public', async (req, res) => {
 });
 
 //STATIC FILE SERVING
-// Serve static files from the dist directory
-app.use(express.static('dist'));
+// Serve static files from the dist directory (in parent directory)
+app.use(express.static('../dist'));
 
 // Catch-all handler: send back index.html for client-side routing
-app.get('*', (req, res) => {
-    res.sendFile('index.html', { root: 'dist' });
+// Only for non-API routes
+app.get('*', (req, res, next) => {
+    // Skip API routes
+    if (req.path.startsWith('/api/')) {
+        return next();
+    }
+    
+    // Send index.html for client-side routing
+    res.sendFile('index.html', { root: '../dist' }, (err) => {
+        if (err) {
+            logger.error(`Error serving index.html: ${err.message}`);
+            // If dist doesn't exist (development), just send a simple response
+            res.status(404).send('Frontend not built. Run npm run build in the root directory.');
+        }
+    });
 });
 
 //LISTEN
