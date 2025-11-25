@@ -210,9 +210,59 @@ const FlashcardCreator: React.FC = () => {
             
             <TabsContent value="document">
               <DocumentBasedCreation 
-                onGenerateContent={(contentType, source) => {
-                  console.log('Generate', contentType, 'from', source);
-                  // TODO: Implement document-based flashcard generation
+                onGenerateContent={async (contentType, source) => {
+                  // Only handle flashcard generation on this page
+                  if (contentType !== 'flashcard') {
+                    toast({
+                      title: "Wrong Content Type",
+                      description: `Please use the Create ${contentType.charAt(0).toUpperCase() + contentType.slice(1)} page to generate ${contentType}s.`,
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+
+                  setIsLoading(true);
+
+                  try {
+                    const response = await flashcardService.createFlashcardSetFromDocument({
+                      userId: localStorage.getItem('uid') || '',
+                      processingId: source.processingId,
+                      text: source.text,
+                      title: title || 'Flashcards from Document',
+                      provider: selectedProvider,
+                      model: selectedModel,
+                      isPublic: isPublic
+                    });
+
+                    if (response.success) {
+                      const cardCount = response.cards?.length || 0;
+                      toast({
+                        title: "Flashcards Created!",
+                        description: `Successfully created ${cardCount} flashcards from the document.`,
+                      });
+                      navigate(`/flashcard/${response.slug}`);
+                    } else {
+                      throw new Error(response.message || 'Failed to create flashcards');
+                    }
+                  } catch (error: unknown) {
+                    console.error('Error creating flashcards from document:', error);
+
+                    let errorMessage = "Failed to create flashcards from document. Please try again.";
+                    if (error instanceof Error) {
+                      errorMessage = error.message;
+                    } else if (typeof error === 'object' && error !== null && 'response' in error) {
+                      const axiosError = error as { response?: { data?: { message?: string } } };
+                      errorMessage = axiosError.response?.data?.message || errorMessage;
+                    }
+
+                    toast({
+                      title: "Creation Failed",
+                      description: errorMessage,
+                      variant: "destructive",
+                    });
+                  } finally {
+                    setIsLoading(false);
+                  }
                 }}
               />
             </TabsContent>

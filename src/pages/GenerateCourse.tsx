@@ -372,7 +372,7 @@ const GenerateCourse = () => {
                             <span className="text-sm">{topic}</span>
                             <Button
                               type="button"
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               className="ml-auto h-7 w-7 p-0"
                               onClick={() => {
@@ -577,10 +577,50 @@ const GenerateCourse = () => {
               
               <TabsContent value="document">
                 <DocumentBasedCreation 
-                  onGenerateContent={(contentType, source) => {
-                    // Handle document-based course generation
-                    console.log('Generate', contentType, 'from', source);
-                    // TODO: Implement document-based course generation
+                  onGenerateContent={async (contentType, source) => {
+                    // Only handle course generation on this page
+                    if (contentType !== 'course') {
+                      toast({
+                        title: "Wrong Content Type",
+                        description: `Please use the Create ${contentType.charAt(0).toUpperCase() + contentType.slice(1)} page to generate ${contentType}s.`,
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+
+                    setIsLoading(true);
+                    try {
+                      const response = await axios.post(
+                        `${serverURL}/api/course/from-document`,
+                        {
+                          processingId: source.processingId,
+                          text: source.text,
+                          provider: selectedProvider,
+                          model: selectedModel,
+                          isPublic: isPublic
+                        },
+                        { withCredentials: true }
+                      );
+
+                      if (response.data.success) {
+                        // Set the generated course data and show preview
+                        setGeneratedTopics(response.data.course);
+                        setIsSubmitted(true);
+                        toast({
+                          title: "Course Generated!",
+                          description: "Your course has been created from the document.",
+                        });
+                      }
+                    } catch (error) {
+                      console.error('Document-based course generation error:', error);
+                      toast({
+                        title: "Generation Failed",
+                        description: (error as { response?: { data?: { message?: string } } }).response?.data?.message || "Failed to generate course from document",
+                        variant: "destructive",
+                      });
+                    } finally {
+                      setIsLoading(false);
+                    }
                   }}
                 />
               </TabsContent>

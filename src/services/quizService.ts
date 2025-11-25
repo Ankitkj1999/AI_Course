@@ -22,6 +22,20 @@ export class QuizService {
     return response.json();
   }
 
+  // Create quiz from document
+  static async createQuizFromDocument(data: {
+    userId: string;
+    processingId?: string;
+    text?: string;
+    title: string;
+    provider?: string;
+    model?: string;
+    isPublic?: boolean;
+  }): Promise<CreateQuizResponse> {
+    const response = await apiPost('/quiz/from-document', data);
+    return response.json();
+  }
+
   // Get user's quizzes with pagination
   static async getUserQuizzes(
     userId: string, 

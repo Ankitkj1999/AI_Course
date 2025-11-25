@@ -244,9 +244,58 @@ export const QuizCreator: React.FC<QuizCreatorProps> = ({ userId }) => {
             
             <TabsContent value="document">
               <DocumentBasedCreation 
-                onGenerateContent={(contentType, source) => {
-                  console.log('Generate', contentType, 'from', source);
-                  // TODO: Implement document-based quiz generation
+                onGenerateContent={async (contentType, source) => {
+                  // Only handle quiz generation on this page
+                  if (contentType !== 'quiz') {
+                    toast({
+                      title: "Wrong Content Type",
+                      description: `Please use the Create ${contentType.charAt(0).toUpperCase() + contentType.slice(1)} page to generate ${contentType}s.`,
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+
+                  setIsCreating(true);
+                  setError(null);
+
+                  try {
+                    const response = await QuizService.createQuizFromDocument({
+                      userId,
+                      processingId: source.processingId,
+                      text: source.text,
+                      title: formData.title || 'Quiz from Document',
+                      provider: selectedProvider,
+                      model: selectedModel,
+                      isPublic: isPublic
+                    });
+
+                    if (response.success) {
+                      const quizTitle = response.quiz?.title || formData.title || 'Quiz from Document';
+                      toast({
+                        title: "Quiz Created!",
+                        description: `"${quizTitle}" has been created from the document.`,
+                      });
+                      const quizURL = getQuizURL({ slug: response.quiz?.slug, _id: response.quiz?._id });
+                      navigate(quizURL);
+                    } else {
+                      setError('Failed to create quiz from document');
+                      toast({
+                        title: "Error",
+                        description: "Failed to create quiz from document",
+                        variant: "destructive",
+                      });
+                    }
+                  } catch (err) {
+                    setError('An error occurred while creating the quiz');
+                    toast({
+                      title: "Error",
+                      description: "An error occurred while creating the quiz from document",
+                      variant: "destructive",
+                    });
+                    console.error('Document-based quiz creation error:', err);
+                  } finally {
+                    setIsCreating(false);
+                  }
                 }}
               />
             </TabsContent>

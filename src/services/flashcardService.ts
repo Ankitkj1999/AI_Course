@@ -27,6 +27,22 @@ export const flashcardService = {
     return response.data;
   },
 
+  // Create flashcard set from document
+  async createFlashcardSetFromDocument(data: {
+    userId: string;
+    processingId?: string;
+    text?: string;
+    title: string;
+    provider?: string;
+    model?: string;
+    isPublic?: boolean;
+  }): Promise<CreateFlashcardResponse> {
+    const response = await axios.post(`${API_BASE}/flashcard/from-document`, data, {
+      withCredentials: true
+    });
+    return response.data;
+  },
+
   // Get user's flashcard sets with pagination
   async getUserFlashcards(userId: string, page: number = 1, limit: number = 10, visibility: 'all' | 'public' | 'private' = 'all'): Promise<FlashcardListResponse> {
     const response = await axios.get(`${API_BASE}/flashcards`, {

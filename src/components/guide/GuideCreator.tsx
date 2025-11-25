@@ -230,9 +230,69 @@ const GuideCreator: React.FC = () => {
             
             <TabsContent value="document">
               <DocumentBasedCreation 
-                onGenerateContent={(contentType, source) => {
-                  console.log('Generate', contentType, 'from', source);
-                  // TODO: Implement document-based guide generation
+                onGenerateContent={async (contentType, source) => {
+                  // Only handle guide generation on this page
+                  if (contentType !== 'guide') {
+                    toast({
+                      title: "Wrong Content Type",
+                      description: `Please use the Create ${contentType.charAt(0).toUpperCase() + contentType.slice(1)} page to generate ${contentType}s.`,
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+
+                  setIsLoading(true);
+
+                  try {
+                    const userId = localStorage.getItem('uid');
+                    if (!userId) {
+                      toast({
+                        title: "Authentication Error",
+                        description: "Please log in to create guides.",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+
+                    const response = await guideService.createGuideFromDocument({
+                      userId,
+                      processingId: source.processingId,
+                      text: source.text,
+                      title: title || 'Guide from Document',
+                      provider: selectedProvider,
+                      model: selectedModel,
+                      isPublic: isPublic
+                    });
+
+                    if (response.success) {
+                      const guideTitle = response.guide?.title || title || 'Guide from Document';
+                      toast({
+                        title: "Guide Created!",
+                        description: `Successfully created "${guideTitle}" from the document.`,
+                      });
+                      navigate(`/dashboard/guide/${response.slug}`);
+                    } else {
+                      throw new Error(response.message || 'Failed to create guide');
+                    }
+                  } catch (error: unknown) {
+                    console.error('Error creating guide from document:', error);
+
+                    const getErrorMessage = (error: unknown): string => {
+                      if (typeof error === 'object' && error !== null) {
+                        const err = error as { response?: { data?: { message?: string } }; message?: string };
+                        return err.response?.data?.message || err.message || "Failed to create guide from document. Please try again.";
+                      }
+                      return "Failed to create guide from document. Please try again.";
+                    };
+
+                    toast({
+                      title: "Creation Failed",
+                      description: getErrorMessage(error),
+                      variant: "destructive",
+                    });
+                  } finally {
+                    setIsLoading(false);
+                  }
                 }}
               />
             </TabsContent>

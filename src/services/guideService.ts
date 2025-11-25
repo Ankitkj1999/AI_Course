@@ -27,6 +27,23 @@ export const guideService = {
     return response.data;
   },
 
+  // Create guide from document
+  async createGuideFromDocument(data: {
+    userId: string;
+    processingId?: string;
+    text?: string;
+    title: string;
+    customization?: string;
+    provider?: string;
+    model?: string;
+    isPublic?: boolean;
+  }): Promise<CreateGuideResponse> {
+    const response = await axios.post(`${API_BASE}/guide/from-document`, data, {
+      withCredentials: true
+    });
+    return response.data;
+  },
+
   // Get user's guides with pagination
   async getUserGuides(userId: string, page: number = 1, limit: number = 10): Promise<GuideListResponse> {
     const response = await axios.get(`${API_BASE}/guides`, {
