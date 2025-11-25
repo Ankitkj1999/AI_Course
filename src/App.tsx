@@ -51,6 +51,7 @@ import CoursesPage from "./pages/dashboard/Courses";
 
 // LLM Test imports
 import TestLLM from "./pages/TestLLM";
+import TestPlate from "./pages/TestPlate";
 
 // Public Content imports
 import PublicContent from "./pages/PublicContent";
@@ -141,6 +142,7 @@ const App = () => {
                   <Route path="guides" element={<GuideListPage />} />
                   <Route path="create-guide" element={<CreateGuidePage />} />
                   <Route path="test-llm" element={<TestLLM />} />
+                  <Route path="test-plate" element={<TestPlate />} />
                 </Route>
 
                 {/* Course Routes */}
