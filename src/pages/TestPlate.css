@@ -1,0 +1,56 @@
+/* AI Slash Menu Enhancements */
+.milkdown-editor-wrapper {
+  position: relative;
+}
+
+.milkdown-editor-wrapper kbd {
+  display: inline-block;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.75rem;
+  font-family: ui-monospace, monospace;
+  background-color: hsl(var(--muted));
+  border-radius: 0.25rem;
+  border: 1px solid hsl(var(--border));
+}
+
+/* Smooth animations for slash menu */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.slash-menu-enter {
+  animation: slideIn 0.15s ease-out;
+}
+
+/* Loading state overlay */
+.ai-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+}
+
+/* Highlight AI-generated content */
+@keyframes highlightFade {
+  from {
+    background-color: hsl(var(--primary) / 0.1);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+.ai-generated {
+  animation: highlightFade 2s ease-out;
+}

@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Crepe } from '@milkdown/crepe';
 import '@milkdown/crepe/theme/common/style.css';
 import '@milkdown/crepe/theme/frame.css';
+import './TestPlate.css';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Loader2, Download, Copy } from 'lucide-react';
+import { Sparkles, Loader2, Download, Copy, Wand2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,13 +12,34 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
+
+interface AICommand {
+  id: string;
+  label: string;
+  icon: string;
+  category: 'generate' | 'enhance' | 'transform' | 'structure' | 'analyze';
+  action: (context: string) => Promise<string>;
+  needsContext?: boolean;
+}
 
 const TestPlate = () => {
   const editorRef = useRef<HTMLDivElement>(null);
   const crepeRef = useRef<Crepe | null>(null);
   const [isAILoading, setIsAILoading] = useState(false);
   const [editorReady, setEditorReady] = useState(false);
+  const [showAIDialog, setShowAIDialog] = useState(false);
+  const [customPrompt, setCustomPrompt] = useState('');
+  const [slashMenuOpen, setSlashMenuOpen] = useState(false);
+  const [slashMenuFilter, setSlashMenuFilter] = useState('');
 
   useEffect(() => {
     if (!editorRef.current) return;
@@ -127,6 +149,296 @@ Start writing below...
       throw error;
     }
   };
+
+  // AI Command definitions
+  const aiCommands: AICommand[] = [
+    // GENERATE
+    {
+      id: 'continue',
+      label: 'Continue writing',
+      icon: '✍️',
+      category: 'generate',
+      needsContext: true,
+      action: async (context: string) => {
+        const prompt = `Continue writing the following markdown text naturally. Write 2-3 more paragraphs that flow well with the existing content. Use proper markdown formatting. Only return the continuation:\n\n${context}`;
+        return await callAI(prompt);
+      }
+    },
+    {
+      id: 'explain',
+      label: 'Explain topic',
+      icon: '💡',
+      category: 'generate',
+      action: async (context: string) => {
+        const prompt = `Explain the following topic in clear, easy-to-understand markdown. Include examples if helpful:\n\n${context}`;
+        return await callAI(prompt);
+      }
+    },
+    {
+      id: 'add-summary',
+      label: 'Add summary',
+      icon: '📋',
+      category: 'generate',
+      needsContext: true,
+      action: async (context: string) => {
+        const prompt = `Create a concise summary of the following content in 2-3 sentences. Return only the summary in markdown:\n\n${context}`;
+        return await callAI(prompt);
+      }
+    },
+    {
+      id: 'add-example',
+      label: 'Add example',
+      icon: '📝',
+      category: 'generate',
+      needsContext: true,
+      action: async (context: string) => {
+        const prompt = `Add a relevant, practical example to illustrate the following content. Return only the example in markdown:\n\n${context}`;
+        return await callAI(prompt);
+      }
+    },
+    // ENHANCE
+    {
+      id: 'improve',
+      label: 'Improve writing',
+      icon: '✨',
+      category: 'enhance',
+      needsContext: true,
+      action: async (context: string) => {
+        const prompt = `Improve the following markdown text by making it clearer, more concise, and better written. Keep the same meaning and markdown formatting. Only return the improved markdown:\n\n${context}`;
+        return await callAI(prompt);
+      }
+    },
+    {
+      id: 'make-longer',
+      label: 'Make longer',
+      icon: '📏',
+      category: 'enhance',
+      needsContext: true,
+      action: async (context: string) => {
+        const prompt = `Expand the following markdown text by adding more details, examples, and explanations. Make it 2-3 times longer while keeping the same meaning and markdown formatting. Only return the expanded markdown:\n\n${context}`;
+        return await callAI(prompt);
+      }
+    },
+    {
+      id: 'make-shorter',
+      label: 'Make shorter',
+      icon: '✂️',
+      category: 'enhance',
+      needsContext: true,
+      action: async (context: string) => {
+        const prompt = `Make the following markdown text shorter and more concise while keeping the key points and markdown formatting. Only return the shortened markdown:\n\n${context}`;
+        return await callAI(prompt);
+      }
+    },
+    {
+      id: 'fix-grammar',
+      label: 'Fix spelling & grammar',
+      icon: '✓',
+      category: 'enhance',
+      needsContext: true,
+      action: async (context: string) => {
+        const prompt = `Fix all spelling and grammar errors in the following markdown text. Keep the same meaning and markdown formatting. Only return the corrected markdown:\n\n${context}`;
+        return await callAI(prompt);
+      }
+    },
+    {
+      id: 'simplify',
+      label: 'Simplify language',
+      icon: '🔤',
+      category: 'enhance',
+      needsContext: true,
+      action: async (context: string) => {
+        const prompt = `Simplify the language in the following markdown text to make it easier to understand. Use simpler words and shorter sentences. Keep the markdown formatting. Only return the simplified markdown:\n\n${context}`;
+        return await callAI(prompt);
+      }
+    },
+    // TRANSFORM
+    {
+      id: 'tone-formal',
+      label: 'Change tone: Formal',
+      icon: '🎩',
+      category: 'transform',
+      needsContext: true,
+      action: async (context: string) => {
+        const prompt = `Rewrite the following markdown text in a formal tone. Keep the same meaning and markdown formatting but adjust the style. Only return the rewritten markdown:\n\n${context}`;
+        return await callAI(prompt);
+      }
+    },
+    {
+      id: 'tone-casual',
+      label: 'Change tone: Casual',
+      icon: '😊',
+      category: 'transform',
+      needsContext: true,
+      action: async (context: string) => {
+        const prompt = `Rewrite the following markdown text in a casual tone. Keep the same meaning and markdown formatting but adjust the style. Only return the rewritten markdown:\n\n${context}`;
+        return await callAI(prompt);
+      }
+    },
+    {
+      id: 'translate',
+      label: 'Translate',
+      icon: '🌐',
+      category: 'transform',
+      needsContext: true,
+      action: async (context: string) => {
+        const prompt = `Translate the following markdown text to Spanish. Keep the markdown formatting. Only return the translated markdown:\n\n${context}`;
+        return await callAI(prompt);
+      }
+    },
+    // STRUCTURE
+    {
+      id: 'add-bullets',
+      label: 'Convert to bullet points',
+      icon: '•',
+      category: 'structure',
+      needsContext: true,
+      action: async (context: string) => {
+        const prompt = `Convert the following text into a well-organized bullet point list in markdown. Only return the bullet points:\n\n${context}`;
+        return await callAI(prompt);
+      }
+    },
+    {
+      id: 'create-table',
+      label: 'Create table',
+      icon: '📊',
+      category: 'structure',
+      needsContext: true,
+      action: async (context: string) => {
+        const prompt = `Convert the following content into a markdown table format. Only return the table:\n\n${context}`;
+        return await callAI(prompt);
+      }
+    },
+    {
+      id: 'create-outline',
+      label: 'Create outline',
+      icon: '📑',
+      category: 'structure',
+      needsContext: true,
+      action: async (context: string) => {
+        const prompt = `Create a structured outline from the following content using markdown headers and bullet points. Only return the outline:\n\n${context}`;
+        return await callAI(prompt);
+      }
+    },
+    // ANALYZE
+    {
+      id: 'key-points',
+      label: 'Extract key points',
+      icon: '🎯',
+      category: 'analyze',
+      needsContext: true,
+      action: async (context: string) => {
+        const prompt = `Extract the key points from the following content as a bullet list in markdown. Only return the key points:\n\n${context}`;
+        return await callAI(prompt);
+      }
+    },
+    {
+      id: 'questions',
+      label: 'Generate questions',
+      icon: '❓',
+      category: 'analyze',
+      needsContext: true,
+      action: async (context: string) => {
+        const prompt = `Generate 3-5 thoughtful questions about the following content in markdown format. Only return the questions:\n\n${context}`;
+        return await callAI(prompt);
+      }
+    },
+    {
+      id: 'action-items',
+      label: 'Extract action items',
+      icon: '✅',
+      category: 'analyze',
+      needsContext: true,
+      action: async (context: string) => {
+        const prompt = `Extract action items and tasks from the following content as a checklist in markdown. Only return the action items:\n\n${context}`;
+        return await callAI(prompt);
+      }
+    }
+  ];
+
+  const executeAICommand = async (command: AICommand) => {
+    const content = getEditorContent();
+    
+    if (command.needsContext && (!content || content.length < 10)) {
+      toast({
+        title: "Not enough content",
+        description: "Write some text first before using this command",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsAILoading(true);
+    setSlashMenuOpen(false);
+    
+    try {
+      const result = await command.action(content);
+      
+      // For commands that generate new content (not replace)
+      if (['continue', 'add-summary', 'add-example', 'key-points', 'questions', 'action-items'].includes(command.id)) {
+        setEditorContent(content + '\n\n' + result);
+      } else {
+        setEditorContent(result);
+      }
+      
+      toast({
+        title: "AI command completed!",
+        description: `${command.label} finished successfully`
+      });
+    } catch (error) {
+      toast({
+        title: "AI Error",
+        description: error instanceof Error ? error.message : "Failed to execute command",
+        variant: "destructive"
+      });
+    } finally {
+      setIsAILoading(false);
+    }
+  };
+
+  const handleCustomPrompt = async () => {
+    if (!customPrompt.trim()) return;
+    
+    const content = getEditorContent();
+    setIsAILoading(true);
+    setShowAIDialog(false);
+    
+    try {
+      const fullPrompt = content 
+        ? `${customPrompt}\n\nContext:\n${content}`
+        : customPrompt;
+      
+      const result = await callAI(fullPrompt);
+      setEditorContent(content ? content + '\n\n' + result : result);
+      
+      toast({
+        title: "AI generated content!",
+        description: "Custom prompt completed"
+      });
+    } catch (error) {
+      toast({
+        title: "AI Error",
+        description: error instanceof Error ? error.message : "Failed to generate content",
+        variant: "destructive"
+      });
+    } finally {
+      setIsAILoading(false);
+      setCustomPrompt('');
+    }
+  };
+
+  const filteredCommands = slashMenuFilter
+    ? aiCommands.filter(cmd => 
+        cmd.label.toLowerCase().includes(slashMenuFilter.toLowerCase()) ||
+        cmd.category.toLowerCase().includes(slashMenuFilter.toLowerCase())
+      )
+    : aiCommands;
+
+  const commandsByCategory = filteredCommands.reduce((acc, cmd) => {
+    if (!acc[cmd.category]) acc[cmd.category] = [];
+    acc[cmd.category].push(cmd);
+    return acc;
+  }, {} as Record<string, AICommand[]>);
 
   const handleImproveText = async () => {
     const content = getEditorContent();
@@ -364,11 +676,11 @@ Start writing below...
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">Milkdown AI Editor</h1>
         <p className="text-muted-foreground">
-          A powerful markdown editor with AI-powered writing assistance
+          A powerful markdown editor with AI-powered writing assistance. Type <kbd className="px-2 py-1 text-xs bg-muted rounded">/</kbd> for AI commands
         </p>
       </div>
 
-      <div className="border rounded-lg bg-card shadow-sm overflow-hidden">
+      <div className="border rounded-lg bg-card shadow-sm overflow-hidden relative">
         {/* Toolbar */}
         <div className="border-b p-3 flex gap-2 flex-wrap bg-muted/50 items-center">
           <div className="flex gap-2 flex-1">
@@ -389,6 +701,15 @@ Start writing below...
             >
               <Download className="h-4 w-4 mr-2" />
               Download
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowAIDialog(true)}
+              disabled={!editorReady || isAILoading}
+            >
+              <Wand2 className="h-4 w-4 mr-2" />
+              Custom Prompt
             </Button>
           </div>
 
@@ -421,16 +742,16 @@ Start writing below...
                 ➡️ Continue Writing
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleSummarize}>
-                📝 Summarize
+                � MSummarize
               </DropdownMenuItem>
               
               <DropdownMenuSeparator />
               
               <DropdownMenuItem onClick={handleMakeLonger}>
-                📏 Make Longer
+                � PMake Longer
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleMakeShorter}>
-                📏 Make Shorter
+                � CMake Shorter
               </DropdownMenuItem>
               
               <DropdownMenuSeparator />
@@ -455,12 +776,157 @@ Start writing below...
         <div 
           ref={editorRef} 
           className="min-h-[500px] milkdown-editor-wrapper"
+          onKeyDown={(e) => {
+            // Trigger slash menu on '/' key
+            if (e.key === '/' && !slashMenuOpen && !isAILoading) {
+              setTimeout(() => {
+                setSlashMenuOpen(true);
+                setSlashMenuFilter('');
+              }, 50);
+            }
+            // Close menu on Escape
+            if (e.key === 'Escape' && slashMenuOpen) {
+              e.preventDefault();
+              setSlashMenuOpen(false);
+              setSlashMenuFilter('');
+            }
+          }}
+          onClick={() => {
+            // Close slash menu when clicking in editor
+            if (slashMenuOpen) {
+              setSlashMenuOpen(false);
+            }
+          }}
         />
+
+        {/* AI Loading Overlay */}
+        {isAILoading && (
+          <div className="ai-loading-overlay">
+            <div className="bg-background border rounded-lg shadow-lg p-6 flex flex-col items-center gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm font-medium">AI is working...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Slash Command Menu */}
+        {slashMenuOpen && (
+          <div className="absolute z-50 w-80 bg-popover border rounded-lg shadow-lg p-2 mt-2 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 slash-menu-enter">
+            <div className="mb-2">
+              <Input
+                placeholder="Search AI commands..."
+                value={slashMenuFilter}
+                onChange={(e) => setSlashMenuFilter(e.target.value)}
+                className="h-8 text-sm"
+                autoFocus
+              />
+            </div>
+            
+            <div className="max-h-96 overflow-y-auto space-y-1">
+              {Object.entries(commandsByCategory).map(([category, commands]) => (
+                <div key={category}>
+                  <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase">
+                    {category === 'generate' && '📝 Generate'}
+                    {category === 'enhance' && '✨ Enhance'}
+                    {category === 'transform' && '🎯 Transform'}
+                    {category === 'structure' && '📊 Structure'}
+                    {category === 'analyze' && '🔍 Analyze'}
+                  </div>
+                  {commands.map((cmd) => (
+                    <button
+                      key={cmd.id}
+                      onClick={() => executeAICommand(cmd)}
+                      className="w-full text-left px-3 py-2 text-sm rounded hover:bg-accent flex items-center gap-2 transition-colors"
+                    >
+                      <span>{cmd.icon}</span>
+                      <span>{cmd.label}</span>
+                    </button>
+                  ))}
+                </div>
+              ))}
+              
+              {filteredCommands.length === 0 && (
+                <div className="px-3 py-8 text-center text-sm text-muted-foreground">
+                  No commands found
+                </div>
+              )}
+            </div>
+            
+            <div className="mt-2 pt-2 border-t">
+              <button
+                onClick={() => {
+                  setSlashMenuOpen(false);
+                  setShowAIDialog(true);
+                }}
+                className="w-full text-left px-3 py-2 text-sm rounded hover:bg-accent flex items-center gap-2"
+              >
+                <Wand2 className="h-4 w-4" />
+                <span>Custom AI prompt...</span>
+              </button>
+            </div>
+            
+            <div className="mt-2 px-2 text-xs text-muted-foreground">
+              Press <kbd className="px-1 py-0.5 bg-muted rounded">Esc</kbd> to close
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Custom Prompt Dialog */}
+      <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Custom AI Prompt</DialogTitle>
+            <DialogDescription>
+              Enter your custom prompt. The AI will use your current document as context.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              placeholder="e.g., Write a conclusion paragraph..."
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleCustomPrompt();
+                }
+              }}
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowAIDialog(false);
+                  setCustomPrompt('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCustomPrompt}
+                disabled={!customPrompt.trim() || isAILoading}
+              >
+                {isAILoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Generate
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="mt-6 p-4 bg-muted rounded-lg">
         <h3 className="font-semibold mb-2">Features:</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div>
             <p className="font-medium mb-1">Editor:</p>
             <ul className="space-y-1">
@@ -471,14 +937,34 @@ Start writing below...
             </ul>
           </div>
           <div>
-            <p className="font-medium mb-1">AI Assistant:</p>
+            <p className="font-medium mb-1">AI Commands (type /):</p>
             <ul className="space-y-1">
-              <li>✨ Improve writing quality</li>
-              <li>➡️ Continue your thoughts</li>
-              <li>📝 Summarize content</li>
-              <li>🎭 Change tone & style</li>
+              <li>📝 Generate & continue</li>
+              <li>✨ Enhance & improve</li>
+              <li>🎯 Transform tone</li>
+              <li>📊 Structure content</li>
+              <li>🔍 Analyze & extract</li>
             </ul>
           </div>
+          <div>
+            <p className="font-medium mb-1">Quick Actions:</p>
+            <ul className="space-y-1">
+              <li>✨ Improve writing</li>
+              <li>➡️ Continue writing</li>
+              <li>📝 Summarize</li>
+              <li>🎭 Change tone</li>
+              <li>🪄 Custom prompts</li>
+            </ul>
+          </div>
+        </div>
+        <div className="mt-4 p-3 bg-background rounded border">
+          <p className="text-xs font-medium mb-2">💡 Pro Tips:</p>
+          <ul className="text-xs space-y-1 text-muted-foreground">
+            <li>• Type <kbd className="px-1 py-0.5 bg-muted rounded">/</kbd> anywhere in the editor to open the AI command menu</li>
+            <li>• Use the search bar in the slash menu to quickly find commands</li>
+            <li>• Click "Custom Prompt" for any AI task not in the menu</li>
+            <li>• Commands are organized by category: Generate, Enhance, Transform, Structure, Analyze</li>
+          </ul>
         </div>
         <p className="text-xs text-muted-foreground mt-3">
           Built with Milkdown - Powered by your LLM backend
