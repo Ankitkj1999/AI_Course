@@ -1,25 +1,9 @@
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Crepe } from '@milkdown/crepe';
+import '@milkdown/crepe/theme/common/style.css';
+import '@milkdown/crepe/theme/frame.css';
 import { Button } from '@/components/ui/button';
-import { 
-  Bold, 
-  Italic, 
-  Underline, 
-  Strikethrough,
-  Heading1,
-  Heading2,
-  List,
-  ListOrdered,
-  Quote,
-  Code,
-  Sparkles,
-  Undo,
-  Redo,
-  Wand2,
-  RefreshCw,
-  ArrowRight,
-  FileText,
-  Loader2
-} from 'lucide-react';
+import { Sparkles, Loader2, Download, Copy } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,54 +14,87 @@ import {
 import { toast } from '@/hooks/use-toast';
 
 const TestPlate = () => {
-  const [content, setContent] = useState('');
-  const [isAILoading, setIsAILoading] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
+  const crepeRef = useRef<Crepe | null>(null);
+  const [isAILoading, setIsAILoading] = useState(false);
+  const [editorReady, setEditorReady] = useState(false);
 
-  const execCommand = (command: string, value?: string) => {
-    document.execCommand(command, false, value);
-    editorRef.current?.focus();
+  useEffect(() => {
+    if (!editorRef.current) return;
+
+    const crepe = new Crepe({
+      root: editorRef.current,
+      defaultValue: `# Welcome to Milkdown AI Editor
+
+This is a powerful **markdown editor** with AI capabilities.
+
+## Features
+
+- 📝 **Rich Markdown Support** - Write in markdown with live preview
+- ✨ **AI Assistant** - Improve, continue, and transform your writing
+- 🎨 **Beautiful Theme** - Modern, clean interface
+- ⚡ **Fast & Lightweight** - Built with ProseMirror
+
+## Try It Out
+
+Select any text and use the **AI Assistant** button above to:
+- Improve your writing
+- Continue writing
+- Summarize content
+- Change tone and style
+
+> 💡 **Tip**: You can use standard markdown syntax like **bold**, *italic*, \`code\`, and more!
+
+Start writing below...
+`,
+    });
+
+    crepe.create().then(() => {
+      console.log('Milkdown editor created successfully');
+      crepeRef.current = crepe;
+      setEditorReady(true);
+    }).catch((error) => {
+      console.error('Failed to create editor:', error);
+      toast({
+        title: "Editor Error",
+        description: "Failed to initialize the editor",
+        variant: "destructive"
+      });
+    });
+
+    return () => {
+      if (crepeRef.current) {
+        crepeRef.current.destroy();
+        crepeRef.current = null;
+      }
+    };
+  }, []);
+
+  const getEditorContent = (): string => {
+    if (!crepeRef.current) return '';
+    try {
+      return crepeRef.current.getMarkdown();
+    } catch (error) {
+      console.error('Failed to get content:', error);
+      return '';
+    }
   };
 
-  const getSelectedText = (): string => {
-    const selection = window.getSelection();
-    return selection?.toString() || '';
-  };
-
-  const getAllText = (): string => {
-    return editorRef.current?.innerText || '';
-  };
-
-  const insertTextAtCursor = (text: string) => {
-    const selection = window.getSelection();
-    if (!selection || !selection.rangeCount) return;
-
-    const range = selection.getRangeAt(0);
-    range.deleteContents();
-    
-    const textNode = document.createTextNode(text);
-    range.insertNode(textNode);
-    
-    // Move cursor to end of inserted text
-    range.setStartAfter(textNode);
-    range.setEndAfter(textNode);
-    selection.removeAllRanges();
-    selection.addRange(range);
-    
-    editorRef.current?.focus();
-  };
-
-  const replaceSelectedText = (newText: string) => {
-    const selection = window.getSelection();
-    if (!selection || !selection.rangeCount) return;
-
-    const range = selection.getRangeAt(0);
-    range.deleteContents();
-    
-    const textNode = document.createTextNode(newText);
-    range.insertNode(textNode);
-    
-    editorRef.current?.focus();
+  const setEditorContent = (content: string) => {
+    if (!crepeRef.current || !editorRef.current) return;
+    try {
+      // Destroy and recreate the editor with new content
+      crepeRef.current.destroy();
+      const crepe = new Crepe({
+        root: editorRef.current,
+        defaultValue: content,
+      });
+      crepe.create().then(() => {
+        crepeRef.current = crepe;
+      });
+    } catch (error) {
+      console.error('Failed to set content:', error);
+    }
   };
 
   const callAI = async (prompt: string): Promise<string> => {
@@ -112,12 +129,12 @@ const TestPlate = () => {
   };
 
   const handleImproveText = async () => {
-    const selectedText = getSelectedText();
+    const content = getEditorContent();
     
-    if (!selectedText) {
+    if (!content || content.length < 10) {
       toast({
-        title: "No text selected",
-        description: "Please select some text to improve",
+        title: "Not enough content",
+        description: "Write some text first before improving",
         variant: "destructive"
       });
       return;
@@ -125,14 +142,14 @@ const TestPlate = () => {
 
     setIsAILoading(true);
     try {
-      const prompt = `Improve the following text by making it clearer, more concise, and better written. Keep the same meaning and tone. Only return the improved text without any explanations:\n\n${selectedText}`;
+      const prompt = `Improve the following markdown text by making it clearer, more concise, and better written. Keep the same meaning and markdown formatting. Only return the improved markdown:\n\n${content}`;
       
       const improvedText = await callAI(prompt);
-      replaceSelectedText(improvedText);
+      setEditorContent(improvedText);
       
       toast({
         title: "Text improved!",
-        description: "Your text has been enhanced by AI"
+        description: "Your content has been enhanced by AI"
       });
     } catch (error) {
       toast({
@@ -146,9 +163,9 @@ const TestPlate = () => {
   };
 
   const handleContinueWriting = async () => {
-    const allText = getAllText();
+    const content = getEditorContent();
     
-    if (!allText || allText.length < 10) {
+    if (!content || content.length < 10) {
       toast({
         title: "Not enough content",
         description: "Write at least a few words before asking AI to continue",
@@ -159,10 +176,10 @@ const TestPlate = () => {
 
     setIsAILoading(true);
     try {
-      const prompt = `Continue writing the following text naturally. Write 2-3 more sentences that flow well with the existing content. Only return the continuation without repeating the original text:\n\n${allText}`;
+      const prompt = `Continue writing the following markdown text naturally. Write 2-3 more paragraphs that flow well with the existing content. Use proper markdown formatting. Only return the continuation:\n\n${content}`;
       
       const continuation = await callAI(prompt);
-      insertTextAtCursor('\n\n' + continuation);
+      setEditorContent(content + '\n\n' + continuation);
       
       toast({
         title: "Content generated!",
@@ -180,9 +197,9 @@ const TestPlate = () => {
   };
 
   const handleSummarize = async () => {
-    const selectedText = getSelectedText() || getAllText();
+    const content = getEditorContent();
     
-    if (!selectedText || selectedText.length < 50) {
+    if (!content || content.length < 50) {
       toast({
         title: "Not enough content",
         description: "Need more text to summarize",
@@ -193,15 +210,10 @@ const TestPlate = () => {
 
     setIsAILoading(true);
     try {
-      const prompt = `Summarize the following text in 2-3 concise sentences. Only return the summary:\n\n${selectedText}`;
+      const prompt = `Summarize the following markdown text in 2-3 concise paragraphs. Use markdown formatting. Only return the summary:\n\n${content}`;
       
       const summary = await callAI(prompt);
-      
-      if (getSelectedText()) {
-        replaceSelectedText(summary);
-      } else {
-        insertTextAtCursor('\n\nSummary: ' + summary);
-      }
+      setEditorContent('# Summary\n\n' + summary + '\n\n---\n\n# Original Content\n\n' + content);
       
       toast({
         title: "Text summarized!",
@@ -219,12 +231,12 @@ const TestPlate = () => {
   };
 
   const handleChangeTone = async (tone: string) => {
-    const selectedText = getSelectedText();
+    const content = getEditorContent();
     
-    if (!selectedText) {
+    if (!content || content.length < 10) {
       toast({
-        title: "No text selected",
-        description: "Please select some text to change its tone",
+        title: "Not enough content",
+        description: "Write some text first",
         variant: "destructive"
       });
       return;
@@ -232,10 +244,10 @@ const TestPlate = () => {
 
     setIsAILoading(true);
     try {
-      const prompt = `Rewrite the following text in a ${tone} tone. Keep the same meaning but adjust the style. Only return the rewritten text:\n\n${selectedText}`;
+      const prompt = `Rewrite the following markdown text in a ${tone} tone. Keep the same meaning and markdown formatting but adjust the style. Only return the rewritten markdown:\n\n${content}`;
       
       const rewrittenText = await callAI(prompt);
-      replaceSelectedText(rewrittenText);
+      setEditorContent(rewrittenText);
       
       toast({
         title: "Tone changed!",
@@ -253,12 +265,12 @@ const TestPlate = () => {
   };
 
   const handleMakeLonger = async () => {
-    const selectedText = getSelectedText();
+    const content = getEditorContent();
     
-    if (!selectedText) {
+    if (!content || content.length < 10) {
       toast({
-        title: "No text selected",
-        description: "Please select some text to expand",
+        title: "Not enough content",
+        description: "Write some text first",
         variant: "destructive"
       });
       return;
@@ -266,10 +278,10 @@ const TestPlate = () => {
 
     setIsAILoading(true);
     try {
-      const prompt = `Expand the following text by adding more details, examples, and explanations. Make it 2-3 times longer while keeping the same meaning. Only return the expanded text:\n\n${selectedText}`;
+      const prompt = `Expand the following markdown text by adding more details, examples, and explanations. Make it 2-3 times longer while keeping the same meaning and markdown formatting. Only return the expanded markdown:\n\n${content}`;
       
       const expandedText = await callAI(prompt);
-      replaceSelectedText(expandedText);
+      setEditorContent(expandedText);
       
       toast({
         title: "Text expanded!",
@@ -287,12 +299,12 @@ const TestPlate = () => {
   };
 
   const handleMakeShorter = async () => {
-    const selectedText = getSelectedText();
+    const content = getEditorContent();
     
-    if (!selectedText) {
+    if (!content || content.length < 10) {
       toast({
-        title: "No text selected",
-        description: "Please select some text to shorten",
+        title: "Not enough content",
+        description: "Write some text first",
         variant: "destructive"
       });
       return;
@@ -300,10 +312,10 @@ const TestPlate = () => {
 
     setIsAILoading(true);
     try {
-      const prompt = `Make the following text shorter and more concise while keeping the key points. Only return the shortened text:\n\n${selectedText}`;
+      const prompt = `Make the following markdown text shorter and more concise while keeping the key points and markdown formatting. Only return the shortened markdown:\n\n${content}`;
       
       const shortenedText = await callAI(prompt);
-      replaceSelectedText(shortenedText);
+      setEditorContent(shortenedText);
       
       toast({
         title: "Text shortened!",
@@ -320,137 +332,65 @@ const TestPlate = () => {
     }
   };
 
+  const handleCopyMarkdown = () => {
+    const content = getEditorContent();
+    navigator.clipboard.writeText(content);
+    toast({
+      title: "Copied!",
+      description: "Markdown copied to clipboard"
+    });
+  };
+
+  const handleDownloadMarkdown = () => {
+    const content = getEditorContent();
+    const blob = new Blob([content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'document.md';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Downloaded!",
+      description: "Markdown file saved"
+    });
+  };
+
   return (
-    <div className="container mx-auto p-8 max-w-4xl">
+    <div className="container mx-auto p-8 max-w-5xl">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">AI-Powered Rich Text Editor</h1>
+        <h1 className="text-3xl font-bold mb-2">Milkdown AI Editor</h1>
         <p className="text-muted-foreground">
-          Write with AI assistance - improve, continue, summarize, and transform your text
+          A powerful markdown editor with AI-powered writing assistance
         </p>
       </div>
 
-      <div className="border rounded-lg bg-card shadow-sm">
+      <div className="border rounded-lg bg-card shadow-sm overflow-hidden">
         {/* Toolbar */}
-        <div className="border-b p-2 flex gap-1 flex-wrap bg-muted/50">
-          {/* Text Formatting */}
-          <div className="flex gap-1">
+        <div className="border-b p-3 flex gap-2 flex-wrap bg-muted/50 items-center">
+          <div className="flex gap-2 flex-1">
             <Button
               size="sm"
               variant="outline"
-              onClick={() => execCommand('bold')}
-              title="Bold (Ctrl+B)"
+              onClick={handleCopyMarkdown}
+              disabled={!editorReady}
             >
-              <Bold className="h-4 w-4" />
+              <Copy className="h-4 w-4 mr-2" />
+              Copy
             </Button>
             <Button
               size="sm"
               variant="outline"
-              onClick={() => execCommand('italic')}
-              title="Italic (Ctrl+I)"
+              onClick={handleDownloadMarkdown}
+              disabled={!editorReady}
             >
-              <Italic className="h-4 w-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => execCommand('underline')}
-              title="Underline (Ctrl+U)"
-            >
-              <Underline className="h-4 w-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => execCommand('strikeThrough')}
-              title="Strikethrough"
-            >
-              <Strikethrough className="h-4 w-4" />
+              <Download className="h-4 w-4 mr-2" />
+              Download
             </Button>
           </div>
-
-          <div className="w-px bg-border mx-1" />
-
-          {/* Headings */}
-          <div className="flex gap-1">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => execCommand('formatBlock', 'h1')}
-              title="Heading 1"
-            >
-              <Heading1 className="h-4 w-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => execCommand('formatBlock', 'h2')}
-              title="Heading 2"
-            >
-              <Heading2 className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <div className="w-px bg-border mx-1" />
-
-          {/* Lists & Blocks */}
-          <div className="flex gap-1">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => execCommand('insertUnorderedList')}
-              title="Bullet List"
-            >
-              <List className="h-4 w-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => execCommand('insertOrderedList')}
-              title="Numbered List"
-            >
-              <ListOrdered className="h-4 w-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => execCommand('formatBlock', 'blockquote')}
-              title="Quote"
-            >
-              <Quote className="h-4 w-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => execCommand('formatBlock', 'pre')}
-              title="Code Block"
-            >
-              <Code className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <div className="w-px bg-border mx-1" />
-
-          {/* Undo/Redo */}
-          <div className="flex gap-1">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => execCommand('undo')}
-              title="Undo (Ctrl+Z)"
-            >
-              <Undo className="h-4 w-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => execCommand('redo')}
-              title="Redo (Ctrl+Y)"
-            >
-              <Redo className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <div className="w-px bg-border mx-1" />
 
           {/* AI Features Dropdown */}
           <DropdownMenu>
@@ -458,8 +398,7 @@ const TestPlate = () => {
               <Button
                 size="sm"
                 variant="default"
-                className="ml-auto"
-                disabled={isAILoading}
+                disabled={isAILoading || !editorReady}
               >
                 {isAILoading ? (
                   <>
@@ -476,85 +415,73 @@ const TestPlate = () => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuItem onClick={handleImproveText}>
-                <Wand2 className="h-4 w-4 mr-2" />
-                Improve Writing
+                ✨ Improve Writing
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleContinueWriting}>
-                <ArrowRight className="h-4 w-4 mr-2" />
-                Continue Writing
+                ➡️ Continue Writing
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleSummarize}>
-                <FileText className="h-4 w-4 mr-2" />
-                Summarize
+                📝 Summarize
               </DropdownMenuItem>
               
               <DropdownMenuSeparator />
               
               <DropdownMenuItem onClick={handleMakeLonger}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Make Longer
+                📏 Make Longer
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleMakeShorter}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Make Shorter
+                📏 Make Shorter
               </DropdownMenuItem>
               
               <DropdownMenuSeparator />
               
               <DropdownMenuItem onClick={() => handleChangeTone('professional')}>
-                Change to Professional
+                💼 Professional Tone
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleChangeTone('casual')}>
-                Change to Casual
+                😊 Casual Tone
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleChangeTone('friendly')}>
-                Change to Friendly
+                🤝 Friendly Tone
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleChangeTone('formal')}>
-                Change to Formal
+                🎩 Formal Tone
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        
+
         {/* Editor */}
-        <div className="p-6">
-          <div
-            ref={editorRef}
-            contentEditable
-            className="min-h-[400px] p-4 focus:outline-none prose prose-slate dark:prose-invert max-w-none"
-            onInput={(e) => setContent(e.currentTarget.innerHTML)}
-            suppressContentEditableWarning
-          >
-            <h1>Welcome to the AI-Powered Editor</h1>
-            <p>This editor integrates with your LLM backend to provide intelligent writing assistance.</p>
-            <p><strong>Try these AI features:</strong></p>
-            <ul>
-              <li>Select text and click "Improve Writing" to enhance it</li>
-              <li>Click "Continue Writing" to let AI complete your thoughts</li>
-              <li>Select text and "Summarize" to create a concise version</li>
-              <li>Change the tone to professional, casual, friendly, or formal</li>
-              <li>Make text longer with more details or shorter and more concise</li>
-            </ul>
-            <blockquote>
-              <p>💡 Tip: Select any text to apply AI transformations, or use "Continue Writing" to extend your content!</p>
-            </blockquote>
-          </div>
-        </div>
+        <div 
+          ref={editorRef} 
+          className="min-h-[500px] milkdown-editor-wrapper"
+        />
       </div>
 
       <div className="mt-6 p-4 bg-muted rounded-lg">
-        <h3 className="font-semibold mb-2">AI Features:</h3>
-        <ul className="space-y-1 text-sm">
-          <li>✨ <strong>Improve Writing</strong> - Enhance clarity and quality</li>
-          <li>➡️ <strong>Continue Writing</strong> - AI completes your thoughts</li>
-          <li>📝 <strong>Summarize</strong> - Create concise summaries</li>
-          <li>📏 <strong>Adjust Length</strong> - Make text longer or shorter</li>
-          <li>🎭 <strong>Change Tone</strong> - Professional, casual, friendly, or formal</li>
-          <li>⚡ <strong>Real-time</strong> - Powered by your LLM backend</li>
-        </ul>
+        <h3 className="font-semibold mb-2">Features:</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+          <div>
+            <p className="font-medium mb-1">Editor:</p>
+            <ul className="space-y-1">
+              <li>📝 Full markdown support</li>
+              <li>🎨 Beautiful WYSIWYG interface</li>
+              <li>⚡ Real-time preview</li>
+              <li>💾 Copy & download markdown</li>
+            </ul>
+          </div>
+          <div>
+            <p className="font-medium mb-1">AI Assistant:</p>
+            <ul className="space-y-1">
+              <li>✨ Improve writing quality</li>
+              <li>➡️ Continue your thoughts</li>
+              <li>📝 Summarize content</li>
+              <li>🎭 Change tone & style</li>
+            </ul>
+          </div>
+        </div>
         <p className="text-xs text-muted-foreground mt-3">
-          All AI features use your configured LLM provider from the backend.
+          Built with Milkdown - Powered by your LLM backend
         </p>
       </div>
     </div>
