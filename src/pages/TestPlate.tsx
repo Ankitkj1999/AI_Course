@@ -40,6 +40,37 @@ const TestPlate = () => {
   const [customPrompt, setCustomPrompt] = useState('');
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
   const [slashMenuFilter, setSlashMenuFilter] = useState('');
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const [positionReady, setPositionReady] = useState(false);
+
+  const getCaretPosition = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return null;
+
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+
+    // Get the editor container to calculate relative positioning
+    const editorElement = document.querySelector('.milkdown-editor-wrapper');
+    const editorRect = editorElement?.getBoundingClientRect();
+
+    if (rect.width === 0 && rect.height === 0) {
+      // This is a caret (collapsed selection)
+      return {
+        top: rect.top + window.scrollY,
+        left: rect.left + window.scrollX,
+        height: rect.height || 20, // fallback height
+        editorLeft: editorRect ? editorRect.left + window.scrollX : 0
+      };
+    }
+
+    return {
+      top: rect.top + window.scrollY,
+      left: rect.left + window.scrollX,
+      height: rect.height,
+      editorLeft: editorRect ? editorRect.left + window.scrollX : 0
+    };
+  };
 
   useEffect(() => {
     if (!editorRef.current) return;
@@ -56,18 +87,35 @@ const TestPlate = () => {
       aiButton.className = 'menu-item';
       aiButton.setAttribute('type', 'button');
       aiButton.setAttribute('data-ai-injected', 'true');
+      aiButton.setAttribute('tabindex', '0');
       aiButton.innerHTML = `<span>✨</span><span>AI Commands</span>`;
       
-      aiButton.onclick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        // Let menu close naturally - don't force hide
-        // Open our AI commands menu
+      const handleAIButtonActivate = () => {
+        // Close the native Milkdown slash menu
+        const nativeMenu = menuElement.closest('.milkdown-slash-menu');
+        if (nativeMenu) {
+          nativeMenu.setAttribute('data-show', 'false');
+        }
+
+        // Open our AI commands menu immediately (no position calculation needed)
         setSlashMenuOpen(true);
         setSlashMenuFilter('');
       };
-      
+
+      aiButton.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleAIButtonActivate();
+      };
+
+      aiButton.onkeydown = (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          handleAIButtonActivate();
+        }
+      };
+
       // Insert at the beginning of the menu
       if (menuElement.firstChild) {
         menuElement.insertBefore(aiButton, menuElement.firstChild);
@@ -80,16 +128,21 @@ const TestPlate = () => {
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         // Watch for attribute changes (data-show)
-        if (mutation.type === 'attributes' && mutation.attributeName === 'data-show') {
-          const target = mutation.target as HTMLElement;
-          if (target.classList.contains('milkdown-slash-menu') && target.getAttribute('data-show') === 'true') {
-            console.log('Slash menu became visible (data-show=true)');
-            if (!target.querySelector('[data-ai-injected]')) {
-              console.log('Injecting AI option into visible menu');
-              addAIOptionToMenu(target);
-            }
-          }
-        }
+         if (mutation.type === 'attributes' && mutation.attributeName === 'data-show') {
+           const target = mutation.target as HTMLElement;
+           if (target.classList.contains('milkdown-slash-menu')) {
+             const isVisible = target.getAttribute('data-show') === 'true';
+             if (isVisible) {
+               console.log('Slash menu became visible (data-show=true)');
+               if (!target.querySelector('[data-ai-injected]')) {
+                 console.log('Injecting AI option into visible menu');
+                 addAIOptionToMenu(target);
+               }
+             } else {
+               console.log('Slash menu became hidden (data-show=false)');
+             }
+           }
+         }
         
         // Also watch for new nodes (initial creation)
         mutation.addedNodes.forEach((node) => {
@@ -149,6 +202,42 @@ Start writing below...
       console.log('Milkdown editor created successfully');
       crepeRef.current = crepe;
       setEditorReady(true);
+
+      // Add keyboard shortcut for AI menu (Ctrl+K / Cmd+K) after editor is ready
+      const handleGlobalKeydown = (e: KeyboardEvent) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+          e.preventDefault();
+          if (!isAILoading && editorReady) {
+            // Calculate position based on current caret
+            const caretPos = getCaretPosition();
+            if (caretPos) {
+              setMenuPosition({
+                top: caretPos.top + caretPos.height + 5, // Position below the caret
+                left: caretPos.editorLeft + 20 // Align with editor's left edge + small padding
+              });
+            } else {
+              // Fallback position
+              setMenuPosition({ top: 200, left: 100 });
+            }
+            setPositionReady(true);
+            setSlashMenuOpen(true);
+            setSlashMenuFilter('');
+          }
+          return; // Don't let the event continue
+        }
+        // For all other keys, do nothing and let them bubble normally
+      };
+
+      // Listen on window instead of document to avoid interfering with editor events
+      window.addEventListener('keydown', handleGlobalKeydown);
+
+      // Store cleanup function for useEffect return
+      const cleanupKeyboard = () => {
+        window.removeEventListener('keydown', handleGlobalKeydown);
+      };
+
+      // Store on window for access in cleanup
+      (window as Window & { _aiKeyboardCleanup?: () => void })._aiKeyboardCleanup = cleanupKeyboard;
       
       // Start observing for slash menu (watch both nodes and attributes)
       observer.observe(document.body, {
@@ -184,8 +273,13 @@ Start writing below...
         crepeRef.current.destroy();
         crepeRef.current = null;
       }
+      // Clean up keyboard listener
+      if ((window as Window & { _aiKeyboardCleanup?: () => void })._aiKeyboardCleanup) {
+        (window as Window & { _aiKeyboardCleanup?: () => void })._aiKeyboardCleanup();
+        delete (window as Window & { _aiKeyboardCleanup?: () => void })._aiKeyboardCleanup;
+      }
     };
-  }, []);
+  }, [editorReady, isAILoading]);
 
   const getEditorContent = (): string => {
     if (!crepeRef.current) return '';
@@ -639,7 +733,7 @@ Start writing below...
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">Milkdown AI Editor</h1>
         <p className="text-muted-foreground">
-          A powerful markdown editor with AI-powered writing assistance. Type <kbd className="px-2 py-1 text-xs bg-muted rounded">/</kbd> and select "AI" to access all AI features.
+          A powerful markdown editor with AI-powered writing assistance. Type <kbd className="px-2 py-1 text-xs bg-muted rounded">/</kbd> and select "AI", or press <kbd className="px-2 py-1 text-xs bg-muted rounded">Ctrl+K</kbd> to access all AI features.
         </p>
       </div>
 
@@ -768,13 +862,20 @@ Start writing below...
         {slashMenuOpen && (
           <>
             {/* Backdrop */}
-            <div 
-              className="fixed inset-0 z-40" 
+            <div
+              className="fixed inset-0 z-40"
               onClick={() => setSlashMenuOpen(false)}
             />
             
-            {/* Menu */}
-            <div className="absolute z-50 w-80 bg-popover border rounded-lg shadow-lg p-2 mt-2 left-1/2 top-20 -translate-x-1/2 slash-menu-enter">
+            {/* Menu - Fixed position relative to viewport */}
+            <div
+              className="fixed z-50 w-80 bg-popover border rounded-lg shadow-lg p-2 slash-menu-enter"
+              style={{
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)'
+              }}
+            >
               <div className="mb-2">
                 <Input
                   placeholder="Search AI commands..."
@@ -918,6 +1019,7 @@ Start writing below...
           <p className="text-xs font-medium mb-2">💡 Pro Tips:</p>
           <ul className="text-xs space-y-1 text-muted-foreground">
             <li>• Type <kbd className="px-1 py-0.5 bg-muted rounded">/</kbd> in the editor and select "AI Commands" to see all 7 AI commands</li>
+            <li>• Press <kbd className="px-1 py-0.5 bg-muted rounded">Ctrl+K</kbd> (or <kbd className="px-1 py-0.5 bg-muted rounded">Cmd+K</kbd> on Mac) for quick AI menu access</li>
             <li>• Use the search bar in the AI menu to quickly find commands</li>
             <li>• Use "Quick Actions" toolbar button for common tasks</li>
             <li>• Click "Custom Prompt" for any AI task not in the menu</li>
