@@ -46,87 +46,33 @@ const TestPlate = () => {
 
     // Inject AI option into Milkdown's native slash menu
     const addAIOptionToMenu = (menuElement: HTMLElement) => {
-      console.log('Attempting to add AI option to menu:', menuElement);
-      console.log('Menu element children:', menuElement.children);
-      console.log('Menu data-show:', menuElement.getAttribute('data-show'));
-      
       // Check if already injected
       if (menuElement.querySelector('[data-ai-injected]')) {
-        console.log('AI option already exists, skipping');
         return;
       }
       
-      // Create AI menu group (matching Milkdown's structure)
-      const aiGroup = document.createElement('div');
-      aiGroup.className = 'menu-group';
-      aiGroup.setAttribute('data-ai-injected', 'true');
-      
-      // Create AI header
-      const aiHeader = document.createElement('div');
-      aiHeader.className = 'menu-group-label';
-      aiHeader.textContent = 'AI';
-      aiHeader.style.cssText = 'padding: 8px 16px; font-size: 12px; font-weight: 600; color: #666; text-transform: uppercase;';
-      
-      // Create AI button
+      // Create AI button using native Milkdown classes only
       const aiButton = document.createElement('button');
       aiButton.className = 'menu-item';
       aiButton.setAttribute('type', 'button');
-      aiButton.innerHTML = `
-        <div style="display: flex; align-items: center; width: 100%;">
-          <span style="margin-right: 12px; font-size: 18px;">✨</span>
-          <div style="flex: 1;">
-            <div style="font-weight: 500;">AI Commands</div>
-            <div style="font-size: 12px; color: #999;">Access 19 AI-powered commands</div>
-          </div>
-        </div>
-      `;
-      aiButton.style.cssText = `
-        display: block;
-        width: 100%;
-        padding: 12px 16px;
-        border: none;
-        background: transparent;
-        cursor: pointer;
-        font-size: 14px;
-        text-align: left;
-        transition: background-color 0.15s;
-        font-family: inherit;
-        border-radius: 4px;
-        margin: 2px 8px;
-      `;
-      
-      aiButton.onmouseenter = () => {
-        aiButton.style.backgroundColor = '#f3f4f6';
-      };
-      aiButton.onmouseleave = () => {
-        aiButton.style.backgroundColor = 'transparent';
-      };
+      aiButton.setAttribute('data-ai-injected', 'true');
+      aiButton.innerHTML = `<span>✨</span><span>AI Commands</span>`;
       
       aiButton.onclick = (e) => {
         e.preventDefault();
         e.stopPropagation();
         
-        console.log('AI button clicked');
-        
-        // Hide the slash menu
-        menuElement.setAttribute('data-show', 'false');
-        menuElement.style.display = 'none';
-        
+        // Let menu close naturally - don't force hide
         // Open our AI commands menu
         setSlashMenuOpen(true);
         setSlashMenuFilter('');
       };
       
-      aiGroup.appendChild(aiHeader);
-      aiGroup.appendChild(aiButton);
-      
       // Insert at the beginning of the menu
       if (menuElement.firstChild) {
-        menuElement.insertBefore(aiGroup, menuElement.firstChild);
-        console.log('✅ AI option injected successfully at beginning');
+        menuElement.insertBefore(aiButton, menuElement.firstChild);
       } else {
-        menuElement.appendChild(aiGroup);
-        console.log('✅ AI option injected successfully as first child');
+        menuElement.appendChild(aiButton);
       }
     };
 
@@ -299,9 +245,19 @@ Start writing below...
     }
   };
 
-  // AI Command definitions
+  // AI Command definitions - Essential commands only
   const aiCommands: AICommand[] = [
-    // GENERATE
+    {
+      id: 'improve',
+      label: 'Improve writing',
+      icon: '✨',
+      category: 'enhance',
+      needsContext: true,
+      action: async (context: string) => {
+        const prompt = `Improve the following markdown text by making it clearer, more concise, and better written. Keep the same meaning and markdown formatting. Only return the improved markdown:\n\n${context}`;
+        return await callAI(prompt);
+      }
+    },
     {
       id: 'continue',
       label: 'Continue writing',
@@ -314,46 +270,13 @@ Start writing below...
       }
     },
     {
-      id: 'explain',
-      label: 'Explain topic',
-      icon: '💡',
-      category: 'generate',
-      action: async (context: string) => {
-        const prompt = `Explain the following topic in clear, easy-to-understand markdown. Include examples if helpful:\n\n${context}`;
-        return await callAI(prompt);
-      }
-    },
-    {
-      id: 'add-summary',
-      label: 'Add summary',
+      id: 'summarize',
+      label: 'Summarize',
       icon: '📋',
       category: 'generate',
       needsContext: true,
       action: async (context: string) => {
         const prompt = `Create a concise summary of the following content in 2-3 sentences. Return only the summary in markdown:\n\n${context}`;
-        return await callAI(prompt);
-      }
-    },
-    {
-      id: 'add-example',
-      label: 'Add example',
-      icon: '📝',
-      category: 'generate',
-      needsContext: true,
-      action: async (context: string) => {
-        const prompt = `Add a relevant, practical example to illustrate the following content. Return only the example in markdown:\n\n${context}`;
-        return await callAI(prompt);
-      }
-    },
-    // ENHANCE
-    {
-      id: 'improve',
-      label: 'Improve writing',
-      icon: '✨',
-      category: 'enhance',
-      needsContext: true,
-      action: async (context: string) => {
-        const prompt = `Improve the following markdown text by making it clearer, more concise, and better written. Keep the same meaning and markdown formatting. Only return the improved markdown:\n\n${context}`;
         return await callAI(prompt);
       }
     },
@@ -380,29 +303,6 @@ Start writing below...
       }
     },
     {
-      id: 'fix-grammar',
-      label: 'Fix spelling & grammar',
-      icon: '✓',
-      category: 'enhance',
-      needsContext: true,
-      action: async (context: string) => {
-        const prompt = `Fix all spelling and grammar errors in the following markdown text. Keep the same meaning and markdown formatting. Only return the corrected markdown:\n\n${context}`;
-        return await callAI(prompt);
-      }
-    },
-    {
-      id: 'simplify',
-      label: 'Simplify language',
-      icon: '🔤',
-      category: 'enhance',
-      needsContext: true,
-      action: async (context: string) => {
-        const prompt = `Simplify the language in the following markdown text to make it easier to understand. Use simpler words and shorter sentences. Keep the markdown formatting. Only return the simplified markdown:\n\n${context}`;
-        return await callAI(prompt);
-      }
-    },
-    // TRANSFORM
-    {
       id: 'tone-formal',
       label: 'Change tone: Formal',
       icon: '🎩',
@@ -421,85 +321,6 @@ Start writing below...
       needsContext: true,
       action: async (context: string) => {
         const prompt = `Rewrite the following markdown text in a casual tone. Keep the same meaning and markdown formatting but adjust the style. Only return the rewritten markdown:\n\n${context}`;
-        return await callAI(prompt);
-      }
-    },
-    {
-      id: 'translate',
-      label: 'Translate',
-      icon: '🌐',
-      category: 'transform',
-      needsContext: true,
-      action: async (context: string) => {
-        const prompt = `Translate the following markdown text to Spanish. Keep the markdown formatting. Only return the translated markdown:\n\n${context}`;
-        return await callAI(prompt);
-      }
-    },
-    // STRUCTURE
-    {
-      id: 'add-bullets',
-      label: 'Convert to bullet points',
-      icon: '•',
-      category: 'structure',
-      needsContext: true,
-      action: async (context: string) => {
-        const prompt = `Convert the following text into a well-organized bullet point list in markdown. Only return the bullet points:\n\n${context}`;
-        return await callAI(prompt);
-      }
-    },
-    {
-      id: 'create-table',
-      label: 'Create table',
-      icon: '📊',
-      category: 'structure',
-      needsContext: true,
-      action: async (context: string) => {
-        const prompt = `Convert the following content into a markdown table format. Only return the table:\n\n${context}`;
-        return await callAI(prompt);
-      }
-    },
-    {
-      id: 'create-outline',
-      label: 'Create outline',
-      icon: '📑',
-      category: 'structure',
-      needsContext: true,
-      action: async (context: string) => {
-        const prompt = `Create a structured outline from the following content using markdown headers and bullet points. Only return the outline:\n\n${context}`;
-        return await callAI(prompt);
-      }
-    },
-    // ANALYZE
-    {
-      id: 'key-points',
-      label: 'Extract key points',
-      icon: '🎯',
-      category: 'analyze',
-      needsContext: true,
-      action: async (context: string) => {
-        const prompt = `Extract the key points from the following content as a bullet list in markdown. Only return the key points:\n\n${context}`;
-        return await callAI(prompt);
-      }
-    },
-    {
-      id: 'questions',
-      label: 'Generate questions',
-      icon: '❓',
-      category: 'analyze',
-      needsContext: true,
-      action: async (context: string) => {
-        const prompt = `Generate 3-5 thoughtful questions about the following content in markdown format. Only return the questions:\n\n${context}`;
-        return await callAI(prompt);
-      }
-    },
-    {
-      id: 'action-items',
-      label: 'Extract action items',
-      icon: '✅',
-      category: 'analyze',
-      needsContext: true,
-      action: async (context: string) => {
-        const prompt = `Extract action items and tasks from the following content as a checklist in markdown. Only return the action items:\n\n${context}`;
         return await callAI(prompt);
       }
     }
@@ -524,7 +345,7 @@ Start writing below...
       const result = await command.action(content);
       
       // For commands that generate new content (not replace)
-      if (['continue', 'add-summary', 'add-example', 'key-points', 'questions', 'action-items'].includes(command.id)) {
+      if (['continue', 'summarize'].includes(command.id)) {
         setEditorContent(content + '\n\n' + result);
       } else {
         setEditorContent(result);
@@ -578,16 +399,9 @@ Start writing below...
 
   const filteredCommands = slashMenuFilter
     ? aiCommands.filter(cmd => 
-        cmd.label.toLowerCase().includes(slashMenuFilter.toLowerCase()) ||
-        cmd.category.toLowerCase().includes(slashMenuFilter.toLowerCase())
+        cmd.label.toLowerCase().includes(slashMenuFilter.toLowerCase())
       )
     : aiCommands;
-
-  const commandsByCategory = filteredCommands.reduce((acc, cmd) => {
-    if (!acc[cmd.category]) acc[cmd.category] = [];
-    acc[cmd.category].push(cmd);
-    return acc;
-  }, {} as Record<string, AICommand[]>);
 
   const handleImproveText = async () => {
     const content = getEditorContent();
@@ -978,29 +792,18 @@ Start writing below...
               </div>
               
               <div className="max-h-96 overflow-y-auto space-y-1">
-                {Object.entries(commandsByCategory).map(([category, commands]) => (
-                  <div key={category}>
-                    <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase">
-                      {category === 'generate' && '📝 Generate'}
-                      {category === 'enhance' && '✨ Enhance'}
-                      {category === 'transform' && '🎯 Transform'}
-                      {category === 'structure' && '📊 Structure'}
-                      {category === 'analyze' && '🔍 Analyze'}
-                    </div>
-                    {commands.map((cmd) => (
-                      <button
-                        key={cmd.id}
-                        onClick={() => executeAICommand(cmd)}
-                        className="w-full text-left px-3 py-2 text-sm rounded hover:bg-accent flex items-center gap-2 transition-colors"
-                      >
-                        <span>{cmd.icon}</span>
-                        <span>{cmd.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                ))}
-                
-                {filteredCommands.length === 0 && (
+                {filteredCommands.length > 0 ? (
+                  filteredCommands.map((cmd) => (
+                    <button
+                      key={cmd.id}
+                      onClick={() => executeAICommand(cmd)}
+                      className="w-full text-left px-3 py-2 text-sm rounded hover:bg-accent flex items-center gap-2 transition-colors"
+                    >
+                      <span>{cmd.icon}</span>
+                      <span>{cmd.label}</span>
+                    </button>
+                  ))
+                ) : (
                   <div className="px-3 py-8 text-center text-sm text-muted-foreground">
                     No commands found
                   </div>
@@ -1093,13 +896,13 @@ Start writing below...
             </ul>
           </div>
           <div>
-            <p className="font-medium mb-1">AI Commands (19 total):</p>
+            <p className="font-medium mb-1">AI Commands (7 total):</p>
             <ul className="space-y-1">
-              <li>📝 Generate & continue</li>
-              <li>✨ Enhance & improve</li>
-              <li>🎯 Transform tone</li>
-              <li>📊 Structure content</li>
-              <li>🔍 Analyze & extract</li>
+              <li>✨ Improve writing</li>
+              <li>✍️ Continue writing</li>
+              <li>📋 Summarize</li>
+              <li>📏 Make longer/shorter</li>
+              <li>🎩 Change tone</li>
             </ul>
           </div>
           <div>
@@ -1114,11 +917,10 @@ Start writing below...
         <div className="mt-4 p-3 bg-background rounded border">
           <p className="text-xs font-medium mb-2">💡 Pro Tips:</p>
           <ul className="text-xs space-y-1 text-muted-foreground">
-            <li>• Type <kbd className="px-1 py-0.5 bg-muted rounded">/</kbd> in the editor and select "AI" to see all 19 AI commands</li>
+            <li>• Type <kbd className="px-1 py-0.5 bg-muted rounded">/</kbd> in the editor and select "AI Commands" to see all 7 AI commands</li>
             <li>• Use the search bar in the AI menu to quickly find commands</li>
             <li>• Use "Quick Actions" toolbar button for common tasks</li>
             <li>• Click "Custom Prompt" for any AI task not in the menu</li>
-            <li>• Commands are organized by category: Generate, Enhance, Transform, Structure, Analyze</li>
           </ul>
         </div>
         <p className="text-xs text-muted-foreground mt-3">
