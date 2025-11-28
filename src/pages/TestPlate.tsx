@@ -44,6 +44,134 @@ const TestPlate = () => {
   useEffect(() => {
     if (!editorRef.current) return;
 
+    // Inject AI option into Milkdown's native slash menu
+    const addAIOptionToMenu = (menuElement: HTMLElement) => {
+      console.log('Attempting to add AI option to menu:', menuElement);
+      console.log('Menu element children:', menuElement.children);
+      console.log('Menu data-show:', menuElement.getAttribute('data-show'));
+      
+      // Check if already injected
+      if (menuElement.querySelector('[data-ai-injected]')) {
+        console.log('AI option already exists, skipping');
+        return;
+      }
+      
+      // Create AI menu group (matching Milkdown's structure)
+      const aiGroup = document.createElement('div');
+      aiGroup.className = 'menu-group';
+      aiGroup.setAttribute('data-ai-injected', 'true');
+      
+      // Create AI header
+      const aiHeader = document.createElement('div');
+      aiHeader.className = 'menu-group-label';
+      aiHeader.textContent = 'AI';
+      aiHeader.style.cssText = 'padding: 8px 16px; font-size: 12px; font-weight: 600; color: #666; text-transform: uppercase;';
+      
+      // Create AI button
+      const aiButton = document.createElement('button');
+      aiButton.className = 'menu-item';
+      aiButton.setAttribute('type', 'button');
+      aiButton.innerHTML = `
+        <div style="display: flex; align-items: center; width: 100%;">
+          <span style="margin-right: 12px; font-size: 18px;">✨</span>
+          <div style="flex: 1;">
+            <div style="font-weight: 500;">AI Commands</div>
+            <div style="font-size: 12px; color: #999;">Access 19 AI-powered commands</div>
+          </div>
+        </div>
+      `;
+      aiButton.style.cssText = `
+        display: block;
+        width: 100%;
+        padding: 12px 16px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        font-size: 14px;
+        text-align: left;
+        transition: background-color 0.15s;
+        font-family: inherit;
+        border-radius: 4px;
+        margin: 2px 8px;
+      `;
+      
+      aiButton.onmouseenter = () => {
+        aiButton.style.backgroundColor = '#f3f4f6';
+      };
+      aiButton.onmouseleave = () => {
+        aiButton.style.backgroundColor = 'transparent';
+      };
+      
+      aiButton.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        console.log('AI button clicked');
+        
+        // Hide the slash menu
+        menuElement.setAttribute('data-show', 'false');
+        menuElement.style.display = 'none';
+        
+        // Open our AI commands menu
+        setSlashMenuOpen(true);
+        setSlashMenuFilter('');
+      };
+      
+      aiGroup.appendChild(aiHeader);
+      aiGroup.appendChild(aiButton);
+      
+      // Insert at the beginning of the menu
+      if (menuElement.firstChild) {
+        menuElement.insertBefore(aiGroup, menuElement.firstChild);
+        console.log('✅ AI option injected successfully at beginning');
+      } else {
+        menuElement.appendChild(aiGroup);
+        console.log('✅ AI option injected successfully as first child');
+      }
+    };
+
+    // Monitor for slash menu appearance and visibility changes
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        // Watch for attribute changes (data-show)
+        if (mutation.type === 'attributes' && mutation.attributeName === 'data-show') {
+          const target = mutation.target as HTMLElement;
+          if (target.classList.contains('milkdown-slash-menu') && target.getAttribute('data-show') === 'true') {
+            console.log('Slash menu became visible (data-show=true)');
+            if (!target.querySelector('[data-ai-injected]')) {
+              console.log('Injecting AI option into visible menu');
+              addAIOptionToMenu(target);
+            }
+          }
+        }
+        
+        // Also watch for new nodes (initial creation)
+        mutation.addedNodes.forEach((node) => {
+          if (node instanceof HTMLElement) {
+            // Check if this is the slash menu by class name
+            if (node.classList.contains('milkdown-slash-menu')) {
+              console.log('Found milkdown-slash-menu node added');
+              // Check if it's visible
+              if (node.getAttribute('data-show') === 'true' && !node.querySelector('[data-ai-injected]')) {
+                console.log('Menu is visible, injecting AI option');
+                addAIOptionToMenu(node);
+              }
+            }
+            
+            // Also check children for slash menu
+            const slashMenu = node.querySelector('.milkdown-slash-menu');
+            if (slashMenu) {
+              console.log('Found slash menu in children');
+              if (slashMenu.getAttribute('data-show') === 'true' && !slashMenu.querySelector('[data-ai-injected]')) {
+                console.log('Child menu is visible, injecting AI option');
+                addAIOptionToMenu(slashMenu as HTMLElement);
+              }
+            }
+          }
+        });
+      });
+    });
+
     const crepe = new Crepe({
       root: editorRef.current,
       defaultValue: `# Welcome to Milkdown AI Editor
@@ -59,7 +187,7 @@ This is a powerful **markdown editor** with AI capabilities.
 
 ## Try It Out
 
-Select any text and use the **AI Assistant** button above to:
+Type **/** to open the command menu and select **AI** to access AI features:
 - Improve your writing
 - Continue writing
 - Summarize content
@@ -75,6 +203,26 @@ Start writing below...
       console.log('Milkdown editor created successfully');
       crepeRef.current = crepe;
       setEditorReady(true);
+      
+      // Start observing for slash menu (watch both nodes and attributes)
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['data-show']
+      });
+
+      // Also check periodically for visible slash menu (fallback)
+      const checkInterval = setInterval(() => {
+        const slashMenu = document.querySelector('.milkdown-slash-menu[data-show="true"]');
+        if (slashMenu && !slashMenu.querySelector('[data-ai-injected]')) {
+          console.log('Found visible slash menu via interval check');
+          addAIOptionToMenu(slashMenu as HTMLElement);
+        }
+      }, 300);
+
+      // Clean up interval after 30 seconds
+      setTimeout(() => clearInterval(checkInterval), 30000);
     }).catch((error) => {
       console.error('Failed to create editor:', error);
       toast({
@@ -85,6 +233,7 @@ Start writing below...
     });
 
     return () => {
+      observer.disconnect();
       if (crepeRef.current) {
         crepeRef.current.destroy();
         crepeRef.current = null;
@@ -676,7 +825,7 @@ Start writing below...
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">Milkdown AI Editor</h1>
         <p className="text-muted-foreground">
-          A powerful markdown editor with AI-powered writing assistance. Type <kbd className="px-2 py-1 text-xs bg-muted rounded">/</kbd> for AI commands
+          A powerful markdown editor with AI-powered writing assistance. Type <kbd className="px-2 py-1 text-xs bg-muted rounded">/</kbd> and select "AI" to access all AI features.
         </p>
       </div>
 
@@ -713,25 +862,38 @@ Start writing below...
             </Button>
           </div>
 
-          {/* AI Features Dropdown */}
+          {/* AI Commands Menu Button */}
+          <Button
+            size="sm"
+            variant="default"
+            onClick={() => {
+              setSlashMenuOpen(!slashMenuOpen);
+              setSlashMenuFilter('');
+            }}
+            disabled={isAILoading || !editorReady}
+          >
+            {isAILoading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                AI Working...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4 mr-2" />
+                AI Commands
+              </>
+            )}
+          </Button>
+
+          {/* Quick Actions Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 size="sm"
-                variant="default"
+                variant="outline"
                 disabled={isAILoading || !editorReady}
               >
-                {isAILoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    AI Working...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    AI Assistant
-                  </>
-                )}
+                Quick Actions
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
@@ -742,16 +904,16 @@ Start writing below...
                 ➡️ Continue Writing
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleSummarize}>
-                � MSummarize
+                📝 Summarize
               </DropdownMenuItem>
               
               <DropdownMenuSeparator />
               
               <DropdownMenuItem onClick={handleMakeLonger}>
-                � PMake Longer
+                📏 Make Longer
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleMakeShorter}>
-                � CMake Shorter
+                ✂️ Make Shorter
               </DropdownMenuItem>
               
               <DropdownMenuSeparator />
@@ -776,27 +938,6 @@ Start writing below...
         <div 
           ref={editorRef} 
           className="min-h-[500px] milkdown-editor-wrapper"
-          onKeyDown={(e) => {
-            // Trigger slash menu on '/' key
-            if (e.key === '/' && !slashMenuOpen && !isAILoading) {
-              setTimeout(() => {
-                setSlashMenuOpen(true);
-                setSlashMenuFilter('');
-              }, 50);
-            }
-            // Close menu on Escape
-            if (e.key === 'Escape' && slashMenuOpen) {
-              e.preventDefault();
-              setSlashMenuOpen(false);
-              setSlashMenuFilter('');
-            }
-          }}
-          onClick={() => {
-            // Close slash menu when clicking in editor
-            if (slashMenuOpen) {
-              setSlashMenuOpen(false);
-            }
-          }}
         />
 
         {/* AI Loading Overlay */}
@@ -809,66 +950,81 @@ Start writing below...
           </div>
         )}
 
-        {/* Slash Command Menu */}
+        {/* AI Commands Popover Menu */}
         {slashMenuOpen && (
-          <div className="absolute z-50 w-80 bg-popover border rounded-lg shadow-lg p-2 mt-2 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 slash-menu-enter">
-            <div className="mb-2">
-              <Input
-                placeholder="Search AI commands..."
-                value={slashMenuFilter}
-                onChange={(e) => setSlashMenuFilter(e.target.value)}
-                className="h-8 text-sm"
-                autoFocus
-              />
-            </div>
+          <>
+            {/* Backdrop */}
+            <div 
+              className="fixed inset-0 z-40" 
+              onClick={() => setSlashMenuOpen(false)}
+            />
             
-            <div className="max-h-96 overflow-y-auto space-y-1">
-              {Object.entries(commandsByCategory).map(([category, commands]) => (
-                <div key={category}>
-                  <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase">
-                    {category === 'generate' && '📝 Generate'}
-                    {category === 'enhance' && '✨ Enhance'}
-                    {category === 'transform' && '🎯 Transform'}
-                    {category === 'structure' && '📊 Structure'}
-                    {category === 'analyze' && '🔍 Analyze'}
-                  </div>
-                  {commands.map((cmd) => (
-                    <button
-                      key={cmd.id}
-                      onClick={() => executeAICommand(cmd)}
-                      className="w-full text-left px-3 py-2 text-sm rounded hover:bg-accent flex items-center gap-2 transition-colors"
-                    >
-                      <span>{cmd.icon}</span>
-                      <span>{cmd.label}</span>
-                    </button>
-                  ))}
-                </div>
-              ))}
+            {/* Menu */}
+            <div className="absolute z-50 w-80 bg-popover border rounded-lg shadow-lg p-2 mt-2 left-1/2 top-20 -translate-x-1/2 slash-menu-enter">
+              <div className="mb-2">
+                <Input
+                  placeholder="Search AI commands..."
+                  value={slashMenuFilter}
+                  onChange={(e) => setSlashMenuFilter(e.target.value)}
+                  className="h-8 text-sm"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      setSlashMenuOpen(false);
+                      setSlashMenuFilter('');
+                    }
+                  }}
+                />
+              </div>
               
-              {filteredCommands.length === 0 && (
-                <div className="px-3 py-8 text-center text-sm text-muted-foreground">
-                  No commands found
-                </div>
-              )}
+              <div className="max-h-96 overflow-y-auto space-y-1">
+                {Object.entries(commandsByCategory).map(([category, commands]) => (
+                  <div key={category}>
+                    <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase">
+                      {category === 'generate' && '📝 Generate'}
+                      {category === 'enhance' && '✨ Enhance'}
+                      {category === 'transform' && '🎯 Transform'}
+                      {category === 'structure' && '📊 Structure'}
+                      {category === 'analyze' && '🔍 Analyze'}
+                    </div>
+                    {commands.map((cmd) => (
+                      <button
+                        key={cmd.id}
+                        onClick={() => executeAICommand(cmd)}
+                        className="w-full text-left px-3 py-2 text-sm rounded hover:bg-accent flex items-center gap-2 transition-colors"
+                      >
+                        <span>{cmd.icon}</span>
+                        <span>{cmd.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                ))}
+                
+                {filteredCommands.length === 0 && (
+                  <div className="px-3 py-8 text-center text-sm text-muted-foreground">
+                    No commands found
+                  </div>
+                )}
+              </div>
+              
+              <div className="mt-2 pt-2 border-t">
+                <button
+                  onClick={() => {
+                    setSlashMenuOpen(false);
+                    setShowAIDialog(true);
+                  }}
+                  className="w-full text-left px-3 py-2 text-sm rounded hover:bg-accent flex items-center gap-2"
+                >
+                  <Wand2 className="h-4 w-4" />
+                  <span>Custom AI prompt...</span>
+                </button>
+              </div>
+              
+              <div className="mt-2 px-2 text-xs text-muted-foreground">
+                Press <kbd className="px-1 py-0.5 bg-muted rounded">Esc</kbd> to close
+              </div>
             </div>
-            
-            <div className="mt-2 pt-2 border-t">
-              <button
-                onClick={() => {
-                  setSlashMenuOpen(false);
-                  setShowAIDialog(true);
-                }}
-                className="w-full text-left px-3 py-2 text-sm rounded hover:bg-accent flex items-center gap-2"
-              >
-                <Wand2 className="h-4 w-4" />
-                <span>Custom AI prompt...</span>
-              </button>
-            </div>
-            
-            <div className="mt-2 px-2 text-xs text-muted-foreground">
-              Press <kbd className="px-1 py-0.5 bg-muted rounded">Esc</kbd> to close
-            </div>
-          </div>
+          </>
         )}
       </div>
 
@@ -937,7 +1093,7 @@ Start writing below...
             </ul>
           </div>
           <div>
-            <p className="font-medium mb-1">AI Commands (type /):</p>
+            <p className="font-medium mb-1">AI Commands (19 total):</p>
             <ul className="space-y-1">
               <li>📝 Generate & continue</li>
               <li>✨ Enhance & improve</li>
@@ -947,12 +1103,10 @@ Start writing below...
             </ul>
           </div>
           <div>
-            <p className="font-medium mb-1">Quick Actions:</p>
+            <p className="font-medium mb-1">Access Methods:</p>
             <ul className="space-y-1">
-              <li>✨ Improve writing</li>
-              <li>➡️ Continue writing</li>
-              <li>📝 Summarize</li>
-              <li>🎭 Change tone</li>
+              <li>🎯 AI Commands button</li>
+              <li>⚡ Quick Actions dropdown</li>
               <li>🪄 Custom prompts</li>
             </ul>
           </div>
@@ -960,8 +1114,9 @@ Start writing below...
         <div className="mt-4 p-3 bg-background rounded border">
           <p className="text-xs font-medium mb-2">💡 Pro Tips:</p>
           <ul className="text-xs space-y-1 text-muted-foreground">
-            <li>• Type <kbd className="px-1 py-0.5 bg-muted rounded">/</kbd> anywhere in the editor to open the AI command menu</li>
-            <li>• Use the search bar in the slash menu to quickly find commands</li>
+            <li>• Type <kbd className="px-1 py-0.5 bg-muted rounded">/</kbd> in the editor and select "AI" to see all 19 AI commands</li>
+            <li>• Use the search bar in the AI menu to quickly find commands</li>
+            <li>• Use "Quick Actions" toolbar button for common tasks</li>
             <li>• Click "Custom Prompt" for any AI task not in the menu</li>
             <li>• Commands are organized by category: Generate, Enhance, Transform, Structure, Analyze</li>
           </ul>
