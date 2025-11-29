@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Crepe } from '@milkdown/crepe';
+import { Crepe, CrepeBuilder } from '@milkdown/crepe';
 import '@milkdown/crepe/theme/common/style.css';
 import '@milkdown/crepe/theme/frame.css';
 import './TestPlate.css';
+import { toolbar } from '@milkdown/crepe/feature/toolbar';
 import { Button } from '@/components/ui/button';
 import { Sparkles, Loader2, Download, Copy, Wand2 } from 'lucide-react';
 import {
@@ -42,6 +43,132 @@ const TestPlate = () => {
   const [slashMenuFilter, setSlashMenuFilter] = useState('');
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [positionReady, setPositionReady] = useState(false);
+  const [selectedText, setSelectedText] = useState('');
+  const [selectionBounds, setSelectionBounds] = useState({ top: 0, left: 0, width: 0, height: 0 });
+  const [showBubbleMenu, setShowBubbleMenu] = useState(false);
+  const [bubbleMenuPosition, setBubbleMenuPosition] = useState({ top: 0, left: 0 });
+
+  // Debug bubble menu state changes
+  useEffect(() => {
+    if (showBubbleMenu) {
+      console.log('Bubble menu should be visible at:', bubbleMenuPosition);
+    }
+  }, [showBubbleMenu, bubbleMenuPosition]);
+
+  // Handle text selection for bubble menu
+  const handleSelectionChange = () => {
+    console.log('Selection change detected');
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+      console.log('No selection or range count is 0');
+      setShowBubbleMenu(false);
+      return;
+    }
+
+    const selectedText = selection.toString().trim();
+    console.log('Selected text length:', selectedText.length);
+
+    // Only show bubble menu if text is selected (at least 3 characters) and within editor
+    if (selectedText.length >= 3) {
+      // Check if selection is within the editor
+      const editorElement = document.querySelector('.milkdown-editor-wrapper');
+      const isInEditor = editorElement?.contains(selection.anchorNode) ||
+                        editorElement?.contains(selection.focusNode);
+
+      if (isInEditor) {
+        setSelectedText(selectedText);
+
+        // Try to find and extend the native Crepe bubble menu first
+        // Milkdown Crepe uses these selectors for bubble menu
+        const nativeBubbleMenu = document.querySelector('.crepe-block-menu, .milkdown-menu, [role="toolbar"]');
+        
+        if (nativeBubbleMenu && !nativeBubbleMenu.querySelector('[data-ai-extended]')) {
+          console.log('Found native bubble menu, extending with AI buttons');
+          extendNativeBubbleMenu(nativeBubbleMenu as HTMLElement, selectedText);
+          setShowBubbleMenu(false); // Don't show custom menu
+        } else {
+          // Fallback to our custom bubble menu
+          // Calculate position
+          const range = selection.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+
+          setBubbleMenuPosition({
+            top: rect.top + window.scrollY - 45, // Position above selection
+            left: Math.max(10, rect.left + window.scrollX + (rect.width / 2) - 80) // Center, but keep on screen
+          });
+
+          console.log('Showing custom bubble menu at:', bubbleMenuPosition);
+          setShowBubbleMenu(true);
+        }
+      } else {
+        setShowBubbleMenu(false);
+      }
+    } else {
+      setShowBubbleMenu(false);
+    }
+  };
+
+  // Extend the native Crepe bubble menu with AI buttons
+  const extendNativeBubbleMenu = (menuElement: HTMLElement, selectedText: string) => {
+    // Mark as extended to avoid duplicate additions
+    menuElement.setAttribute('data-ai-extended', 'true');
+
+    // Create AI button container
+    const aiContainer = document.createElement('div');
+    aiContainer.className = 'ai-bubble-buttons';
+    aiContainer.style.cssText = 'display: flex; gap: 2px; margin-left: 4px; padding-left: 4px; border-left: 1px solid hsl(var(--border));';
+
+    // Add AI buttons
+    bubbleAICommands.forEach(cmd => {
+      const button = document.createElement('button');
+      button.className = 'ai-bubble-btn';
+      button.innerHTML = `<span>${cmd.icon}</span>`;
+      button.title = cmd.label;
+      button.style.cssText = `
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 4px;
+        border: none;
+        background: transparent;
+        color: hsl(var(--foreground));
+        cursor: pointer;
+        font-size: 16px;
+        transition: background-color 0.15s ease;
+      `;
+
+      button.onmouseover = () => {
+        button.style.backgroundColor = 'hsl(var(--accent))';
+      };
+
+      button.onmouseout = () => {
+        button.style.backgroundColor = 'transparent';
+      };
+
+      button.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleBubbleAICommand(cmd.id);
+      };
+
+      aiContainer.appendChild(button);
+    });
+
+    // Add to the menu
+    menuElement.appendChild(aiContainer);
+    console.log('Extended native bubble menu with AI buttons');
+  };
+
+  // Handle clicks outside to hide bubble menu
+  const handleClickOutside = (e: MouseEvent) => {
+    const target = e.target as Element;
+    const bubbleMenu = document.querySelector('[data-bubble-menu]');
+    if (bubbleMenu && !bubbleMenu.contains(target)) {
+      setShowBubbleMenu(false);
+    }
+  };
 
   const getCaretPosition = () => {
     const selection = window.getSelection();
@@ -195,13 +322,63 @@ Type **/** to open the command menu and select **AI** to access AI features:
 > 💡 **Tip**: You can use standard markdown syntax like **bold**, *italic*, \`code\`, and more!
 
 Start writing below...
-`,
+      `,
     });
 
     crepe.create().then(() => {
       console.log('Milkdown editor created successfully');
       crepeRef.current = crepe;
       setEditorReady(true);
+
+      // Add selection listener for bubble menu
+      const editorElement = document.querySelector('.milkdown-editor-wrapper');
+      if (editorElement) {
+        editorElement.addEventListener('mouseup', handleSelectionChange);
+        editorElement.addEventListener('keyup', handleSelectionChange); // For keyboard selection
+      }
+      document.addEventListener('mousedown', handleClickOutside);
+
+      // Watch for native bubble menu appearance with comprehensive detection
+      const bubbleObserver = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          mutation.addedNodes.forEach((node) => {
+            if (node instanceof HTMLElement) {
+              console.log('Node added:', node.className, node.tagName);
+              
+              // Look for Milkdown Crepe bubble menu - check ALL possible selectors
+              let bubbleMenu = node.querySelector('.crepe-block-menu, .milkdown-menu, .milkdown-toolbar, [role="toolbar"], [data-crepe-menu]');
+              
+              // Also check if the node itself is the bubble menu
+              if (!bubbleMenu && (
+                node.classList.contains('crepe-block-menu') ||
+                node.classList.contains('milkdown-menu') ||
+                node.classList.contains('milkdown-toolbar') ||
+                node.getAttribute('role') === 'toolbar' ||
+                node.hasAttribute('data-crepe-menu')
+              )) {
+                bubbleMenu = node;
+              }
+              
+              if (bubbleMenu && !bubbleMenu.querySelector('[data-ai-extended]')) {
+                console.log('✅ Detected native bubble menu:', bubbleMenu.className);
+                // Get current selection
+                const selection = window.getSelection();
+                const selectedText = selection?.toString().trim() || '';
+                if (selectedText.length >= 3) {
+                  setTimeout(() => {
+                    extendNativeBubbleMenu(bubbleMenu as HTMLElement, selectedText);
+                  }, 50);
+                }
+              }
+            }
+          });
+        });
+      });
+
+      bubbleObserver.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
 
       // Add keyboard shortcut for AI menu (Ctrl+K / Cmd+K) after editor is ready
       const handleGlobalKeydown = (e: KeyboardEvent) => {
@@ -269,6 +446,12 @@ Start writing below...
 
     return () => {
       observer.disconnect();
+      const editorElement = document.querySelector('.milkdown-editor-wrapper');
+      if (editorElement) {
+        editorElement.removeEventListener('mouseup', handleSelectionChange);
+        editorElement.removeEventListener('keyup', handleSelectionChange);
+      }
+      document.removeEventListener('mousedown', handleClickOutside);
       if (crepeRef.current) {
         crepeRef.current.destroy();
         crepeRef.current = null;
@@ -279,7 +462,7 @@ Start writing below...
         delete (window as Window & { _aiKeyboardCleanup?: () => void })._aiKeyboardCleanup;
       }
     };
-  }, [editorReady, isAILoading]);
+  }, [editorReady, extendNativeBubbleMenu, handleSelectionChange, isAILoading]);
 
   const getEditorContent = (): string => {
     if (!crepeRef.current) return '';
@@ -336,6 +519,70 @@ Start writing below...
     } catch (error) {
       console.error('AI generation error:', error);
       throw error;
+    }
+  };
+
+  // Bubble menu AI commands (for selected text only)
+  const bubbleAICommands = [
+    {
+      id: 'improve-selection',
+      label: 'Improve',
+      icon: '✨',
+      action: async (text: string) => {
+        const prompt = `Improve the following text by making it clearer and better written. Keep the same meaning. Only return the improved text:\n\n${text}`;
+        return await callAI(prompt);
+      }
+    },
+    {
+      id: 'summarize-selection',
+      label: 'Summarize',
+      icon: '📝',
+      action: async (text: string) => {
+        const prompt = `Summarize the following text in 1-2 sentences. Only return the summary:\n\n${text}`;
+        return await callAI(prompt);
+      }
+    },
+    {
+      id: 'expand-selection',
+      label: 'Expand',
+      icon: '📏',
+      action: async (text: string) => {
+        const prompt = `Expand the following text with more details and examples. Make it 2x longer. Only return the expanded text:\n\n${text}`;
+        return await callAI(prompt);
+      }
+    }
+  ];
+
+  const handleBubbleAICommand = async (commandId: string) => {
+    const command = bubbleAICommands.find(cmd => cmd.id === commandId);
+    if (!command || !selectedText) return;
+
+    setIsAILoading(true);
+    setShowBubbleMenu(false);
+
+    try {
+      const result = await command.action(selectedText);
+      
+      // Replace selected text with AI result
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(document.createTextNode(result));
+      }
+
+      toast({
+        title: "AI completed!",
+        description: `${command.label} finished successfully`
+      });
+    } catch (error) {
+      toast({
+        title: "AI Error",
+        description: error instanceof Error ? error.message : "Failed to process text",
+        variant: "destructive"
+      });
+    } finally {
+      setIsAILoading(false);
     }
   };
 
@@ -848,6 +1095,33 @@ Start writing below...
           className="min-h-[500px] milkdown-editor-wrapper"
         />
 
+        {/* AI Bubble Menu (appears on text selection) */}
+        {showBubbleMenu && !isAILoading && (
+          <div
+            data-bubble-menu
+            className="fixed z-[9999] bg-background border rounded-lg shadow-lg p-1 flex gap-1 animate-in fade-in-0 zoom-in-95 duration-200"
+            style={{
+              top: `${bubbleMenuPosition.top}px`,
+              left: `${bubbleMenuPosition.left}px`,
+            }}
+            onMouseDown={(e) => e.preventDefault()} // Prevent selection loss
+          >
+            {/* Debug indicator */}
+            <div className="absolute -top-2 -left-2 w-2 h-2 bg-red-500 rounded-full" title="Bubble menu visible"></div>
+            {bubbleAICommands.map((cmd) => (
+              <button
+                key={cmd.id}
+                onClick={() => handleBubbleAICommand(cmd.id)}
+                className="px-3 py-1.5 text-sm rounded hover:bg-accent flex items-center gap-1.5 transition-colors whitespace-nowrap"
+                title={cmd.label}
+              >
+                <span>{cmd.icon}</span>
+                <span>{cmd.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* AI Loading Overlay */}
         {isAILoading && (
           <div className="ai-loading-overlay">
@@ -997,13 +1271,12 @@ Start writing below...
             </ul>
           </div>
           <div>
-            <p className="font-medium mb-1">AI Commands (7 total):</p>
+            <p className="font-medium mb-1">AI Features:</p>
             <ul className="space-y-1">
-              <li>✨ Improve writing</li>
-              <li>✍️ Continue writing</li>
-              <li>📋 Summarize</li>
-              <li>📏 Make longer/shorter</li>
-              <li>🎩 Change tone</li>
+              <li>✨ Bubble menu (select text)</li>
+              <li>📝 Slash commands (type /)</li>
+              <li>⚡ Quick actions (toolbar)</li>
+              <li>🪄 Custom prompts</li>
             </ul>
           </div>
           <div>
@@ -1018,11 +1291,11 @@ Start writing below...
         <div className="mt-4 p-3 bg-background rounded border">
           <p className="text-xs font-medium mb-2">💡 Pro Tips:</p>
           <ul className="text-xs space-y-1 text-muted-foreground">
-            <li>• Type <kbd className="px-1 py-0.5 bg-muted rounded">/</kbd> in the editor and select "AI Commands" to see all 7 AI commands</li>
-            <li>• Press <kbd className="px-1 py-0.5 bg-muted rounded">Ctrl+K</kbd> (or <kbd className="px-1 py-0.5 bg-muted rounded">Cmd+K</kbd> on Mac) for quick AI menu access</li>
-            <li>• Use the search bar in the AI menu to quickly find commands</li>
+            <li>• <strong>Select text</strong> to see AI bubble menu (Improve, Summarize, Expand)</li>
+            <li>• Type <kbd className="px-1 py-0.5 bg-muted rounded">/</kbd> and select "AI Commands" for full document actions</li>
+            <li>• Press <kbd className="px-1 py-0.5 bg-muted rounded">Ctrl+K</kbd> (or <kbd className="px-1 py-0.5 bg-muted rounded">Cmd+K</kbd>) for quick AI menu</li>
             <li>• Use "Quick Actions" toolbar button for common tasks</li>
-            <li>• Click "Custom Prompt" for any AI task not in the menu</li>
+            <li>• Click "Custom Prompt" for any AI task</li>
           </ul>
         </div>
         <p className="text-xs text-muted-foreground mt-3">
