@@ -52,20 +52,47 @@ builder.addGroup("groupName", "Group Label").addItem("itemId", {
 
 ## Current Implementation
 
-The plugin components are properly structured and integrated into `TestPlate.tsx`:
+The plugin is fully implemented with a unified AI modal system:
 
-- **Slash Menu**: AI Assistant appears in the `/` menu under "AI" group
-- **Toolbar**: AI button appears in toolbar under "AI" group
-- **Icons**: Both use the custom logo SVG from `src/res/logo.svg`
+### **Unified AI Modal**
+- **Single Modal**: Opens from both toolbar and slash menu
+- **Context-Aware**: Shows different options based on trigger source
+- **Input Field**: "Ask AI Anything..." at the top
+- **Keyboard Navigation**: Up/down arrows to navigate options, Enter to select
+- **Smart Context**: Detects selected text vs empty line scenarios
 
-## Next Steps
+### **Context-Aware Options**
 
-1. Implement actual AI functionality (LLM integration)
-2. Add keyboard navigation support
-3. Test integration thoroughly
-4. Add error handling and loading states
-5. Create proper plugin registration if needed
+**Toolbar Actions (Selected Text):**
+- ✨ Improve writing
+- 📏 Make longer/shorter
+- ✂️ Make shorter
+- 🔤 Simplify language
+- ✓ Fix grammar
+
+**Slash Menu Actions (New Content):**
+- ✍️ Continue writing
+- 📝 Write introduction
+- 💡 Generate ideas
+- 📋 Create summary
+- 🎯 Write conclusion
+
+### **Integration Points**
+- **Slash Menu**: `/` → AI Assistant → Modal opens
+- **Toolbar**: Select text → AI button → Modal opens with context
+- **Custom Input**: Always available for any AI request
+
+### **Technical Features**
+- ✅ Keyboard navigation (↑↓ arrows, Enter, Esc)
+- ✅ Context detection (selected text vs empty line)
+- ✅ Loading states and error handling
+- ✅ Toast notifications
+- ✅ Proper editor integration (replace vs insert)
 
 ## Usage
 
-Currently integrated into TestPlate.tsx with placeholder functionality. The AI items will log to console when activated.
+1. **For selected text**: Select text → Click AI button → Choose from toolbar actions or type custom prompt
+2. **For new content**: Type `/` → Select "AI Assistant" → Choose from generation actions or type custom prompt
+3. **Custom requests**: Type any prompt in the input field for full AI flexibility
+
+The implementation provides exactly what you requested: **mandatory custom input + context-aware quick actions + simple, unified UX**.

@@ -12,12 +12,97 @@ import '@milkdown/crepe/theme/nord.css'
 // import '@milkdown/crepe/theme/frame-dark.css'
 
 import { aiSlashMenuItem, aiToolbarItem } from '../plugins/ai';
+import AIModal from '../plugins/ai/ui/AIModal';
+import { useAIModal } from '../plugins/ai/hooks/useAIModal';
+import { aiService } from '../plugins/ai/services/aiService';
+import { toast } from '@/hooks/use-toast';
 
 
 
 const TestPlate = () => {
   const editorRef = useRef<HTMLDivElement>(null);
   const crepeRef = useRef<Crepe | null>(null);
+  const aiModal = useAIModal();
+
+  // Editor utility functions
+  const getSelectedText = (): string => {
+    if (!crepeRef.current) return '';
+    try {
+      // Get the current editor state
+      const state = crepeRef.current.editor?.ctx.get('editorStateCtx');
+      if (!state) return '';
+
+      const { from, to } = state.selection;
+      return state.doc.textBetween(from, to);
+    } catch (error) {
+      console.error('Failed to get selected text:', error);
+      return '';
+    }
+  };
+
+  const replaceSelectedText = (text: string) => {
+    if (!crepeRef.current) return;
+    try {
+      crepeRef.current.action((ctx) => {
+        const commands = ctx.get('commandsCtx');
+        // Replace the current selection with the new text
+        commands.call('replaceSelection', text);
+      });
+    } catch (error) {
+      console.error('Failed to replace selected text:', error);
+    }
+  };
+
+  const insertAtCursor = (text: string) => {
+    if (!crepeRef.current) return;
+    try {
+      crepeRef.current.action((ctx) => {
+        const commands = ctx.get('commandsCtx');
+        // Insert text at cursor position
+        commands.call('insertText', text);
+      });
+    } catch (error) {
+      console.error('Failed to insert at cursor:', error);
+    }
+  };
+
+  // AI Modal handlers
+  const handleToolbarAIClick = () => {
+    // Get selected text from editor
+    const selectedText = getSelectedText();
+    aiModal.openModal('toolbar', selectedText);
+  };
+
+  const handleSlashMenuAIClick = () => {
+    aiModal.openModal('slash-menu');
+  };
+
+  const handleAIExecute = async (prompt: string) => {
+    try {
+      const result = await aiService.executePrompt(prompt);
+
+      // Insert result into editor based on context
+      if (aiModal.context === 'toolbar' && aiModal.selectedText) {
+        // Replace selected text
+        replaceSelectedText(result);
+      } else {
+        // Insert at cursor or append
+        insertAtCursor(result);
+      }
+
+      toast({
+        title: "AI completed!",
+        description: "Content has been updated"
+      });
+    } catch (error) {
+      toast({
+        title: "AI Error",
+        description: error instanceof Error ? error.message : "Failed to process request",
+        variant: "destructive"
+      });
+      throw error; // Re-throw to let modal handle loading state
+    }
+  };
 
   useEffect(() => {
     if (!editorRef.current) return;
@@ -45,12 +130,18 @@ Start writing below...
       featureConfigs: {
         [Crepe.Feature.BlockEdit]: {
           buildMenu: (builder) => {
-            builder.addGroup("AI", "AI").addItem("assistant", aiSlashMenuItem);
+            builder.addGroup("AI", "AI").addItem("assistant", {
+              ...aiSlashMenuItem,
+              onRun: () => handleSlashMenuAIClick(),
+            });
           },
         },
         [Crepe.Feature.Toolbar]: {
           buildToolbar: (builder) => {
-            builder.addGroup("ai", "AI").addItem("assistant", aiToolbarItem);
+            builder.addGroup("ai", "AI").addItem("assistant", {
+              ...aiToolbarItem,
+              onRun: () => handleToolbarAIClick(),
+            });
           },
         },
       },
@@ -122,6 +213,15 @@ Start writing below...
           Built with Milkdown - A modern WYSIWYG markdown editor
         </p>
       </div>
+
+      {/* AI Modal */}
+      <AIModal
+        isOpen={aiModal.isOpen}
+        onClose={aiModal.closeModal}
+        context={aiModal.context}
+        selectedText={aiModal.selectedText}
+        onExecuteAI={handleAIExecute}
+      />
     </div>
   );
 };
