@@ -83,69 +83,58 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. This text can be select
     };
   }, []);
 
+  // Generic helper to execute actions in editor context
+  const executeInEditor = <T>(callback: (ctx: any) => T): T | undefined => {
+    if (!crepeInstanceRef.current?.editor) return;
+    let result: T;
+    crepeInstanceRef.current.editor.action((ctx) => {
+      result = callback(ctx);
+    });
+    return result;
+  };
+
   // Get selected text from editor
   const getSelection = () => {
-    if (!crepeInstanceRef.current) return;
-
-    const editor = crepeInstanceRef.current.editor;
-    if (!editor) return;
-
-    editor.action((ctx) => {
+    const result = executeInEditor((ctx) => {
       const view = ctx.get(editorViewCtx);
       const { from, to } = view.state.selection;
       const text = view.state.doc.textBetween(from, to, '\n');
-      setSelectedText(text);
-      console.log('📝 Selected text:', text);
-      console.log('📍 Selection range:', { from, to });
+      return { text, from, to };
     });
+
+    if (result) {
+      setSelectedText(result.text);
+      console.log('📝 Selected text:', result.text);
+      console.log('📍 Selection range:', { from: result.from, to: result.to });
+    }
   };
 
   // Replace selected text with new content
   const replaceSelection = (newText: string) => {
-    if (!crepeInstanceRef.current) return;
-
-    const editor = crepeInstanceRef.current.editor;
-    if (!editor) return;
-
-    editor.action((ctx) => {
+    executeInEditor((ctx) => {
       const view = ctx.get(editorViewCtx);
       const parser = ctx.get(parserCtx);
       const { from, to } = view.state.selection;
 
-      // Parse the new markdown content
       const newDoc = parser(newText);
-
-      // Replace selection with new content
       const tr = view.state.tr.replaceWith(from, to, newDoc.content);
       view.dispatch(tr);
-      console.log('✅ Content replaced');
     });
+    console.log('✅ Content replaced');
   };
 
   // Get full markdown content
-  const getMarkdown = () => {
-    if (!crepeInstanceRef.current) return '';
-
-    const editor = crepeInstanceRef.current.editor;
-    if (!editor) return '';
-
-    let markdown = '';
-    editor.action((ctx) => {
+  const getMarkdown = (): string => {
+    return executeInEditor((ctx) => {
       const serializer = ctx.get(serializerCtx);
       const view = ctx.get(editorViewCtx);
-      markdown = serializer(view.state.doc);
-    });
-    return markdown;
+      return serializer(view.state.doc);
+    }) || '';
   };
 
   // Insert content at cursor position
   const insertAtCursor = (content: string) => {
-    if (!crepeInstanceRef.current) return;
-
-    const editor = crepeInstanceRef.current.editor;
-    if (!editor) return;
-
-    editor.action((ctx) => {
+    executeInEditor((ctx) => {
       const view = ctx.get(editorViewCtx);
       const parser = ctx.get(parserCtx);
       const { from } = view.state.selection;
@@ -153,8 +142,8 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. This text can be select
       const newDoc = parser(content);
       const tr = view.state.tr.insert(from, newDoc.content);
       view.dispatch(tr);
-      console.log('✅ Content inserted at cursor');
     });
+    console.log('✅ Content inserted at cursor');
   };
 
   // Demo: Replace with AI-like content
