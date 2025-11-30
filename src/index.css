@@ -328,4 +328,43 @@ html {
   .milkdown-editor .ProseMirror blockquote {
     @apply border-l-4 border-gray-300 pl-4 italic my-4;
   }
+
+  /* Milkdown Block Plugin Styles */
+  .milkdown .block-handle {
+    @apply absolute left-0 top-0 w-6 h-6 cursor-grab opacity-0 hover:opacity-100 transition-opacity;
+  }
+
+  .milkdown .block-handle:active {
+    @apply cursor-grabbing;
+  }
+
+  /* Milkdown Slash Menu Styles */
+  .milkdown .slash-menu {
+    @apply bg-white border border-gray-200 rounded-lg shadow-lg p-2 max-h-80 overflow-y-auto z-50;
+  }
+
+  .milkdown .slash-menu-item {
+    @apply px-3 py-2 rounded cursor-pointer hover:bg-gray-100 transition-colors flex items-center gap-2;
+  }
+
+  .milkdown .slash-menu-item.selected {
+    @apply bg-blue-50 text-blue-700;
+  }
+
+  .milkdown .slash-menu-item-icon {
+    @apply text-lg;
+  }
+
+  /* Milkdown Tooltip Styles */
+  .milkdown .tooltip {
+    @apply bg-gray-900 text-white rounded-lg shadow-lg px-2 py-1 text-sm flex items-center gap-1 z-50;
+  }
+
+  .milkdown .tooltip-button {
+    @apply px-2 py-1 hover:bg-gray-700 rounded transition-colors cursor-pointer;
+  }
+
+  .milkdown .tooltip-divider {
+    @apply w-px h-4 bg-gray-700 mx-1;
+  }
 }
