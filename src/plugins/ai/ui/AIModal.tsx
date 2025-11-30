@@ -17,7 +17,7 @@ interface AIModalProps {
   onClose: () => void;
   context: AIModalContext;
   selectedText?: string;
-  onExecuteAI: (prompt: string) => Promise<void>;
+  onExecuteAI: (option: AIOption | null, customPrompt?: string) => Promise<void>;
 }
 
 const AIModal: React.FC<AIModalProps> = ({
@@ -108,16 +108,7 @@ const AIModal: React.FC<AIModalProps> = ({
   const handleOptionSelect = async (option: AIOption) => {
     setIsLoading(true);
     try {
-      let prompt = option.label;
-
-      // Add context based on selected text
-      if (selectedText && context === 'toolbar') {
-        prompt = `${option.label} for this text: "${selectedText}"`;
-      } else if (context === 'slash-menu') {
-        prompt = `${option.label} in the context of the current document`;
-      }
-
-      await onExecuteAI(prompt);
+      await onExecuteAI(option, undefined);
       onClose();
     } catch (error) {
       console.error('AI execution failed:', error);
@@ -130,14 +121,7 @@ const AIModal: React.FC<AIModalProps> = ({
 
     setIsLoading(true);
     try {
-      let prompt = customPrompt;
-
-      // Add selected text context if available
-      if (selectedText && context === 'toolbar') {
-        prompt = `${customPrompt}\n\nSelected text: "${selectedText}"`;
-      }
-
-      await onExecuteAI(prompt);
+      await onExecuteAI(null, customPrompt);
       onClose();
     } catch (error) {
       console.error('Custom prompt failed:', error);

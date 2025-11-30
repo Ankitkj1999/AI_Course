@@ -1,27 +1,16 @@
 import { useEffect, useRef } from 'react';
 import { Crepe } from '@milkdown/crepe';
 import '@milkdown/crepe/theme/common/style.css';
-// Light themes
-// import '@milkdown/crepe/theme/crepe.css'
-import '@milkdown/crepe/theme/nord.css'
-// import '@milkdown/crepe/theme/frame.css'
+import '@milkdown/crepe/theme/nord.css';
 
-// Dark themes
-// import '@milkdown/crepe/theme/crepe-dark.css'
-// import '@milkdown/crepe/theme/nord-dark.css'
-// import '@milkdown/crepe/theme/frame-dark.css'
-
-import { 
-  milkdownAIUtils, 
-  createAISlashMenuConfig, 
-  createAIToolbarConfig 
+import {
+  milkdownAIUtils,
+  createAISlashMenuConfig,
+  createAIToolbarConfig
 } from '../plugins/ai';
-import AIModal from '../plugins/ai/ui/AIModal';
+import AIModal, { AIOption } from '../plugins/ai/ui/AIModal';
 import { useAIModal } from '../plugins/ai/hooks/useAIModal';
-import { llmService } from '../services/llmService';
 import { toast } from '@/hooks/use-toast';
-
-
 
 const TestPlate = () => {
   const editorRef = useRef<HTMLDivElement>(null);
@@ -30,39 +19,92 @@ const TestPlate = () => {
 
   // AI Modal handlers - wrapped in useRef to avoid recreating on every render
   const handleToolbarAIClick = useRef(() => {
-    // Get selected text from editor using proper utilities
-    const selectedText = milkdownAIUtils.getSelectedText();
-    aiModal.openModal('toolbar', selectedText);
+    // Don't get selected text here - context not available yet
+    // We'll get it when AI executes
+    aiModal.openModal('toolbar', '');
   });
 
   const handleSlashMenuAIClick = useRef(() => {
     aiModal.openModal('slash-menu');
   });
 
-  const handleAIExecute = async (prompt: string) => {
+  const handleAIExecute = async (option: AIOption | null, customPrompt?: string) => {
     try {
-      // Use the proper LLM service that connects to backend infrastructure
-      const result = await llmService.generateContent(prompt, {
-        temperature: 0.7,
-        preferFree: true,
+      // Check if editor is ready
+      if (!milkdownAIUtils.isReady()) {
+        throw new Error('Editor is not ready. Please wait a moment and try again.');
+      }
+
+      // Get selected text NOW when context is available (not in the click handler)
+      const selectedText = aiModal.context === 'toolbar' ? milkdownAIUtils.getSelectedText() : '';
+
+      // Construct the proper prompt based on option and context
+      let prompt: string;
+
+      if (option) {
+        // Predefined option selected
+        if (aiModal.context === 'toolbar' && selectedText) {
+          // Use selected text as context for the task
+          prompt = `${option.label} the following text:\n\n${selectedText}`;
+        } else {
+          // No selected text, use general context
+          prompt = `${option.label} in the context of the current document`;
+        }
+      } else if (customPrompt) {
+        // Custom prompt entered
+        if (aiModal.context === 'toolbar' && selectedText) {
+          // Add selected text as context
+          prompt = `${customPrompt}\n\nContext (selected text):\n${selectedText}`;
+        } else {
+          // Use custom prompt as-is
+          prompt = customPrompt;
+        }
+      } else {
+        throw new Error('No option or prompt provided');
+      }
+
+      // Call existing backend LLM service directly - no duplicate service layer
+      const response = await fetch('/api/llm/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          prompt: prompt.trim(),
+          temperature: 0.7,
+          preferFree: true, // Uses existing provider priority logic
+        }),
       });
 
-      if (!result.success || !result.data) {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      if (!result.success || !result.data?.content) {
         throw new Error(result.error?.message || 'Failed to generate content');
       }
 
+      // Double-check editor is still ready before inserting
+      if (!milkdownAIUtils.isReady()) {
+        throw new Error('Editor lost focus. Please try again.');
+      }
+
       // Insert result into editor based on context
-      if (aiModal.context === 'toolbar' && aiModal.selectedText) {
+      // Note: Crepe doesn't support direct text manipulation, so AI operations will show a message
+      if (aiModal.context === 'toolbar' && selectedText) {
         // Replace selected text
         const success = milkdownAIUtils.replaceSelectedText(result.data.content);
         if (!success) {
-          throw new Error('Failed to replace text in editor');
+          throw new Error('AI text replacement is not supported with Crepe editor. This is a limitation of Crepe\'s design.');
         }
       } else {
         // Insert at cursor
         const success = milkdownAIUtils.insertAtCursor(result.data.content);
         if (!success) {
-          throw new Error('Failed to insert text in editor');
+          throw new Error('AI text insertion is not supported with Crepe editor. This is a limitation of Crepe\'s design.');
         }
       }
 
@@ -116,7 +158,7 @@ Start writing below...
     crepe.create().then(() => {
       console.log('Milkdown editor created successfully');
       crepeRef.current = crepe;
-      
+
       // Initialize AI utilities with the crepe instance
       milkdownAIUtils.setCrepe(crepe);
     }).catch((error) => {
