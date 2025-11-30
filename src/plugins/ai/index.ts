@@ -1,9 +1,9 @@
 /**
- * Milkdown AI Plugin - Simple integration with Milkdown editor
- * Uses Milkdown's action method to access editor state safely
+ * Milkdown AI Plugin - Core Milkdown integration with full AI text manipulation
+ * Provides access to ProseMirror view for advanced AI operations
  */
 
-import { Crepe } from '@milkdown/crepe';
+import { Editor, editorViewCtx } from '@milkdown/core';
 
 // Type for ProseMirror EditorView (minimal interface)
 interface EditorViewLike {
@@ -21,51 +21,110 @@ interface EditorViewLike {
 
 // Editor utility functions for AI integration
 export class MilkdownAIUtils {
-  private crepe: Crepe | null = null;
+  private editor: Editor | null = null;
 
-  setCrepe(crepe: Crepe) {
-    console.log('setCrepe called with crepe:', crepe);
-    this.crepe = crepe;
+  setEditor(editor: Editor) {
+    console.log('setEditor called with editor:', editor);
+    this.editor = editor;
   }
 
-
   /**
-   * Get selected text - WORKAROUND: Since Crepe doesn't expose editorViewCtx,
-   * we'll return empty string for now. AI will work without selected text context.
+   * Get selected text from editor using Core Milkdown API
    */
   getSelectedText(): string {
-    // Crepe doesn't expose ProseMirror view, so we can't get selected text
-    // This is a limitation of using Crepe for AI text manipulation
-    console.log('getSelectedText: Crepe does not expose editorViewCtx, returning empty string');
-    return '';
+    if (!this.editor) return '';
+
+    try {
+      return this.editor.action((ctx) => {
+        const view = ctx.get(editorViewCtx);
+        if (!view) return '';
+
+        const state = view.state;
+        if (!state) return '';
+
+        const { from, to } = state.selection;
+        if (from === to) return ''; // No selection
+
+        return state.doc.textBetween(from, to, ' ');
+      });
+    } catch (error) {
+      console.error('Failed to get selected text:', error);
+      return '';
+    }
   }
 
   /**
-   * Replace selected text - WORKAROUND: Crepe doesn't support direct text manipulation.
-   * This is a fundamental limitation of Crepe's design for AI text operations.
+   * Replace selected text using Core Milkdown API
    */
   replaceSelectedText(text: string): boolean {
-    console.log('replaceSelectedText: Crepe does not support direct text manipulation. AI text replacement is not available with Crepe.');
-    // Return false to indicate the operation is not supported
-    return false;
+    if (!this.editor) {
+      console.error('Editor not available');
+      return false;
+    }
+
+    try {
+      this.editor.action((ctx) => {
+        const view = ctx.get(editorViewCtx);
+        if (!view) {
+          throw new Error('Editor view not available');
+        }
+
+        const { state, dispatch } = view;
+        const { from, to } = state.selection;
+
+        // Create transaction to replace text
+        const tr = state.tr.replaceWith(
+          from,
+          to,
+          state.schema.text(text)
+        );
+
+        dispatch(tr);
+      });
+      return true;
+    } catch (error) {
+      console.error('Failed to replace text:', error);
+      return false;
+    }
   }
 
   /**
-   * Insert text at cursor - WORKAROUND: Crepe doesn't support direct text insertion.
-   * This is a fundamental limitation of Crepe's design for AI text operations.
+   * Insert text at cursor using Core Milkdown API
    */
   insertAtCursor(text: string): boolean {
-    console.log('insertAtCursor: Crepe does not support direct text insertion. AI text insertion is not available with Crepe.');
-    // Return false to indicate the operation is not supported
-    return false;
+    if (!this.editor) {
+      console.error('Editor not available');
+      return false;
+    }
+
+    try {
+      this.editor.action((ctx) => {
+        const view = ctx.get(editorViewCtx);
+        if (!view) {
+          throw new Error('Editor view not available');
+        }
+
+        const { state, dispatch } = view;
+        const { from } = state.selection;
+
+        // Create transaction to insert text
+        const tr = state.tr.insert(from, state.schema.text(text));
+
+        dispatch(tr);
+      });
+      return true;
+    } catch (error) {
+      console.error('Failed to insert text:', error);
+      return false;
+    }
   }
 
   /**
    * Check if editor is ready
-   * Checks if the crepe instance is available
+   * Checks if the editor instance is available
    */
   isReady(): boolean {
-    return this.crepe !== null && this.crepe !== undefined;
+    return this.editor !== null && this.editor !== undefined;
   }
 }
 

@@ -1,6 +1,5 @@
-/* Import Geist Sans and Inter fonts */
+/* Import Inter font */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-@import url('https://fonts.geist.com/geist-sans.css');
 
 @tailwind base;
 @tailwind components;
@@ -94,7 +93,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Geist Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
     font-size: 0.875rem;
     /* 14px - Shadcn default */
     line-height: 1.5;
@@ -107,7 +106,7 @@
   h4,
   h5,
   h6 {
-    font-family: 'Geist Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 600;
     line-height: 1.2;
   }
@@ -266,5 +265,67 @@ html {
   .prose .text-node em,
   .prose .list-node em {
     @apply italic;
+  }
+
+  /* Milkdown Editor Styles */
+  .milkdown-editor {
+    @apply focus:outline-none;
+  }
+
+  .milkdown-editor .ProseMirror {
+    @apply focus:outline-none min-h-[400px];
+  }
+
+  .milkdown-editor .ProseMirror h1 {
+    @apply text-3xl font-bold mb-4 mt-6;
+  }
+
+  .milkdown-editor .ProseMirror h2 {
+    @apply text-2xl font-bold mb-3 mt-5;
+  }
+
+  .milkdown-editor .ProseMirror h3 {
+    @apply text-xl font-semibold mb-2 mt-4;
+  }
+
+  .milkdown-editor .ProseMirror p {
+    @apply mb-4;
+  }
+
+  .milkdown-editor .ProseMirror ul,
+  .milkdown-editor .ProseMirror ol {
+    @apply mb-4 pl-6;
+  }
+
+  .milkdown-editor .ProseMirror ul {
+    @apply list-disc;
+  }
+
+  .milkdown-editor .ProseMirror ol {
+    @apply list-decimal;
+  }
+
+  .milkdown-editor .ProseMirror li {
+    @apply mb-2;
+  }
+
+  .milkdown-editor .ProseMirror strong {
+    @apply font-semibold;
+  }
+
+  .milkdown-editor .ProseMirror em {
+    @apply italic;
+  }
+
+  .milkdown-editor .ProseMirror code {
+    @apply bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono;
+  }
+
+  .milkdown-editor .ProseMirror a {
+    @apply text-blue-600 hover:text-blue-800 underline;
+  }
+
+  .milkdown-editor .ProseMirror blockquote {
+    @apply border-l-4 border-gray-300 pl-4 italic my-4;
   }
 }
