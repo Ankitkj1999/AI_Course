@@ -23,6 +23,10 @@ const TestPlate = () => {
   const { toast } = useToast();
   const { isAuthenticated } = useAuthState();
 
+  // Create a ref for AI modal to avoid dependency issues
+  const aiModalRef = useRef(aiModal);
+  aiModalRef.current = aiModal;
+
   useEffect(() => {
     if (!editorRef.current) return;
 
@@ -33,30 +37,46 @@ const TestPlate = () => {
           root: editorRef.current,
           defaultValue: `# Welcome to Milkdown! 🎉
 
-This editor has **all Crepe features**:
+This editor has **all Crepe features** + **AI Integration**:
 
 ## Block Features
 - **Drag handle** appears on the left (hover over blocks)
 - **Slash commands** - Type \`/\` to see the menu
-- **Toolbar** - Select text to see formatting options
+- **Toolbar with AI** - Select text to see formatting options + ✨ AI button
 
-## Test the AI Functions
-Select text below and use the buttons to test:
+## Test the AI Features
+Select text below and click the ✨ AI button in the toolbar:
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. This text can be selected and replaced with AI-generated content. Try selecting this paragraph!
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. This text can be selected and replaced with AI-generated content. Try selecting this paragraph and clicking the AI button!
 
 ## Next Steps
-1. Type \`/\` to see slash commands
-2. Select text to see the toolbar
+1. **Select text** → Click ✨ AI button in toolbar
+2. Type \`/\` to see slash commands (AI commands coming in Phase 3)
 3. Hover over blocks to see drag handles
-4. Use the test buttons below
-5. Ready to add AI integration!`,
+4. Use the test buttons below for manual testing`,
           // Enable all features
           featureConfigs: {
             // Block editing with drag handles
             [Crepe.Feature.BlockEdit]: {},
-            // Toolbar on text selection
-            [Crepe.Feature.Toolbar]: {},
+            // Toolbar on text selection with AI button
+            [Crepe.Feature.Toolbar]: {
+              buildToolbar: (builder) => {
+                // Add AI group with AI button
+                builder.addGroup('ai', 'AI').addItem('ai-assist', {
+                  icon: '✨',
+                  active: () => false, // Never show as active
+                  onRun: (ctx) => {
+                    // Get selected text when AI button is clicked
+                    const view = ctx.get(editorViewCtx);
+                    const { from, to } = view.state.selection;
+                    const selectedText = view.state.doc.textBetween(from, to, '\n');
+                    
+                    // Open AI modal with toolbar context
+                    aiModalRef.current.openModal('toolbar', selectedText);
+                  },
+                });
+              },
+            },
             // Link tooltip
             [Crepe.Feature.LinkTooltip]: {},
             // Image block
@@ -285,10 +305,10 @@ Key improvements:
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg p-6">
           <h1 className="text-3xl font-bold mb-2">
-            🚀 Crepe Editor with Full Features
+            🚀 Crepe Editor with AI Integration
           </h1>
           <p className="text-blue-100">
-            Complete Milkdown experience with block editing, slash commands, and toolbar
+            Complete Milkdown experience with block editing, slash commands, toolbar + ✨ AI Assistant
           </p>
         </div>
 
@@ -416,32 +436,31 @@ Key improvements:
             <div className="flex gap-3">
               <span className="font-bold min-w-[30px]">1.</span>
               <span>
-                <strong>Hover over blocks</strong> to see the drag handle (left side)
+                <strong>Select text</strong> → Click <strong>✨ AI button</strong> in toolbar (Phase 2 ✅)
               </span>
             </div>
             <div className="flex gap-3">
               <span className="font-bold min-w-[30px]">2.</span>
               <span>
-                <strong>Type /</strong> anywhere to open slash commands
+                <strong>Type /</strong> to open slash commands (AI commands in Phase 3)
               </span>
             </div>
             <div className="flex gap-3">
               <span className="font-bold min-w-[30px]">3.</span>
               <span>
-                <strong>Select text</strong> to see the formatting toolbar appear
+                <strong>Hover over blocks</strong> to see drag handles
               </span>
             </div>
             <div className="flex gap-3">
               <span className="font-bold min-w-[30px]">4.</span>
               <span>
-                <strong>Use AI buttons</strong> to test text manipulation
+                <strong>Use test buttons below</strong> for manual testing
               </span>
             </div>
             <div className="flex gap-3 pt-3 border-t-2 border-amber-300">
-              <span className="text-lg">🎯</span>
+              <span className="text-lg">✅</span>
               <span>
-                <strong>Next:</strong> Integrate AI plugin from{' '}
-                <code className="bg-amber-100 px-2 py-1 rounded">src/plugins/ai</code> to add AI options to slash menu and toolbar
+                <strong>Phase 2 Complete!</strong> AI button now appears in toolbar when you select text. Phase 3 next: AI commands in slash menu.
                 {isAuthenticated ? '' : ' (requires login)'}
               </span>
             </div>
