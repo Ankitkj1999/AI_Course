@@ -1,98 +1,167 @@
-# AI Plugin for Milkdown Crepe
+# Milkdown AI Plugin
 
-This plugin provides AI functionality integration for the Milkdown Crepe editor.
+Proper Milkdown plugin integration for AI assistance, leveraging the existing LLM infrastructure.
 
-## Structure
+## Architecture
 
-```
-src/plugins/ai/
-├── index.ts          # Main plugin entry point
-├── command.ts        # AI command definition
-├── slash-menu.ts     # Slash menu item configuration
-├── toolbar.ts        # Toolbar item configuration
-└── README.md         # This file
-```
+This implementation follows Milkdown's plugin architecture and integrates with the sophisticated backend LLM service (`server/services/llmService.js`).
 
-## Current Status
+### Key Components
 
-✅ **Completed:**
-- Plugin folder structure created
-- Basic plugin architecture implemented
-- AI command placeholder created
-- Slash menu and toolbar item configurations defined with correct API
-- Integration with TestPlate.tsx using proper `buildMenu` and `buildToolbar` APIs
+- **`index.ts`** - Core plugin with proper Milkdown integration
+  - `MilkdownAIUtils` - Editor utilities for text selection and insertion
+  - `createAISlashMenuConfig()` - Slash menu configuration
+  - `createAIToolbarConfig()` - Toolbar configuration
 
-## Discovered API Information
+- **`ui/AIModal.tsx`** - React modal component with keyboard navigation
+  - Context-aware options (modify vs generate)
+  - Custom prompt support
+  - Loading states and error handling
 
-From Milkdown source code analysis:
+- **`hooks/useAIModal.ts`** - Modal state management
+  - Separates UI state from editor logic
+  - Clean open/close lifecycle
 
-### buildMenu API (BlockEdit Feature)
-```typescript
-buildMenu?: (builder: GroupBuilder<SlashMenuItem>) => void
+- **`src/services/llmService.ts`** - Frontend bridge to backend LLM service
+  - Connects to `server/services/llmService.js`
+  - Leverages multi-provider support (Gemini, OpenAI, etc.)
+  - Health checks and fallback mechanisms
+  - Comprehensive logging and monitoring
 
-// Usage:
-builder.addGroup("groupName", "Group Label").addItem("itemId", {
-  label: string,
-  icon: string,
-  onRun: (ctx) => void
-});
-```
+## Features
 
-### buildToolbar API (Toolbar Feature)
-```typescript
-buildToolbar?: (builder: GroupBuilder<ToolbarItem>) => void
+✅ **Proper Milkdown Integration**
+- Uses Milkdown's context system correctly
+- Proper ProseMirror state access
+- Transaction-based text manipulation
 
-// Usage:
-builder.addGroup("groupName", "Group Label").addItem("itemId", {
-  icon: string,
-  active?: (ctx) => boolean,
-  onRun?: (ctx) => void
-});
-```
+✅ **Backend LLM Infrastructure**
+- Multi-provider support with automatic fallback
+- Health monitoring and performance metrics
+- Comprehensive error handling
+- Request logging with unique IDs
 
-## Current Implementation
+✅ **Context-Aware UI**
+- Different options for selected text vs empty cursor
+- Keyboard navigation (↑↓ to navigate, Enter to select, Esc to close)
+- Loading states and error feedback
 
-The plugin is fully implemented with a unified AI modal system:
-
-### **Unified AI Modal**
-- **Single Modal**: Opens from both toolbar and slash menu
-- **Context-Aware**: Shows different options based on trigger source
-- **Input Field**: "Ask AI Anything..." at the top
-- **Keyboard Navigation**: Up/down arrows to navigate options, Enter to select
-- **Smart Context**: Detects selected text vs empty line scenarios
-
-### **Context-Aware Options**
-
-**Toolbar Actions (Selected Text):**
-- ✨ Improve writing
-- 📏 Make longer/shorter
-- ✂️ Make shorter
-- 🔤 Simplify language
-- ✓ Fix grammar
-
-**Slash Menu Actions (New Content):**
-- ✍️ Continue writing
-- 📝 Write introduction
-- 💡 Generate ideas
-- 📋 Create summary
-- 🎯 Write conclusion
-
-### **Integration Points**
-- **Slash Menu**: `/` → AI Assistant → Modal opens
-- **Toolbar**: Select text → AI button → Modal opens with context
-- **Custom Input**: Always available for any AI request
-
-### **Technical Features**
-- ✅ Keyboard navigation (↑↓ arrows, Enter, Esc)
-- ✅ Context detection (selected text vs empty line)
-- ✅ Loading states and error handling
-- ✅ Toast notifications
-- ✅ Proper editor integration (replace vs insert)
+✅ **TypeScript Safety**
+- Proper type definitions for ProseMirror
+- No `any` types in critical paths
+- Type-safe editor operations
 
 ## Usage
 
-1. **For selected text**: Select text → Click AI button → Choose from toolbar actions or type custom prompt
-2. **For new content**: Type `/` → Select "AI Assistant" → Choose from generation actions or type custom prompt
-3. **Custom requests**: Type any prompt in the input field for full AI flexibility
+### In TestPlate.tsx
 
-The implementation provides exactly what you requested: **mandatory custom input + context-aware quick actions + simple, unified UX**.
+```typescript
+import { 
+  milkdownAIUtils, 
+  createAISlashMenuConfig, 
+  createAIToolbarConfig 
+} from '../plugins/ai';
+import { llmService } from '../services/llmService';
+
+// Create handlers
+const handleToolbarAI = () => {
+  const selectedText = milkdownAIUtils.getSelectedText();
+  openModal('toolbar', selectedText);
+};
+
+const handleSlashMenuAI = () => {
+  openModal('slash-menu');
+};
+
+// Configure Crepe
+const crepe = new Crepe({
+  featureConfigs: {
+    [Crepe.Feature.BlockEdit]: createAISlashMenuConfig(handleSlashMenuAI),
+    [Crepe.Feature.Toolbar]: createAIToolbarConfig(handleToolbarAI),
+  },
+});
+
+// Initialize AI utilities
+crepe.create().then(() => {
+  milkdownAIUtils.setCrepe(crepe);
+});
+
+// Execute AI
+const result = await llmService.generateContent(prompt, {
+  temperature: 0.7,
+  preferFree: true,
+});
+
+if (result.success) {
+  milkdownAIUtils.replaceSelectedText(result.data.content);
+}
+```
+
+## API
+
+### MilkdownAIUtils
+
+```typescript
+class MilkdownAIUtils {
+  setCrepe(crepe: Crepe): void
+  getSelectedText(): string
+  replaceSelectedText(text: string): boolean
+  insertAtCursor(text: string): boolean
+  getCursorContext(): { hasSelection: boolean; position: number }
+}
+```
+
+### LLM Service
+
+```typescript
+interface LLMGenerateOptions {
+  provider?: string;
+  model?: string;
+  temperature?: number;
+  preferFree?: boolean;
+}
+
+llmService.generateContent(prompt: string, options?: LLMGenerateOptions): Promise<LLMResponse>
+llmService.getProviders(): Promise<Provider[]>
+llmService.checkHealth(): Promise<HealthStatus>
+```
+
+## Context-Aware Options
+
+### Toolbar Actions (Selected Text)
+- ✨ Improve writing - Enhance clarity and style
+- 📏 Make longer - Add more details and examples
+- ✂️ Make shorter - Condense while keeping key points
+- 🔤 Simplify language - Use easier words and structure
+- ✓ Fix grammar - Correct spelling and grammar
+
+### Slash Menu Actions (New Content)
+- ✍️ Continue writing - Extend from current content
+- 📋 Create summary - Summarize key points
+- 💡 Generate ideas - Brainstorm related concepts
+- 📝 Write introduction - Create an opening paragraph
+- 🎯 Write conclusion - Create a closing paragraph
+
+## What Was Fixed
+
+### Before (Broken Implementation)
+- ❌ Fake "plugin" files that were just config objects
+- ❌ Duplicate `aiService.ts` bypassing LLM infrastructure
+- ❌ Incorrect editor state access causing TypeScript errors
+- ❌ Logic hardcoded in TestPlate.tsx
+- ❌ No integration with existing logging/monitoring
+
+### After (Proper Implementation)
+- ✅ Real Milkdown integration using proper context system
+- ✅ Connects to existing `llmService` with all its features
+- ✅ Type-safe ProseMirror operations
+- ✅ Reusable utilities separated from UI
+- ✅ Full integration with backend infrastructure
+
+## Future Enhancements
+
+- [ ] Streaming responses for real-time generation
+- [ ] Custom prompt templates
+- [ ] AI command history
+- [ ] Provider selection UI
+- [ ] Batch operations on multiple selections

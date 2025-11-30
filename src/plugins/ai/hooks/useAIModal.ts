@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import type { AIModalContext } from '../ui/AIModal';
-import { aiService } from '../services/aiService';
 
+/**
+ * Hook for managing AI modal state
+ * Keeps UI state separate from editor integration
+ */
 export const useAIModal = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [context, setContext] = useState<AIModalContext>('toolbar');
@@ -15,13 +18,8 @@ export const useAIModal = () => {
 
   const closeModal = () => {
     setIsOpen(false);
-    setSelectedText('');
-  };
-
-  const executeAI = async (prompt: string) => {
-    // This will be called by the modal and should integrate with the editor
-    console.log('Executing AI with prompt:', prompt);
-    await aiService.executePrompt(prompt);
+    // Don't clear selectedText immediately to avoid UI flash
+    setTimeout(() => setSelectedText(''), 300);
   };
 
   return {
@@ -30,6 +28,5 @@ export const useAIModal = () => {
     selectedText,
     openModal,
     closeModal,
-    executeAI,
   };
 };
