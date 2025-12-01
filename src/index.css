@@ -367,4 +367,21 @@ html {
   .milkdown .tooltip-divider {
     @apply w-px h-4 bg-gray-700 mx-1;
   }
+
+  /* AI Icon Styling - Diamond character styled to match logo */
+  .milkdown [data-group-key="ai-commands"] .slash-menu-item::before,
+  .milkdown [data-group-key="ai"] .tooltip-button::before {
+    content: '◆';
+    @apply inline-block mr-2 text-blue-600;
+    font-size: 14px;
+  }
+
+  .milkdown .slash-menu-item:hover::before,
+  .milkdown .tooltip-button:hover::before {
+    @apply text-blue-700;
+  }
+
+  .milkdown .slash-menu-item.selected::before {
+    @apply text-blue-800;
+  }
 }

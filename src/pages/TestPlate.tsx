@@ -65,41 +65,44 @@ Try both methods above, or use the manual test buttons below!`,
             // Block editing with drag handles + AI slash commands
             [Crepe.Feature.BlockEdit]: {
               buildMenu: (builder) => {
+                // Use your logo.svg for AI commands
+                const aiIcon = `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M 100 10 C 115 60, 140 85, 190 100 C 140 115, 115 140, 100 190 C 85 140, 60 115, 10 100 C 60 85, 85 60, 100 10 Z" fill="currentColor"/></svg>`;
+                
                 // Add AI commands group to slash menu
-                builder.addGroup('ai-commands', '✨ AI Commands').addItem('ai-continue', {
+                builder.addGroup('ai-commands', 'AI').addItem('ai-continue', {
                   label: 'Continue writing',
-                  icon: '✍️',
+                  icon: aiIcon,
                   onRun: (ctx) => {
                     // Open AI modal with slash-menu context
                     aiModalRef.current.openModal('slash-menu', '');
                   },
                 }).addItem('ai-improve', {
                   label: 'Improve writing',
-                  icon: '✨',
+                  icon: aiIcon,
                   onRun: (ctx) => {
                     aiModalRef.current.openModal('slash-menu', '');
                   },
                 }).addItem('ai-summarize', {
                   label: 'Create summary',
-                  icon: '📋',
+                  icon: aiIcon,
                   onRun: (ctx) => {
                     aiModalRef.current.openModal('slash-menu', '');
                   },
                 }).addItem('ai-ideas', {
                   label: 'Generate ideas',
-                  icon: '💡',
+                  icon: aiIcon,
                   onRun: (ctx) => {
                     aiModalRef.current.openModal('slash-menu', '');
                   },
                 }).addItem('ai-intro', {
                   label: 'Write introduction',
-                  icon: '📝',
+                  icon: aiIcon,
                   onRun: (ctx) => {
                     aiModalRef.current.openModal('slash-menu', '');
                   },
                 }).addItem('ai-conclusion', {
                   label: 'Write conclusion',
-                  icon: '🎯',
+                  icon: aiIcon,
                   onRun: (ctx) => {
                     aiModalRef.current.openModal('slash-menu', '');
                   },
@@ -109,9 +112,12 @@ Try both methods above, or use the manual test buttons below!`,
             // Toolbar on text selection with AI button
             [Crepe.Feature.Toolbar]: {
               buildToolbar: (builder) => {
+                // Use your logo.svg for AI button
+                const aiIcon = `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M 100ke="currentColor" stroke-width="2"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M19 12l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/></svg>`;
+                
                 // Add AI group with AI button
                 builder.addGroup('ai', 'AI').addItem('ai-assist', {
-                  icon: '✨',
+                  icon: aiIcon,
                   active: () => false, // Never show as active
                   onRun: (ctx) => {
                     // Get selected text when AI button is clicked
