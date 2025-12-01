@@ -35,29 +35,77 @@ const TestPlate = () => {
         // Create Crepe editor with all features enabled
         const crepe = new Crepe({
           root: editorRef.current,
-          defaultValue: `# Welcome to Milkdown! 🎉
+          defaultValue: `# Welcome to Milkdown with Full AI Integration! 🎉
 
-This editor has **all Crepe features** + **AI Integration**:
+This editor has **complete AI integration** (All 3 Phases ✅):
 
-## Block Features
-- **Drag handle** appears on the left (hover over blocks)
-- **Slash commands** - Type \`/\` to see the menu
-- **Toolbar with AI** - Select text to see formatting options + ✨ AI button
+## AI Features
+- **Toolbar AI** - Select text → Click ✨ AI button (Phase 2 ✅)
+- **Slash AI Commands** - Type \`/\` → Choose AI commands (Phase 3 ✅)
+- **Drag handles** - Hover over blocks to drag/reorder
 
-## Test the AI Features
-Select text below and click the ✨ AI button in the toolbar:
+## Try the AI Features
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. This text can be selected and replaced with AI-generated content. Try selecting this paragraph and clicking the AI button!
+### Method 1: Toolbar AI (for editing)
+Select this text and click the ✨ AI button in the toolbar to improve, expand, or modify it.
 
-## Next Steps
-1. **Select text** → Click ✨ AI button in toolbar
-2. Type \`/\` to see slash commands (AI commands coming in Phase 3)
-3. Hover over blocks to see drag handles
-4. Use the test buttons below for manual testing`,
+### Method 2: Slash Commands (for generating)
+Type \`/\` anywhere and look for the "✨ AI Commands" section:
+- ✍️ Continue writing
+- ✨ Improve writing  
+- 📋 Create summary
+- 💡 Generate ideas
+- 📝 Write introduction
+- 🎯 Write conclusion
+
+## Test It Out
+Try both methods above, or use the manual test buttons below!`,
           // Enable all features
           featureConfigs: {
-            // Block editing with drag handles
-            [Crepe.Feature.BlockEdit]: {},
+            // Block editing with drag handles + AI slash commands
+            [Crepe.Feature.BlockEdit]: {
+              buildMenu: (builder) => {
+                // Add AI commands group to slash menu
+                builder.addGroup('ai-commands', '✨ AI Commands').addItem('ai-continue', {
+                  label: 'Continue writing',
+                  icon: '✍️',
+                  onRun: (ctx) => {
+                    // Open AI modal with slash-menu context
+                    aiModalRef.current.openModal('slash-menu', '');
+                  },
+                }).addItem('ai-improve', {
+                  label: 'Improve writing',
+                  icon: '✨',
+                  onRun: (ctx) => {
+                    aiModalRef.current.openModal('slash-menu', '');
+                  },
+                }).addItem('ai-summarize', {
+                  label: 'Create summary',
+                  icon: '📋',
+                  onRun: (ctx) => {
+                    aiModalRef.current.openModal('slash-menu', '');
+                  },
+                }).addItem('ai-ideas', {
+                  label: 'Generate ideas',
+                  icon: '💡',
+                  onRun: (ctx) => {
+                    aiModalRef.current.openModal('slash-menu', '');
+                  },
+                }).addItem('ai-intro', {
+                  label: 'Write introduction',
+                  icon: '📝',
+                  onRun: (ctx) => {
+                    aiModalRef.current.openModal('slash-menu', '');
+                  },
+                }).addItem('ai-conclusion', {
+                  label: 'Write conclusion',
+                  icon: '🎯',
+                  onRun: (ctx) => {
+                    aiModalRef.current.openModal('slash-menu', '');
+                  },
+                });
+              },
+            },
             // Toolbar on text selection with AI button
             [Crepe.Feature.Toolbar]: {
               buildToolbar: (builder) => {
@@ -303,13 +351,18 @@ Key improvements:
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-5xl mx-auto space-y-6">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg p-6">
+        <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white rounded-lg p-6">
           <h1 className="text-3xl font-bold mb-2">
-            🚀 Crepe Editor with AI Integration
+            🎉 Milkdown with Full AI Integration
           </h1>
           <p className="text-blue-100">
-            Complete Milkdown experience with block editing, slash commands, toolbar + ✨ AI Assistant
+            Complete AI-powered editor: Toolbar AI button + Slash AI commands + Block editing
           </p>
+          <div className="mt-3 flex gap-2 text-sm">
+            <span className="bg-white/20 px-3 py-1 rounded-full">✅ Phase 1: Infrastructure</span>
+            <span className="bg-white/20 px-3 py-1 rounded-full">✅ Phase 2: Toolbar</span>
+            <span className="bg-white/20 px-3 py-1 rounded-full">✅ Phase 3: Slash Menu</span>
+          </div>
         </div>
 
         {/* Feature highlights */}
@@ -436,13 +489,13 @@ Key improvements:
             <div className="flex gap-3">
               <span className="font-bold min-w-[30px]">1.</span>
               <span>
-                <strong>Select text</strong> → Click <strong>✨ AI button</strong> in toolbar (Phase 2 ✅)
+                <strong>Select text</strong> → Click <strong>✨ AI button!</strong> in toolbar (Phase 2 ✅)
               </span>
             </div>
             <div className="flex gap-3">
               <span className="font-bold min-w-[30px]">2.</span>
               <span>
-                <strong>Type /</strong> to open slash commands (AI commands in Phase 3)
+                <strong>Type /</strong> → Choose from <strong>✨ AI Commands!</strong> section (Phase 3 ✅)
               </span>
             </div>
             <div className="flex gap-3">
@@ -458,9 +511,9 @@ Key improvements:
               </span>
             </div>
             <div className="flex gap-3 pt-3 border-t-2 border-amber-300">
-              <span className="text-lg">✅</span>
+              <span className="text-lg">🎉</span>
               <span>
-                <strong>Phase 2 Complete!</strong> AI button now appears in toolbar when you select text. Phase 3 next: AI commands in slash menu.
+                <strong>All 3 Phases Complete!</strong> Full AI integration: Toolbar button + Slash commands working!
                 {isAuthenticated ? '' : ' (requires login)'}
               </span>
             </div>
