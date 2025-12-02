@@ -1,15 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Sparkles, Expand, Minimize, Zap, CheckCircle, PenTool, FileText, Lightbulb, BookOpen, Target, X, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export type AIModalContext = 'toolbar' | 'slash-menu';
 
 export interface AIOption {
   id: string;
   label: string;
-  icon: string;
-  description?: string;
+  icon: React.ReactNode;
 }
 
 interface AIModalProps {
@@ -28,41 +27,50 @@ const AIModal: React.FC<AIModalProps> = ({
   onExecuteAI,
 }) => {
   const [customPrompt, setCustomPrompt] = useState('');
-  const [selectedOptionIndex, setSelectedOptionIndex] = useState(-1);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
 
   // Context-aware options
   const getOptions = (): AIOption[] => {
     if (context === 'toolbar' && selectedText) {
       // Options for modifying selected content
       return [
-        { id: 'improve', label: 'Improve writing', icon: '✨', description: 'Enhance clarity and style' },
-        { id: 'extend', label: 'Make longer', icon: '📏', description: 'Add more details and examples' },
-        { id: 'shorten', label: 'Make shorter', icon: '✂️', description: 'Condense while keeping key points' },
-        { id: 'simplify', label: 'Simplify language', icon: '🔤', description: 'Use easier words and structure' },
-        { id: 'grammar', label: 'Fix grammar', icon: '✓', description: 'Correct spelling and grammar' },
+        { id: 'improve', label: 'Improve writing', icon: <Sparkles className="w-5 h-5" /> },
+        { id: 'extend', label: 'Make longer', icon: <Expand className="w-5 h-5" /> },
+        { id: 'shorten', label: 'Make shorter', icon: <Minimize className="w-5 h-5" /> },
+        { id: 'simplify', label: 'Simplify language', icon: <Zap className="w-5 h-5" /> },
+        { id: 'grammar', label: 'Fix grammar', icon: <CheckCircle className="w-5 h-5" /> },
       ];
     } else {
       // Options for generating new content
       return [
-        { id: 'continue', label: 'Continue writing', icon: '✍️', description: 'Extend from current content' },
-        { id: 'summarize', label: 'Create summary', icon: '📋', description: 'Summarize key points' },
-        { id: 'ideas', label: 'Generate ideas', icon: '💡', description: 'Brainstorm related concepts' },
-        { id: 'introduction', label: 'Write introduction', icon: '📝', description: 'Create an opening paragraph' },
-        { id: 'conclusion', label: 'Write conclusion', icon: '🎯', description: 'Create a closing paragraph' },
+        { id: 'continue', label: 'Continue writing', icon: <PenTool className="w-5 h-5" /> },
+        { id: 'summarize', label: 'Create summary', icon: <FileText className="w-5 h-5" /> },
+        { id: 'ideas', label: 'Generate ideas', icon: <Lightbulb className="w-5 h-5" /> },
+        { id: 'introduction', label: 'Write introduction', icon: <BookOpen className="w-5 h-5" /> },
+        { id: 'conclusion', label: 'Write conclusion', icon: <Target className="w-5 h-5" /> },
       ];
     }
   };
 
-  const options = getOptions();
+  const allOptions = getOptions();
+
+  // Filter options based on search input
+  const filteredOptions = useMemo(() => {
+    if (!customPrompt.trim()) return allOptions;
+    return allOptions.filter(option =>
+      option.label.toLowerCase().includes(customPrompt.toLowerCase())
+    );
+  }, [allOptions, customPrompt]);
 
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
       setCustomPrompt('');
-      setSelectedOptionIndex(-1);
+      setSelectedIndex(-1);
+      setIsDropdownOpen(false);
       setIsLoading(false);
       // Focus on input after a short delay to ensure modal is rendered
       setTimeout(() => {
@@ -71,39 +79,52 @@ const AIModal: React.FC<AIModalProps> = ({
     }
   }, [isOpen]);
 
-  // Handle keyboard navigation
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-        return;
-      }
-
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setSelectedOptionIndex(prev =>
-          prev < options.length - 1 ? prev + 1 : 0
-        );
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setSelectedOptionIndex(prev =>
-          prev > 0 ? prev - 1 : options.length - 1
-        );
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        if (selectedOptionIndex >= 0) {
-          handleOptionSelect(options[selectedOptionIndex]);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault()
+        setIsDropdownOpen(true)
+        setSelectedIndex((prev) => (prev < filteredOptions.length - 1 ? prev + 1 : prev))
+        break
+      case "ArrowUp":
+        e.preventDefault()
+        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1))
+        break
+      case "Enter":
+        e.preventDefault()
+        if (selectedIndex >= 0 && selectedIndex < filteredOptions.length) {
+          handleOptionSelect(filteredOptions[selectedIndex])
         } else if (customPrompt.trim()) {
-          handleCustomPrompt();
+          handleCustomPrompt()
         }
-      }
-    };
+        break
+      case "Escape":
+        onClose()
+        break
+      default:
+        // Don't close dropdown on typing, let filtering work
+        setSelectedIndex(-1)
+        break
+    }
+  }
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, selectedOptionIndex, customPrompt, options]);
+  const handleClear = () => {
+    setCustomPrompt('')
+    setSelectedIndex(-1)
+    setIsDropdownOpen(true)
+    inputRef.current?.focus()
+  }
+
+  const handleInputFocus = () => {
+    setIsDropdownOpen(true)
+  }
+
+  const handleInputBlur = () => {
+    setTimeout(() => {
+      setIsDropdownOpen(false)
+      setSelectedIndex(-1)
+    }, 200)
+  }
 
   const handleOptionSelect = async (option: AIOption) => {
     setIsLoading(true);
@@ -118,7 +139,6 @@ const AIModal: React.FC<AIModalProps> = ({
 
   const handleCustomPrompt = async () => {
     if (!customPrompt.trim()) return;
-
     setIsLoading(true);
     try {
       await onExecuteAI(null, customPrompt);
@@ -132,92 +152,91 @@ const AIModal: React.FC<AIModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
       <div
-        ref={modalRef}
-        className="bg-background border rounded-lg shadow-lg p-6 w-full max-w-md mx-4"
+        className="relative bg-background border border-border rounded-lg shadow-lg overflow-hidden w-full max-w-2xl max-h-[80vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ai-modal-title"
+        aria-describedby="ai-modal-description"
       >
-        {/* Header */}
-        <div className="flex items-center gap-2 mb-4">
-          <Sparkles className="h-5 w-5 text-primary" />
-          <h3 className="text-lg font-semibold">AI Assistant</h3>
-        </div>
-
-        {/* Custom Input */}
-        <div className="mb-4">
+        {/* Input with Clear Button */}
+        <div className="relative">
           <Input
             ref={inputRef}
+            type="text"
             placeholder="Ask AI anything..."
             value={customPrompt}
             onChange={(e) => setCustomPrompt(e.target.value)}
-            className="w-full"
+            onKeyDown={handleKeyDown}
+            onFocus={handleInputFocus}
+            onBlur={handleInputBlur}
             disabled={isLoading}
+            className="w-full px-4 py-3 pr-10 text-base border-0 bg-background rounded-none focus:outline-none focus:ring-0"
+            aria-label="AI command input"
+            aria-expanded={isDropdownOpen}
+            aria-haspopup="listbox"
+            role="combobox"
+            aria-activedescendant={selectedIndex >= 0 ? `option-${selectedIndex}` : undefined}
           />
+          {customPrompt && !isLoading && (
+            <button
+              onClick={handleClear}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-sm hover:bg-muted transition-colors"
+              aria-label="Clear input"
+            >
+              <X className="w-4 h-4 text-muted-foreground" />
+            </button>
+          )}
+          {isLoading && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            </div>
+          )}
         </div>
 
-        {/* Context Info */}
-        {selectedText && context === 'toolbar' && (
-          <div className="mb-3 p-2 bg-muted rounded text-sm text-muted-foreground">
-            <div className="font-medium mb-1">Selected text:</div>
-            <div className="truncate">"{selectedText}"</div>
+        {/* Dropdown Menu */}
+        {isDropdownOpen && (
+          <div
+            className="border-t border-border bg-background max-h-64 overflow-y-auto animate-in slide-in-from-top-2 duration-200"
+            role="listbox"
+            aria-label="AI command options"
+          >
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((option, index) => (
+                <button
+                  key={option.id}
+                  id={`option-${index}`}
+                  onClick={() => handleOptionSelect(option)}
+                  onMouseEnter={() => setSelectedIndex(index)}
+                  disabled={isLoading}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-4 py-3 text-left transition-colors border-b last:border-b-0 text-sm",
+                    selectedIndex === index ? "bg-muted" : "bg-background hover:bg-muted/50",
+                  )}
+                  role="option"
+                  aria-selected={selectedIndex === index}
+                >
+                  <div className="flex-shrink-0 text-muted-foreground">{option.icon}</div>
+                  <span className="flex-1 text-foreground">{option.label}</span>
+                </button>
+              ))
+            ) : (
+              <div className="px-4 py-3 text-sm text-muted-foreground text-center">
+                No matching commands found
+              </div>
+            )}
           </div>
         )}
 
-        {/* Options */}
-        <div className="space-y-1 mb-4 max-h-48 overflow-y-auto">
-          {options.map((option, index) => (
-            <button
-              key={option.id}
-              onClick={() => handleOptionSelect(option)}
-              disabled={isLoading}
-              className={`w-full text-left px-3 py-2 text-sm rounded transition-colors flex items-center gap-2 ${
-                selectedOptionIndex === index
-                  ? 'bg-accent text-accent-foreground'
-                  : 'hover:bg-accent/50'
-              }`}
-            >
-              <span>{option.icon}</span>
-              <div>
-                <div className="font-medium">{option.label}</div>
-                {option.description && (
-                  <div className="text-xs text-muted-foreground">{option.description}</div>
-                )}
-              </div>
-            </button>
-          ))}
-        </div>
-
-        {/* Actions */}
-        <div className="flex justify-end gap-2">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            disabled={isLoading}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleCustomPrompt}
-            disabled={!customPrompt.trim() || isLoading}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4 mr-2" />
-                Ask AI
-              </>
-            )}
-          </Button>
-        </div>
-
-        {/* Help Text */}
-        <div className="mt-3 text-xs text-muted-foreground text-center">
-          Press ↑↓ to navigate • Enter to select • Esc to close
+        {/* Hidden accessibility elements */}
+        <div id="ai-modal-title" className="sr-only">AI Assistant</div>
+        <div id="ai-modal-description" className="sr-only">
+          Type to search AI commands or enter a custom prompt. Use arrow keys to navigate, Enter to select.
         </div>
       </div>
     </div>

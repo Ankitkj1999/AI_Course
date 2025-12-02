@@ -70,40 +70,10 @@ Try both methods above, or use the manual test buttons below!`,
                 
                 // Add AI commands group to slash menu
                 builder.addGroup('ai-commands', 'AI').addItem('ai-continue', {
-                  label: 'Continue writing',
+                  label: 'AI',
                   icon: aiIcon,
                   onRun: (ctx) => {
                     // Open AI modal with slash-menu context
-                    aiModalRef.current.openModal('slash-menu', '');
-                  },
-                }).addItem('ai-improve', {
-                  label: 'Improve writing',
-                  icon: aiIcon,
-                  onRun: (ctx) => {
-                    aiModalRef.current.openModal('slash-menu', '');
-                  },
-                }).addItem('ai-summarize', {
-                  label: 'Create summary',
-                  icon: aiIcon,
-                  onRun: (ctx) => {
-                    aiModalRef.current.openModal('slash-menu', '');
-                  },
-                }).addItem('ai-ideas', {
-                  label: 'Generate ideas',
-                  icon: aiIcon,
-                  onRun: (ctx) => {
-                    aiModalRef.current.openModal('slash-menu', '');
-                  },
-                }).addItem('ai-intro', {
-                  label: 'Write introduction',
-                  icon: aiIcon,
-                  onRun: (ctx) => {
-                    aiModalRef.current.openModal('slash-menu', '');
-                  },
-                }).addItem('ai-conclusion', {
-                  label: 'Write conclusion',
-                  icon: aiIcon,
-                  onRun: (ctx) => {
                     aiModalRef.current.openModal('slash-menu', '');
                   },
                 });
