@@ -3,8 +3,20 @@ import { Crepe } from '@milkdown/crepe';
 import { editorViewCtx, parserCtx, serializerCtx } from '@milkdown/core';
 
 // Import Crepe CSS
-import '@milkdown/crepe/theme/common/style.css';
-import '@milkdown/crepe/theme/frame.css';
+import '../../node_modules/@milkdown/crepe/lib/theme/common/style.css';
+import '../../node_modules/@milkdown/crepe/lib/theme/crepe/style.css'; // Light mode
+import '../../node_modules/@milkdown/crepe/lib/theme/crepe-dark/style.css'; // Dark mode
+// Light themes (choose one)
+import '../../node_modules/@milkdown/crepe/lib/theme/crepe/style.css';
+// import '../../node_modules/@milkdown/crepe/lib/theme/nord/style.css';
+// import '../../node_modules/@milkdown/crepe/lib/theme/frame/style.css';
+
+// Dark themes (uncomment for dark mode)
+// import '../../node_modules/@milkdown/crepe/lib/theme/crepe-dark/style.css';
+// import '../../node_modules/@milkdown/crepe/lib/theme/nord-dark/style.css';
+// import '../../node_modules/@milkdown/crepe/lib/theme/frame-dark/style.css';
+// import '@milkdown/crepe/theme/frame-dark.css'
+
 
 // Import AI components
 import { useAIModal } from '../plugins/ai/hooks/useAIModal';
