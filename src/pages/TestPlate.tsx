@@ -3,13 +3,13 @@ import { Crepe } from '@milkdown/crepe';
 import { editorViewCtx, parserCtx, serializerCtx } from '@milkdown/core';
 
 // Import Crepe CSS
-import '../../node_modules/@milkdown/crepe/lib/theme/common/style.css';
-import '../../node_modules/@milkdown/crepe/lib/theme/crepe/style.css'; // Light mode
-import '../../node_modules/@milkdown/crepe/lib/theme/crepe-dark/style.css'; // Dark mode
+// import '../../node_modules/@milkdown/crepe/lib/theme/common/style.css';
+// import '../../node_modules/@milkdown/crepe/lib/theme/crepe/style.css'; // Light mode
+// import '../../node_modules/@milkdown/crepe/lib/theme/crepe-dark/style.css'; // Dark mode
 // Light themes (choose one)
-import '../../node_modules/@milkdown/crepe/lib/theme/crepe/style.css';
+// import '../../node_modules/@milkdown/crepe/lib/theme/crepe/style.css';
 // import '../../node_modules/@milkdown/crepe/lib/theme/nord/style.css';
-// import '../../node_modules/@milkdown/crepe/lib/theme/frame/style.css';
+import '../../node_modules/@milkdown/crepe/lib/theme/frame/style.css';
 
 // Dark themes (uncomment for dark mode)
 // import '../../node_modules/@milkdown/crepe/lib/theme/crepe-dark/style.css';
@@ -30,6 +30,7 @@ const TestPlate = () => {
   const [selectedText, setSelectedText] = useState('');
   const [editorReady, setEditorReady] = useState(false);
   const [isReadMode, setIsReadMode] = useState(false);
+  const [markdownContent, setMarkdownContent] = useState<string>('');
   
   // AI Modal state
   const aiModal = useAIModal();
@@ -40,15 +41,18 @@ const TestPlate = () => {
   const aiModalRef = useRef(aiModal);
   aiModalRef.current = aiModal;
 
+  // Load guide content (you can fetch from API or pass as prop)
   useEffect(() => {
-    if (!editorRef.current) return;
-
-    const initEditor = async () => {
+    // Example: Load from API
+    const loadGuideContent = async () => {
       try {
-        // Create Crepe editor with all features enabled
-        const crepe = new Crepe({
-          root: editorRef.current,
-          defaultValue: `# Welcome to Milkdown with Full AI Integration! 🎉
+        // Replace with your actual API call
+        // const response = await fetch('/api/guide/your-slug');
+        // const data = await response.json();
+        // setMarkdownContent(data.guide.content);
+        
+        // For now, use default content
+        setMarkdownContent(`# Welcome to Milkdown with Full AI Integration! 🎉
 
 This editor has **complete AI integration** (All 3 Phases ✅):
 
@@ -72,7 +76,24 @@ Type \`/\` anywhere and look for the "✨ AI Commands" section:
 - 🎯 Write conclusion
 
 ## Test It Out
-Try both methods above, or use the manual test buttons below!`,
+Try both methods above, or use the manual test buttons below!`);
+      } catch (error) {
+        console.error('Failed to load guide content:', error);
+      }
+    };
+
+    loadGuideContent();
+  }, []);
+
+  useEffect(() => {
+    if (!editorRef.current || !markdownContent) return;
+
+    const initEditor = async () => {
+      try {
+        // Create Crepe editor with all features enabled
+        const crepe = new Crepe({
+          root: editorRef.current,
+          defaultValue: markdownContent,
           // Enable all features
           featureConfigs: {
             // Block editing with drag handles + AI slash commands
@@ -149,7 +170,7 @@ Try both methods above, or use the manual test buttons below!`,
         crepeInstanceRef.current = null;
       }
     };
-  }, []);
+  }, [markdownContent]);
 
   // Generic helper to execute actions in editor context
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

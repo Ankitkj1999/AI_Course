@@ -61,6 +61,14 @@ export const guideService = {
     return response.data;
   },
 
+  // Update guide
+  async updateGuide(slug: string, data: { content?: string; title?: string; keyword?: string }): Promise<GuideResponse> {
+    const response = await axios.patch(`${API_BASE}/guide/${slug}`, data, {
+      withCredentials: true
+    });
+    return response.data;
+  },
+
   // Delete guide
   async deleteGuide(slug: string, userId: string): Promise<{ success: boolean; message: string }> {
     const response = await axios.delete(`${API_BASE}/guide/${slug}`, {

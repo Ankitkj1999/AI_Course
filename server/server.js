@@ -4989,6 +4989,47 @@ app.delete('/api/guide/:slug', async (req, res) => {
     }
 });
 
+//UPDATE GUIDE
+app.patch('/api/guide/:slug', requireAuth, async (req, res) => {
+    try {
+        const { slug } = req.params;
+        const userId = req.user._id.toString();
+        const { content, title, keyword } = req.body;
+
+        // Find the guide and verify ownership
+        const guide = await Guide.findOne({ slug, userId });
+
+        if (!guide) {
+            return res.status(404).json({
+                success: false,
+                message: 'Guide not found or unauthorized'
+            });
+        }
+
+        // Update fields if provided
+        if (content !== undefined) guide.content = content;
+        if (title !== undefined) guide.title = title;
+        if (keyword !== undefined) guide.keyword = keyword;
+
+        await guide.save();
+
+        logger.info(`Guide updated: ${guide._id} (${slug})`);
+
+        res.json({
+            success: true,
+            message: 'Guide updated successfully',
+            guide
+        });
+
+    } catch (error) {
+        logger.error(`Update guide error: ${error.message}`, { error: error.stack, slug: req.params.slug });
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update guide'
+        });
+    }
+});
+
 // DOCUMENT PROCESSING ENDPOINTS
 
 // Upload and extract document

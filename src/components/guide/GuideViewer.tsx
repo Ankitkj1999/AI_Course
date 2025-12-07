@@ -157,14 +157,25 @@ const GuideViewer: React.FC = () => {
           <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4">
             <div className="flex items-center gap-2">
               {isOwner && (
-                <VisibilityToggle
-                  contentType="guide"
-                  slug={guide.slug}
-                  isPublic={guide.isPublic || false}
-                  onToggle={(newState) => {
-                    setGuide(prev => prev ? { ...prev, isPublic: newState } : null);
-                  }}
-                />
+                <>
+                  <Button
+                    onClick={() => navigate(`/guide/${guide.slug}/edit`)}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                  >
+                    ✏️ Edit Guide
+                  </Button>
+                  
+                  <VisibilityToggle
+                    contentType="guide"
+                    slug={guide.slug}
+                    isPublic={guide.isPublic || false}
+                    onToggle={(newState) => {
+                      setGuide(prev => prev ? { ...prev, isPublic: newState } : null);
+                    }}
+                  />
+                </>
               )}
               
               {guide.isPublic && (

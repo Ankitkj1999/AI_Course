@@ -45,6 +45,7 @@ import FlashcardViewerPage from "./pages/FlashcardViewer";
 import GuideListPage from "./pages/GuideList";
 import CreateGuidePage from "./pages/CreateGuide";
 import GuideViewerPage from "./pages/GuideViewer";
+import GuideEditor from "./pages/GuideEditor";
 
 // Courses import
 import CoursesPage from "./pages/dashboard/Courses";
@@ -176,6 +177,11 @@ const App = () => {
                 <Route path="/guide/:slug" element={
                   <AppLayout mode="public">
                     <GuideViewerPage />
+                  </AppLayout>
+                } />
+                <Route path="/guide/:slug/edit" element={
+                  <AppLayout mode="authenticated">
+                    <GuideEditor />
                   </AppLayout>
                 } />
 
