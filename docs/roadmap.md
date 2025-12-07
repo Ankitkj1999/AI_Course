@@ -65,7 +65,14 @@ A comprehensive roadmap for improving AiCourse from basic functionality to enter
 - [ ] **Pagination Improvements** - Infinite scroll or better pagination
 
 ### Content Management
-- [ ] **Rich Text Editor** - Enhanced course content editing
+- [x] **Rich Text Editor** - Milkdown editor for guide content editing ✅
+- [ ] **Advanced Course Editor** - Full course restructuring with:
+  - Visual course outline editor
+  - Drag-and-drop topic/subtopic reordering
+  - Add/remove/edit topics and subtopics
+  - Bulk content editing
+  - Course structure preview
+  - Better schema for hierarchical content
 - [ ] **Image Upload** - Direct image upload instead of URLs
 - [ ] **File Management** - Course attachments and resources
 - [ ] **Version Control** - Course version history

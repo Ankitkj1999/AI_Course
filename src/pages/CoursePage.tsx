@@ -55,6 +55,8 @@ import { prepareContentForRendering } from "@/utils/contentHandler";
 import StyledText from "@/components/styledText";
 import { ContentAttribution } from "@/components/ContentAttribution";
 import html2pdf from "html2pdf.js";
+import { SubtopicEditor } from "@/components/course/SubtopicEditor";
+import { Pencil } from "lucide-react";
 
 const CoursePage = () => {
   //ADDED FROM v4.0
@@ -77,6 +79,8 @@ const CoursePage = () => {
   const [newMessage, setNewMessage] = useState("");
   const [exporting, setExporting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [editingSubtopic, setEditingSubtopic] = useState<{ title: string; content: string } | null>(null);
 
   // State variables for course data when fetched from server
   const [mainTopic, setMainTopic] = useState(state?.mainTopic || "");
@@ -457,6 +461,48 @@ const CoursePage = () => {
         currentSubtopicIndex
       ].done = done;
       updateCourse();
+    }
+  };
+
+  const handleEditSubtopic = () => {
+    console.log('handleEditSubtopic called', { mainTopic, selected });
+    
+    const currentSubtopic = jsonData[mainTopic.toLowerCase()]
+      .flatMap((topic) => topic.subtopics)
+      .find((subtopic) => subtopic.title === selected);
+    
+    console.log('Found subtopic:', currentSubtopic);
+    
+    if (currentSubtopic) {
+      const editData = {
+        title: currentSubtopic.title,
+        content: currentSubtopic.theory || '',
+      };
+      console.log('Setting editing subtopic:', editData);
+      setEditingSubtopic(editData);
+      setIsEditorOpen(true);
+    } else {
+      console.error('Subtopic not found!');
+    }
+  };
+
+  const handleSaveSubtopic = async (newContent: string) => {
+    const { currentTopicIndex, currentSubtopicIndex } = findCurrentLessonPosition();
+    
+    if (currentTopicIndex !== -1 && currentSubtopicIndex !== -1) {
+      // Update the theory content
+      jsonData[mainTopic.toLowerCase()][currentTopicIndex].subtopics[
+        currentSubtopicIndex
+      ].theory = newContent;
+      
+      // Update the displayed theory
+      setTheory(newContent);
+      
+      // Save to backend
+      await updateCourse();
+      
+      setIsEditorOpen(false);
+      setEditingSubtopic(null);
     }
   };
 
@@ -1690,7 +1736,16 @@ const CoursePage = () => {
                           </p>
                           <h1 className="text-3xl font-bold">{selected}</h1>
                         </div>
-                        <div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleEditSubtopic}
+                            className="gap-2"
+                          >
+                            <Pencil className="h-4 w-4" />
+                            Edit
+                          </Button>
                           {jsonData && mainTopic && jsonData[mainTopic.toLowerCase()]
                             .flatMap((topic) => topic.subtopics)
                             .find((subtopic) => subtopic.title === selected)
@@ -2066,6 +2121,20 @@ const CoursePage = () => {
             </div>
           </DialogContent>
         </Dialog>
+      )}
+
+      {/* Subtopic Editor */}
+      {editingSubtopic && (
+        <SubtopicEditor
+          isOpen={isEditorOpen}
+          onClose={() => {
+            setIsEditorOpen(false);
+            setEditingSubtopic(null);
+          }}
+          subtopicTitle={editingSubtopic.title}
+          initialContent={editingSubtopic.content}
+          onSave={handleSaveSubtopic}
+        />
       )}
     </div>
   );
