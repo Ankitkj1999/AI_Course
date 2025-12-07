@@ -29,6 +29,7 @@ const TestPlate = () => {
   const crepeInstanceRef = useRef<Crepe | null>(null);
   const [selectedText, setSelectedText] = useState('');
   const [editorReady, setEditorReady] = useState(false);
+  const [isReadMode, setIsReadMode] = useState(false);
   
   // AI Modal state
   const aiModal = useAIModal();
@@ -159,6 +160,23 @@ Try both methods above, or use the manual test buttons below!`,
       result = callback(ctx);
     });
     return result!;
+  };
+
+  // Toggle read/edit mode
+  const toggleReadMode = () => {
+    if (!crepeInstanceRef.current?.editor) return;
+    
+    crepeInstanceRef.current.editor.action((ctx) => {
+      const view = ctx.get(editorViewCtx);
+      // Toggle editable state
+      view.setProps({ editable: () => isReadMode });
+    });
+    
+    setIsReadMode(!isReadMode);
+    toast({
+      title: isReadMode ? "✏️ Edit Mode" : "👁️ Read Mode",
+      description: isReadMode ? "You can now edit the content" : "Content is now read-only",
+    });
   };
 
   // Get selected text from editor
@@ -374,6 +392,31 @@ Key improvements:
 
         {/* Editor */}
         <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+          {/* Read/Edit Mode Toggle */}
+          {editorReady && (
+            <div className="flex justify-end p-3 border-b border-gray-200 bg-gray-50">
+              <button
+                onClick={toggleReadMode}
+                className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
+                  isReadMode
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                {isReadMode ? (
+                  <>
+                    <span>✏️</span>
+                    <span>Edit Mode</span>
+                  </>
+                ) : (
+                  <>
+                    <span>👁️</span>
+                    <span>Read Mode</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
           <div
             ref={editorRef}
             className="min-h-[500px]"
