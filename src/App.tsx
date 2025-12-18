@@ -53,6 +53,8 @@ import CoursesPage from "./pages/dashboard/Courses";
 // LLM Test imports
 import TestLLM from "./pages/TestLLM";
 import TestPlate from "./pages/TestPlate";
+import TestLexical from "./pages/TestLexical";
+import Editor from "./editor";
 
 // Public Content imports
 import PublicContent from "./pages/PublicContent";
@@ -144,6 +146,7 @@ const App = () => {
                   <Route path="create-guide" element={<CreateGuidePage />} />
                   <Route path="test-llm" element={<TestLLM />} />
                   <Route path="test-plate" element={<TestPlate />} />
+                  <Route path="test-lexical" element={<TestLexical />} />
                 </Route>
 
                 {/* Course Routes */}
@@ -231,6 +234,9 @@ const App = () => {
                 </Route>
 
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                {/* Editor Route */}
+                <Route path="/editor" element={<Editor />} />
+
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>

@@ -162,6 +162,11 @@ export const AppSidebar = ({
       url: '/dashboard/test-llm',
       icon: TestTube,
     },
+    {
+      title: 'Test Lexical',
+      url: '/dashboard/test-lexical',
+      icon: FileText,
+    },
   ];
 
   const navSecondary = [
