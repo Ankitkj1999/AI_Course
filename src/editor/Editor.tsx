@@ -1,61 +1,186 @@
-import React from 'react';
-import { LexicalComposer } from '@lexical/react/LexicalComposer';
-import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
-import { ContentEditable } from '@lexical/react/LexicalContentEditable';
-import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
-import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
-import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
-import { HeadingNode, QuoteNode } from '@lexical/rich-text';
-import { TableCellNode, TableNode, TableRowNode } from '@lexical/table';
-import { ListItemNode, ListNode } from '@lexical/list';
-import { CodeHighlightNode, CodeNode } from '@lexical/code';
-import { AutoLinkNode, LinkNode } from '@lexical/link';
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ */
 
-const theme = {
-  paragraph: 'editor-paragraph',
+import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
+import { LexicalComposer } from '@lexical/react/LexicalComposer';
+import { ContentEditable } from '@lexical/react/LexicalContentEditable';
+import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
+import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
+import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
+import {
+  $isTextNode,
+  DOMConversionMap,
+  DOMExportOutput,
+  DOMExportOutputMap,
+  isHTMLElement,
+  Klass,
+  LexicalEditor,
+  LexicalNode,
+  ParagraphNode,
+  TextNode,
+} from 'lexical';
+
+import ExampleTheme from './ExampleTheme';
+import ToolbarPlugin from './plugins/ToolbarPlugin';
+import TreeViewPlugin from './plugins/TreeViewPlugin';
+import { parseAllowedColor, parseAllowedFontSize } from './styleConfig';
+
+// Import node types
+import {
+  HeadingNode,
+  QuoteNode,
+  CodeNode,
+  LinkNode,
+  ImageNode,
+} from './nodes';
+
+const placeholder = 'Enter some rich text...';
+
+const removeStylesExportDOM = (
+  editor: LexicalEditor,
+  target: LexicalNode,
+): DOMExportOutput => {
+  const output = target.exportDOM(editor);
+  if (output && isHTMLElement(output.element)) {
+    // Remove all inline styles and classes if the element is an HTMLElement
+    // Children are checked as well since TextNode can be nested
+    // in i, b, and strong tags.
+    for (const el of [
+      output.element,
+      ...output.element.querySelectorAll('[style],[class]'),
+    ]) {
+      el.removeAttribute('class');
+      el.removeAttribute('style');
+    }
+  }
+  return output;
 };
 
-const initialConfig = {
-  namespace: 'Editor',
-  theme,
-  onError(error: Error) {
-    console.error(error);
+const exportMap: DOMExportOutputMap = new Map<
+  Klass<LexicalNode>,
+  (editor: LexicalEditor, target: LexicalNode) => DOMExportOutput
+>([
+  [ParagraphNode, removeStylesExportDOM],
+  [TextNode, removeStylesExportDOM],
+]);
+
+const getExtraStyles = (element: HTMLElement): string => {
+  // Parse styles from pasted input, but only if they match exactly the
+  // sort of styles that would be produced by exportDOM
+  let extraStyles = '';
+  const fontSize = parseAllowedFontSize(element.style.fontSize);
+  const backgroundColor = parseAllowedColor(element.style.backgroundColor);
+  const color = parseAllowedColor(element.style.color);
+  if (fontSize !== '' && fontSize !== '15px') {
+    extraStyles += `font-size: ${fontSize};`;
+  }
+  if (backgroundColor !== '' && backgroundColor !== 'rgb(255, 255, 255)') {
+    extraStyles += `background-color: ${backgroundColor};`;
+  }
+  if (color !== '' && color !== 'rgb(0, 0, 0)') {
+    extraStyles += `color: ${color};`;
+  }
+  return extraStyles;
+};
+
+const constructImportMap = (): DOMConversionMap => {
+  const importMap: DOMConversionMap = {};
+
+  // Wrap all TextNode importers with a function that also imports
+  // the custom styles implemented by the playground
+  for (const [tag, fn] of Object.entries(TextNode.importDOM() || {})) {
+    importMap[tag] = (importNode) => {
+      const importer = fn(importNode);
+      if (!importer) {
+        return null;
+      }
+      return {
+        ...importer,
+        conversion: (element) => {
+          const output = importer.conversion(element);
+          if (
+            output === null ||
+            output.forChild === undefined ||
+            output.after !== undefined ||
+            output.node !== null
+          ) {
+            return output;
+          }
+          const extraStyles = getExtraStyles(element);
+          if (extraStyles) {
+            const { forChild } = output;
+            return {
+              ...output,
+              forChild: (child, parent) => {
+                const textNode = forChild(child, parent);
+                if ($isTextNode(textNode)) {
+                  textNode.setStyle(textNode.getStyle() + extraStyles);
+                }
+                return textNode;
+              },
+            };
+          }
+          return output;
+        },
+      };
+    };
+  }
+
+  return importMap;
+};
+
+const editorConfig = {
+  html: {
+    export: exportMap,
+    import: constructImportMap(),
   },
+  namespace: 'React.js Demo',
   nodes: [
+    ParagraphNode,
+    TextNode,
     HeadingNode,
-    ListNode,
-    ListItemNode,
     QuoteNode,
     CodeNode,
-    CodeHighlightNode,
-    TableNode,
-    TableCellNode,
-    TableRowNode,
-    AutoLinkNode,
     LinkNode,
+    ImageNode,
   ],
+  onError(error: Error) {
+    throw error;
+  },
+  theme: ExampleTheme,
 };
 
-const Editor: React.FC = () => {
+function Editor() {
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-center mb-8">Editor</h1>
+    <LexicalComposer initialConfig={editorConfig}>
       <div className="editor-container">
-        <LexicalComposer initialConfig={initialConfig}>
-          <div className="editor-inner">
-            <RichTextPlugin
-              contentEditable={<ContentEditable className="editor-input" />}
-              placeholder={<div className="editor-placeholder">Start typing...</div>}
-              ErrorBoundary={LexicalErrorBoundary}
-            />
-            <HistoryPlugin />
-            <AutoFocusPlugin />
-          </div>
-        </LexicalComposer>
+        <ToolbarPlugin />
+        <div className="editor-inner">
+          <RichTextPlugin
+            contentEditable={
+              <ContentEditable
+                className="editor-input"
+                aria-placeholder={placeholder}
+                placeholder={
+                  <div className="editor-placeholder">{placeholder}</div>
+                }
+              />
+            }
+            ErrorBoundary={LexicalErrorBoundary}
+          />
+          <HistoryPlugin />
+          <AutoFocusPlugin />
+          <TreeViewPlugin />
+        </div>
       </div>
-    </div>
+    </LexicalComposer>
   );
-};
+}
 
 export { Editor };
 export default Editor;
