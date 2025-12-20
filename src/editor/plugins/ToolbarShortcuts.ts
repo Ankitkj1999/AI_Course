@@ -31,6 +31,8 @@ export const SHORTCUTS = Object.freeze({
   // (Ctrl|⌘) + <key> shortcuts
   SUBSCRIPT: IS_APPLE ? '⌘+,' : 'Ctrl+,',
   SUPERSCRIPT: IS_APPLE ? '⌘+.' : 'Ctrl+.',
+  INDENT: IS_APPLE ? '⌘+]' : 'Ctrl+]',
+  OUTDENT: IS_APPLE ? '⌘+[' : 'Ctrl+[',
   CLEAR_FORMATTING: IS_APPLE ? '⌘+\\' : 'Ctrl+\\',
   REDO: IS_APPLE ? '⌘+Shift+Z' : 'Ctrl+Y',
   UNDO: IS_APPLE ? '⌘+Z' : 'Ctrl+Z',

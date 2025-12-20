@@ -946,6 +946,27 @@ body {
   background-position: center;
 }
 
+/* Indent and outdent icons */
+.toolbar button.toolbar-item .icon.indent {
+  background-image: url(/icons/indent.svg);
+  width: 16px;
+  height: 16px;
+  display: block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.toolbar button.toolbar-item .icon.outdent {
+  background-image: url(/icons/outdent.svg);
+  width: 16px;
+  height: 16px;
+  display: block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
 /* Shortcut styling in dropdown items */
 .dropdown-menu .item .shortcut {
   margin-left: auto;

@@ -24,6 +24,8 @@ import {
   LexicalEditor,
   TextNode,
   $createParagraphNode,
+  INDENT_CONTENT_COMMAND,
+  OUTDENT_CONTENT_COMMAND,
 } from 'lexical';
 import { 
   $isHeadingNode,
@@ -531,6 +533,7 @@ function ElementFormatDropdown({
             <i className="icon left-align" />
             <span className="text">Left Align</span>
           </div>
+          <span className="shortcut">{SHORTCUTS.LEFT_ALIGN}</span>
         </DropDownItem>
         <DropDownItem
           onClick={() => {
@@ -541,6 +544,7 @@ function ElementFormatDropdown({
             <i className="icon center-align" />
             <span className="text">Center Align</span>
           </div>
+          <span className="shortcut">{SHORTCUTS.CENTER_ALIGN}</span>
         </DropDownItem>
         <DropDownItem
           onClick={() => {
@@ -551,6 +555,7 @@ function ElementFormatDropdown({
             <i className="icon right-align" />
             <span className="text">Right Align</span>
           </div>
+          <span className="shortcut">{SHORTCUTS.RIGHT_ALIGN}</span>
         </DropDownItem>
         <DropDownItem
           onClick={() => {
@@ -561,6 +566,50 @@ function ElementFormatDropdown({
             <i className="icon justify-align" />
             <span className="text">Justify Align</span>
           </div>
+          <span className="shortcut">{SHORTCUTS.JUSTIFY_ALIGN}</span>
+        </DropDownItem>
+        <DropDownItem
+          onClick={() => {
+            editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, 'start');
+          }}
+          className="item wide">
+          <div className="icon-text-container">
+            <i className="icon left-align" />
+            <span className="text">Start Align</span>
+          </div>
+        </DropDownItem>
+        <DropDownItem
+          onClick={() => {
+            editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, 'end');
+          }}
+          className="item wide">
+          <div className="icon-text-container">
+            <i className="icon right-align" />
+            <span className="text">End Align</span>
+          </div>
+        </DropDownItem>
+        <Divider />
+        <DropDownItem
+          onClick={() => {
+            editor.dispatchCommand(OUTDENT_CONTENT_COMMAND, undefined);
+          }}
+          className="item wide">
+          <div className="icon-text-container">
+            <i className="icon outdent" />
+            <span className="text">Outdent</span>
+          </div>
+          <span className="shortcut">{SHORTCUTS.OUTDENT}</span>
+        </DropDownItem>
+        <DropDownItem
+          onClick={() => {
+            editor.dispatchCommand(INDENT_CONTENT_COMMAND, undefined);
+          }}
+          className="item wide">
+          <div className="icon-text-container">
+            <i className="icon indent" />
+            <span className="text">Indent</span>
+          </div>
+          <span className="shortcut">{SHORTCUTS.INDENT}</span>
         </DropDownItem>
       </>
     </DropDown>
