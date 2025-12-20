@@ -21,6 +21,7 @@ import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPl
 import { TabIndentationPlugin } from '@lexical/react/LexicalTabIndentationPlugin';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { useState, useEffect } from 'react';
+import { CAN_USE_DOM } from '@lexical/utils';
 import {
   $isTextNode,
   DOMConversionMap,
@@ -196,12 +197,31 @@ const editorConfig = {
 function Editor() {
   const [floatingAnchorElem, setFloatingAnchorElem] = useState<HTMLDivElement | null>(null);
   const [isLinkEditMode, setIsLinkEditMode] = useState<boolean>(false);
+  const [isSmallWidthViewport, setIsSmallWidthViewport] = useState<boolean>(false);
 
   const onRef = (_floatingAnchorElem: HTMLDivElement) => {
     if (_floatingAnchorElem !== null) {
       setFloatingAnchorElem(_floatingAnchorElem);
     }
   };
+
+  // Viewport detection following playground pattern
+  useEffect(() => {
+    const updateViewPortWidth = () => {
+      const isNextSmallWidthViewport =
+        CAN_USE_DOM && window.matchMedia('(max-width: 1025px)').matches;
+
+      if (isNextSmallWidthViewport !== isSmallWidthViewport) {
+        setIsSmallWidthViewport(isNextSmallWidthViewport);
+      }
+    };
+    updateViewPortWidth();
+    window.addEventListener('resize', updateViewPortWidth);
+
+    return () => {
+      window.removeEventListener('resize', updateViewPortWidth);
+    };
+  }, [isSmallWidthViewport]);
 
   const initialConfig = {
     ...editorConfig,
@@ -212,25 +232,26 @@ function Editor() {
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
-      <div className="editor-container">
-        <ToolbarPlugin />
-        <div className="editor-inner">
-          <RichTextPlugin
-            contentEditable={
-              <div className="editor-scroller">
-                <div className="editor" ref={onRef}>
-                  <ContentEditable
-                    className="editor-input"
-                    aria-placeholder={placeholder}
-                    placeholder={
-                      <div className="editor-placeholder">{placeholder}</div>
-                    }
-                  />
+      <div className="editor-shell">
+        <div className="editor-container">
+          <ToolbarPlugin />
+          <div className="editor-inner">
+            <RichTextPlugin
+              contentEditable={
+                <div className="editor-scroller">
+                  <div className="editor" ref={onRef}>
+                    <ContentEditable
+                      className="editor-input"
+                      aria-placeholder={placeholder}
+                      placeholder={
+                        <div className="editor-placeholder">{placeholder}</div>
+                      }
+                    />
+                  </div>
                 </div>
-              </div>
-            }
-            ErrorBoundary={LexicalErrorBoundary}
-          />
+              }
+              ErrorBoundary={LexicalErrorBoundary}
+            />
           
           {/* Core plugins */}
           <HistoryPlugin />
@@ -265,8 +286,8 @@ function Editor() {
             />
           )}
           
-          {/* Floating text format toolbar */}
-          {floatingAnchorElem && (
+          {/* Floating text format toolbar - only on larger screens */}
+          {floatingAnchorElem && !isSmallWidthViewport && (
             <FloatingTextFormatToolbarPlugin
               anchorElem={floatingAnchorElem}
               setIsLinkEditMode={setIsLinkEditMode}
@@ -280,6 +301,7 @@ function Editor() {
           <TreeViewPlugin />
         </div>
       </div>
+    </div>
     </LexicalComposer>
   );
 }

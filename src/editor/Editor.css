@@ -1,72 +1,50 @@
 /**
  * Lexical Editor Styles
- * Comprehensive styling for all editor features with responsive design
+ * Based on official Lexical playground patterns with responsive design
  */
 
-/* Editor Container - Responsive Layout */
+/* Editor Shell - Main wrapper following playground pattern */
+.editor-shell {
+  margin: 20px auto;
+  border-radius: 2px;
+  max-width: 1100px;
+  color: #000;
+  position: relative;
+  line-height: 1.7;
+  font-weight: 400;
+}
+
+/* Editor Container - Inner container */
 .editor-container {
   background: #fff;
   position: relative;
-  line-height: 20px;
-  font-weight: 400;
-  text-align: left;
-  border-top-left-radius: 10px;
-  border-top-right-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  max-height: 100vh;
-  overflow: hidden;
-  width: 100%;
-  max-width: 900px;
-  margin: 0 auto;
-  box-sizing: border-box;
-}
-
-/* Ensure reasonable margins on larger screens */
-@media (min-width: 1200px) {
-  .editor-container {
-    max-width: 1000px;
-  }
-}
-
-@media (min-width: 1400px) {
-  .editor-container {
-    max-width: 1100px;
-  }
-}
-
-@media (min-width: 1600px) {
-  .editor-container {
-    max-width: 1200px;
-  }
+  display: block;
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
 }
 
 .editor-inner {
   background: #fff;
   position: relative;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
 }
 
 .editor-scroller {
-  flex: 1;
+  min-height: 150px;
+  max-width: 100%;
   border: 0;
   display: flex;
   position: relative;
   outline: 0;
   z-index: 0;
-  overflow: auto;
-  resize: none;
+  resize: vertical;
 }
 
 .editor {
   flex: auto;
+  max-width: 100%;
   position: relative;
+  resize: vertical;
   z-index: -1;
-  width: 100%;
 }
 
 .editor-input {
@@ -76,9 +54,9 @@
   position: relative;
   tab-size: 1;
   outline: 0;
-  padding: 20px 30px;
+  padding: 15px 30px;
   caret-color: #444;
-  min-height: calc(100vh - 120px);
+  min-height: 200px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -88,7 +66,7 @@
   overflow: hidden;
   position: absolute;
   text-overflow: ellipsis;
-  top: 20px;
+  top: 15px;
   left: 30px;
   font-size: 15px;
   user-select: none;
@@ -581,7 +559,17 @@
   tab-size: 2;
 }
 
-/* Responsive Design */
+/* Responsive Design - Following Playground Pattern */
+@media screen and (max-width: 1100px) {
+  .dropdown-button-text {
+    display: none !important;
+  }
+  
+  .toolbar .block-controls .dropdown-button-text {
+    display: flex !important;
+  }
+}
+
 @media (max-width: 1025px) {
   .editor-scroller {
     min-height: 200px;
@@ -589,6 +577,40 @@
   
   .editor-input {
     min-height: 200px;
+    padding: 12px 20px;
+  }
+  
+  .editor-placeholder {
+    top: 12px;
+    left: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .editor-input {
+    padding: 10px 15px;
+    font-size: 14px;
+  }
+  
+  .editor-placeholder {
+    top: 10px;
+    left: 15px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .editor-shell {
+    margin: 10px;
+  }
+  
+  .editor-input {
+    padding: 8px 12px;
+  }
+  
+  .editor-placeholder {
+    top: 8px;
+    left: 12px;
   }
 }
 
@@ -603,7 +625,7 @@
   background-color: #b7d4fe;
 }
 
-/* Toolbar Styles */
+/* Toolbar Styles - Following Lexical Playground Pattern */
 .toolbar {
   display: flex;
   margin-bottom: 1px;
@@ -613,7 +635,11 @@
   border-top-right-radius: 10px;
   vertical-align: middle;
   overflow: auto;
-  border-bottom: 1px solid #ccc;
+  height: 36px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  overflow-y: hidden;
 }
 
 .toolbar button.toolbar-item {
