@@ -12,6 +12,10 @@ import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
+import { ListPlugin } from '@lexical/react/LexicalListPlugin';
+import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import { useEffect } from 'react';
 import {
   $isTextNode,
   DOMConversionMap,
@@ -30,6 +34,10 @@ import ToolbarPlugin from './plugins/ToolbarPlugin';
 import TreeViewPlugin from './plugins/TreeViewPlugin';
 import { parseAllowedColor, parseAllowedFontSize } from './styleConfig';
 
+// Import code highlighting utilities
+// import { registerCodeHighlighting } from '@lexical/code';
+// import { createLowlight } from 'lowlight';
+
 // Import node types
 import {
   HeadingNode,
@@ -38,6 +46,15 @@ import {
   LinkNode,
   ImageNode,
 } from './nodes';
+
+// Import code highlight node
+import { CodeHighlightNode } from '@lexical/code';
+
+// Import list node types
+import { ListNode, ListItemNode } from '@lexical/list';
+
+// Import table node types
+import { TableNode, TableCellNode, TableRowNode } from '@lexical/table';
 
 const placeholder = 'Enter some rich text...';
 
@@ -146,8 +163,14 @@ const editorConfig = {
     HeadingNode,
     QuoteNode,
     CodeNode,
+    CodeHighlightNode,
     LinkNode,
     ImageNode,
+    ListNode,
+    ListItemNode,
+    TableNode,
+    TableCellNode,
+    TableRowNode,
   ],
   onError(error: Error) {
     throw error;
@@ -156,8 +179,15 @@ const editorConfig = {
 };
 
 function Editor() {
+  const initialConfig = {
+    ...editorConfig,
+    onError(error: Error) {
+      throw error;
+    },
+  };
+
   return (
-    <LexicalComposer initialConfig={editorConfig}>
+    <LexicalComposer initialConfig={initialConfig}>
       <div className="editor-container">
         <ToolbarPlugin />
         <div className="editor-inner">
@@ -174,6 +204,8 @@ function Editor() {
             ErrorBoundary={LexicalErrorBoundary}
           />
           <HistoryPlugin />
+          <ListPlugin />
+          <TablePlugin />
           <AutoFocusPlugin />
           <TreeViewPlugin />
         </div>
@@ -181,6 +213,19 @@ function Editor() {
     </LexicalComposer>
   );
 }
+
+// Component to set up code highlighting (disabled for now)
+// function EditorSetup() {
+//   const [editor] = useLexicalComposerContext();
+
+//   useEffect(() => {
+//     // Register code highlighting
+//     const lowlightInstance = createLowlight();
+//     registerCodeHighlighting(editor, lowlightInstance);
+//   }, [editor]);
+
+//   return null;
+// }
 
 export { Editor };
 export default Editor;

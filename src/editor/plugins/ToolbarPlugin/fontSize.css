@@ -1,0 +1,76 @@
+/* Font Size Component Styles */
+.toolbar-item.font-decrement,
+.toolbar-item.font-increment {
+  width: 32px;
+  height: 32px;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toolbar-item.font-decrement:hover:not(:disabled),
+.toolbar-item.font-increment:hover:not(:disabled) {
+  background-color: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.toolbar-item.font-decrement:disabled,
+.toolbar-item.font-increment:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.toolbar-item.font-size-input {
+  width: 60px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: white;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.toolbar-item.font-size-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+.toolbar-item.font-size-input:disabled {
+  background-color: #f9fafb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Font size control group */
+.font-size-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Icon styles for font size buttons */
+.font-decrement .format.minus-icon,
+.font-increment .format.add-icon {
+  width: 14px;
+  height: 14px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.7;
+}
+
+.font-decrement:hover:not(:disabled) .format.minus-icon,
+.font-increment:hover:not(:disabled) .format.add-icon {
+  opacity: 1;
+}

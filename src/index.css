@@ -423,6 +423,28 @@ html {
   font-style: italic;
 }
 
+.editor-list-ol,
+.editor-list-ul {
+  margin: 8px 0;
+  padding-left: 24px;
+}
+
+.editor-list-ul {
+  list-style-type: disc;
+}
+
+.editor-list-ol {
+  list-style-type: decimal;
+}
+
+.editor-listitem {
+  margin: 4px 0;
+}
+
+.editor-nested-listitem {
+  list-style-type: none;
+}
+
 .editor-heading-h1 {
   font-size: 2rem;
   font-weight: 700;
@@ -701,6 +723,43 @@ body {
   background-image: url(/icons/justify.svg) !important;
 }
 
+i.format.quote {
+  background-image: url(/icons/quote.svg) !important;
+}
+
+i.format.list-bulleted {
+  background-image: url(/icons/list-ul.svg) !important;
+}
+
+i.format.list-numbered {
+  background-image: url(/icons/list-ol.svg) !important;
+}
+
+i.format.table {
+  background-image: url(/icons/table.svg) !important;
+}
+
+i.format.code-block {
+  background-image: url(/icons/code.svg) !important;
+}
+
+i.format.highlighter {
+  background-image: url(/icons/highlighter.svg) !important;
+}
+
+i.format.text-color {
+  background-image: url(/icons/font-color.svg) !important;
+}
+
+/* Font size control icons */
+i.format.minus-icon {
+  background-image: url(/icons/minus-sign.svg) !important;
+}
+
+i.format.add-icon {
+  background-image: url(/icons/plus.svg) !important;
+}
+
 /* Dark mode styles for Lexical */
 .dark .editor-text-code {
   background-color: #374151;
@@ -718,4 +777,56 @@ body {
 
 .dark .editor-placeholder {
   color: #6b7280;
+}
+
+/* Table Styles */
+.editor-table {
+  border-collapse: collapse;
+  margin: 16px 0;
+  width: 100%;
+  border: 1px solid #ddd;
+}
+
+.editor-table td,
+.editor-table th {
+  border: 1px solid #ddd;
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.editor-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+}
+
+.editor-table tr:nth-child(even) {
+  background-color: #f8f9fa;
+}
+
+.editor-table tr:hover {
+  background-color: #e9ecef;
+}
+
+/* Code Block Styles */
+.editor-code {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 12px 16px;
+  font-family: 'Fira Code', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 14px;
+  line-height: 1.4;
+  overflow-x: auto;
+  white-space: pre;
+  margin: 8px 0;
+}
+
+.editor-text-code {
+  background-color: #f1f3f4;
+  border-radius: 3px;
+  padding: 2px 4px;
+  font-family: 'Fira Code', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.875em;
+  color: #d63384;
 }
