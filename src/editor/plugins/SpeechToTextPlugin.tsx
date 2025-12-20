@@ -87,8 +87,8 @@ function SpeechToTextPlugin(): null {
         const resultItem = event.results.item(event.resultIndex);
         const { transcript } = resultItem.item(0);
 
-        // Show real-time feedback for both interim and final results
-        report(transcript, !resultItem.isFinal);
+        // Show real-time feedback - simple and clean like playground
+        report(transcript);
 
         // Only process final results to avoid inserting interim text
         if (!resultItem.isFinal) {
