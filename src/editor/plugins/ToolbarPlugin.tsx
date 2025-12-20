@@ -171,7 +171,8 @@ function DropDown({
 
     if (showDropDown && button !== null && dropDown !== null) {
       const { top, left } = button.getBoundingClientRect();
-      dropDown.style.top = `${top + 40}px`;
+      const dropDownPadding = 4;
+      dropDown.style.top = `${top + button.offsetHeight + dropDownPadding}px`;
       dropDown.style.left = `${Math.min(
         left,
         window.innerWidth - dropDown.offsetWidth - 20,
@@ -197,8 +198,35 @@ function DropDown({
     }
   }, [dropDownRef, buttonRef, showDropDown]);
 
+  // Handle scroll to update dropdown position
+  useEffect(() => {
+    const handleButtonPositionUpdate = () => {
+      if (showDropDown) {
+        const button = buttonRef.current;
+        const dropDown = dropDownRef.current;
+        if (button !== null && dropDown !== null) {
+          const { top, left } = button.getBoundingClientRect();
+          const dropDownPadding = 4;
+          dropDown.style.top = `${top + button.offsetHeight + dropDownPadding}px`;
+          dropDown.style.left = `${Math.min(
+            left,
+            window.innerWidth - dropDown.offsetWidth - 20,
+          )}px`;
+        }
+      }
+    };
+
+    document.addEventListener('scroll', handleButtonPositionUpdate);
+    window.addEventListener('resize', handleButtonPositionUpdate);
+
+    return () => {
+      document.removeEventListener('scroll', handleButtonPositionUpdate);
+      window.removeEventListener('resize', handleButtonPositionUpdate);
+    };
+  }, [buttonRef, dropDownRef, showDropDown]);
+
   return (
-    <div className="dropdown" ref={dropDownRef}>
+    <>
       <button
         disabled={disabled}
         aria-label={buttonAriaLabel || buttonLabel}
@@ -212,13 +240,14 @@ function DropDown({
         <i className="chevron-down" />
       </button>
 
-      {showDropDown &&
-        React.cloneElement(children, {
-          onClick: () => {
-            setShowDropDown(false);
-          },
-        })}
-    </div>
+      {showDropDown && (
+        <div className="dropdown-portal">
+          <div className="dropdown-menu" ref={dropDownRef}>
+            {children}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -337,7 +366,7 @@ function BlockFormatDropDown({
       buttonIconClassName={'icon block-type ' + blockType}
       buttonLabel={blockTypeToBlockName[blockType]}
       buttonAriaLabel="Formatting options for text style">
-      <div className="dropdown-menu">
+      <>
         <DropDownItem
           className={'item wide ' + dropDownActiveClass(blockType === 'paragraph')}
           onClick={formatParagraph}>
@@ -410,7 +439,7 @@ function BlockFormatDropDown({
             <span className="text">Code Block</span>
           </div>
         </DropDownItem>
-      </div>
+      </>
     </DropDown>
   );
 }
@@ -456,7 +485,7 @@ function FontDropDown({
         style === 'font-family' ? 'icon block-type font-family' : ''
       }
       buttonAriaLabel={buttonAriaLabel}>
-      <div className="dropdown-menu">
+      <>
         {(style === 'font-family' ? FONT_FAMILY_OPTIONS : FONT_SIZE_OPTIONS).map(
           ([option, text]) => (
             <DropDownItem
@@ -469,7 +498,7 @@ function FontDropDown({
             </DropDownItem>
           ),
         )}
-      </div>
+      </>
     </DropDown>
   );
 }
@@ -493,7 +522,7 @@ function ElementFormatDropdown({
       buttonIconClassName={`icon ${formatOption.icon}`}
       buttonClassName="toolbar-item spaced alignment"
       buttonAriaLabel="Formatting options for text alignment">
-      <div className="dropdown-menu">
+      <>
         <DropDownItem
           onClick={() => {
             editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, 'left');
@@ -534,7 +563,7 @@ function ElementFormatDropdown({
             <span className="text">Justify Align</span>
           </div>
         </DropDownItem>
-      </div>
+      </>
     </DropDown>
   );
 }
@@ -559,24 +588,62 @@ function DropdownColorPicker({
 }) {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const colorInputRef = useRef<HTMLInputElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleColorChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newColor = event.target.value;
     onChange(newColor, false, false);
   };
 
+  // Position the color picker dropdown
+  useEffect(() => {
+    const button = buttonRef.current;
+    const dropdown = dropdownRef.current;
+
+    if (showColorPicker && button !== null && dropdown !== null) {
+      const { top, left } = button.getBoundingClientRect();
+      const dropDownPadding = 4;
+      dropdown.style.top = `${top + button.offsetHeight + dropDownPadding}px`;
+      dropdown.style.left = `${Math.min(
+        left,
+        window.innerWidth - dropdown.offsetWidth - 20,
+      )}px`;
+    }
+  }, [showColorPicker]);
+
+  // Close on outside click
+  useEffect(() => {
+    const button = buttonRef.current;
+
+    if (button !== null && showColorPicker) {
+      const handle = (event: MouseEvent) => {
+        const target = event.target;
+        if (!button.contains(target as Node) && !dropdownRef.current?.contains(target as Node)) {
+          setShowColorPicker(false);
+        }
+      };
+      document.addEventListener('click', handle);
+
+      return () => {
+        document.removeEventListener('click', handle);
+      };
+    }
+  }, [showColorPicker]);
+
   return (
-    <div className="color-picker">
+    <>
       <button
         className={buttonClassName}
         onClick={() => setShowColorPicker(!showColorPicker)}
         aria-label={buttonAriaLabel}
         title={title}
-        disabled={disabled}>
+        disabled={disabled}
+        ref={buttonRef}>
         <span className={buttonIconClassName} style={{ backgroundColor: color }} />
       </button>
       {showColorPicker && (
-        <div className="color-picker-dropdown">
+        <div className="color-picker-dropdown" ref={dropdownRef}>
           <input
             type="color"
             value={color}
@@ -585,7 +652,7 @@ function DropdownColorPicker({
           />
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -893,7 +960,7 @@ export default function ToolbarPlugin() {
         buttonLabel=""
         buttonAriaLabel="Formatting options for additional text styles"
         buttonIconClassName="icon dropdown-more">
-        <div className="dropdown-menu">
+        <>
           <DropDownItem
             onClick={() => dispatchFormatTextCommand('strikethrough')}
             className={'item wide ' + dropDownActiveClass(isStrikethrough)}
@@ -939,7 +1006,7 @@ export default function ToolbarPlugin() {
               <span className="text">Clear Formatting</span>
             </div>
           </DropDownItem>
-        </div>
+        </>
       </DropDown>
       
       <Divider />

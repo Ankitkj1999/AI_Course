@@ -731,9 +731,8 @@
 
 /* Dropdown Styles */
 .dropdown {
-  z-index: 5;
-  display: block;
-  position: fixed;
+  position: relative;
+  display: inline-block;
 }
 
 .dropdown .dropdown-button-text {
@@ -757,109 +756,6 @@
   font-size: 12px;
   color: #777;
 }
-
-.dropdown .dropdown-menu {
-  background: #fff;
-  box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.3);
-  border-radius: 8px;
-  min-height: 40px;
-  position: fixed;
-  will-change: transform;
-  z-index: 5;
-}
-
-.dropdown .dropdown-menu .item {
-  margin: 0 8px 0 8px;
-  padding: 8px;
-  color: #050505;
-  cursor: pointer;
-  line-height: 16px;
-  font-size: 15px;
-  display: flex;
-  align-content: center;
-  flex-direction: row;
-  flex-shrink: 0;
-  justify-content: space-between;
-  background-color: #fff;
-  border-radius: 8px;
-  border: 0;
-  max-width: 250px;
-  min-width: 100px;
-}
-
-.dropdown .dropdown-menu .item .active {
-  display: flex;
-  width: 20px;
-  height: 20px;
-  background-size: contain;
-}
-
-.dropdown .dropdown-menu .item:first-child {
-  margin-top: 8px;
-}
-
-.dropdown .dropdown-menu .item:last-child {
-  margin-bottom: 8px;
-}
-
-.dropdown .dropdown-menu .item:hover {
-  background-color: #eee;
-}
-
-.dropdown .dropdown-menu .item .text {
-  display: flex;
-  line-height: 20px;
-  flex-grow: 1;
-  min-width: 150px;
-}
-
-.dropdown .dropdown-menu .item .icon {
-  display: flex;
-  width: 20px;
-  height: 20px;
-  user-select: none;
-  margin-right: 12px;
-  line-height: 16px;
-  background-size: contain;
-  color: #777;
-}
-
-.dropdown .dropdown-menu .item .icon.paragraph {
-  background-image: url(/icons/text-paragraph.svg);
-}
-
-.dropdown .dropdown-menu .item .icon.h1 {
-  background-image: url(/icons/type-h1.svg);
-}
-
-.dropdown .dropdown-menu .item .icon.h2 {
-  background-image: url(/icons/type-h2.svg);
-}
-
-.dropdown .dropdown-menu .item .icon.h3 {
-  background-image: url(/icons/type-h3.svg);
-}
-
-.dropdown .dropdown-menu .item .icon.quote {
-  background-image: url(/icons/quote.svg);
-}
-
-.dropdown .dropdown-menu .item .icon.code {
-  background-image: url(/icons/code.svg);
-}
-
-/* Dropdown icon styles */
-.dropdown .dropdown-menu .item .icon {
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  width: 20px;
-  height: 20px;
-}
-
-/* Additional format icons */
-/* All icons now use SVG background images defined in src/index.css */
-/* This ensures professional, consistent appearance */
 
 /* Floating Text Format Toolbar */
 .floating-text-format-popup {
@@ -1338,27 +1234,8 @@
 }
 
 /* Color Picker Styles */
-.color-picker {
-  position: relative;
-  display: inline-block;
-}
-
-.color-picker .toolbar-item {
-  position: relative;
-}
-
-.color-picker .icon {
-  width: 16px;
-  height: 16px;
-  border-radius: 2px;
-  border: 1px solid #ccc;
-  display: block;
-}
-
 .color-picker-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
+  position: fixed;
   z-index: 1000;
   background: white;
   border: 1px solid #ccc;
@@ -1374,7 +1251,13 @@
   cursor: pointer;
 }
 
-/* Enhanced Dropdown Menu Styles */
+/* Enhanced Dropdown Styles */
+.dropdown-portal {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+}
+
 .dropdown-menu {
   background: #fff;
   box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.3);
@@ -1382,9 +1265,10 @@
   min-height: 40px;
   position: fixed;
   will-change: transform;
-  z-index: 5;
+  z-index: 1000;
   max-height: 400px;
   overflow-y: auto;
+  pointer-events: auto;
 }
 
 .dropdown-menu .item {
