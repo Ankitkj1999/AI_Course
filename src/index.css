@@ -882,6 +882,78 @@ body {
   background-image: url(/icons/mic.svg);
 }
 
+/* Text case transformation icons */
+.toolbar button.toolbar-item .icon.lowercase {
+  background-image: url(/icons/type-lowercase.svg);
+  width: 16px;
+  height: 16px;
+  display: block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.toolbar button.toolbar-item .icon.uppercase {
+  background-image: url(/icons/type-uppercase.svg);
+  width: 16px;
+  height: 16px;
+  display: block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.toolbar button.toolbar-item .icon.capitalize {
+  background-image: url(/icons/type-capitalize.svg);
+  width: 16px;
+  height: 16px;
+  display: block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* Plus icon for insert dropdown */
+.toolbar button.toolbar-item .icon.plus {
+  background-image: url(/icons/plus.svg);
+  width: 16px;
+  height: 16px;
+  display: block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* Horizontal rule icon */
+.toolbar button.toolbar-item .icon.horizontal-rule {
+  background-image: url(/icons/horizontal-rule.svg);
+  width: 16px;
+  height: 16px;
+  display: block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* Clear formatting icon */
+.toolbar button.toolbar-item .icon.clear {
+  background-image: url(/icons/scissors.svg);
+  width: 16px;
+  height: 16px;
+  display: block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* Shortcut styling in dropdown items */
+.dropdown-menu .item .shortcut {
+  margin-left: auto;
+  font-size: 12px;
+  color: #6b7280;
+  font-family: monospace;
+}
+
 /* Dark mode styles for Lexical */
 .dark .editor-text-code {
   background-color: #374151;
