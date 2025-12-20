@@ -707,6 +707,18 @@ body {
   background-image: url(/icons/type-strikethrough.svg) !important;
 }
 
+.toolbar i.format.subscript {
+  background-image: url(/icons/type-subscript.svg) !important;
+}
+
+.toolbar i.format.superscript {
+  background-image: url(/icons/type-superscript.svg) !important;
+}
+
+.toolbar i.format.code {
+  background-image: url(/icons/code.svg) !important;
+}
+
 .toolbar i.format.left-align {
   background-image: url(/icons/text-left.svg) !important;
 }
@@ -723,41 +735,50 @@ body {
   background-image: url(/icons/justify.svg) !important;
 }
 
-i.format.quote {
-  background-image: url(/icons/quote.svg) !important;
-}
-
-i.format.list-bulleted {
+.toolbar i.format.list-ul {
   background-image: url(/icons/list-ul.svg) !important;
 }
 
-i.format.list-numbered {
+.toolbar i.format.list-ol {
   background-image: url(/icons/list-ol.svg) !important;
 }
 
-i.format.table {
+.toolbar i.format.check {
+  background-image: url(/icons/check.svg) !important;
+}
+
+.toolbar i.format.quote {
+  background-image: url(/icons/quote.svg) !important;
+}
+
+.toolbar i.format.table {
   background-image: url(/icons/table.svg) !important;
 }
 
-i.format.code-block {
-  background-image: url(/icons/code.svg) !important;
+.toolbar i.format.link {
+  background-image: url(/icons/link.svg) !important;
 }
 
-i.format.highlighter {
-  background-image: url(/icons/highlighter.svg) !important;
-}
-
-i.format.text-color {
-  background-image: url(/icons/font-color.svg) !important;
+.toolbar i.format.image {
+  background-image: url(/icons/image.svg) !important;
 }
 
 /* Font size control icons */
-i.format.minus-icon {
+.toolbar i.format.minus-icon {
   background-image: url(/icons/minus-sign.svg) !important;
 }
 
-i.format.add-icon {
+.toolbar i.format.add-icon {
   background-image: url(/icons/plus.svg) !important;
+}
+
+/* Additional icons */
+.toolbar i.format.highlighter {
+  background-image: url(/icons/highlighter.svg) !important;
+}
+
+.toolbar i.format.text-color {
+  background-image: url(/icons/font-color.svg) !important;
 }
 
 /* Dark mode styles for Lexical */

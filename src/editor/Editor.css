@@ -17,6 +17,29 @@
   height: 100vh;
   max-height: 100vh;
   overflow: hidden;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* Ensure reasonable margins on larger screens */
+@media (min-width: 1200px) {
+  .editor-container {
+    max-width: 1000px;
+  }
+}
+
+@media (min-width: 1400px) {
+  .editor-container {
+    max-width: 1100px;
+  }
+}
+
+@media (min-width: 1600px) {
+  .editor-container {
+    max-width: 1200px;
+  }
 }
 
 .editor-inner {
@@ -53,7 +76,7 @@
   position: relative;
   tab-size: 1;
   outline: 0;
-  padding: 20px;
+  padding: 20px 30px;
   caret-color: #444;
   min-height: calc(100vh - 120px);
   width: 100%;
@@ -66,7 +89,7 @@
   position: absolute;
   text-overflow: ellipsis;
   top: 20px;
-  left: 20px;
+  left: 30px;
   font-size: 15px;
   user-select: none;
   display: inline-block;
@@ -668,76 +691,9 @@
   outline: none;
 }
 
-/* Format Icons using CSS */
-.toolbar i.format.undo::before {
-  content: "↶";
-  font-style: normal;
-  font-size: 18px;
-}
-
-.toolbar i.format.redo::before {
-  content: "↷";
-  font-style: normal;
-  font-size: 18px;
-}
-
-.toolbar i.format.bold::before {
-  content: "B";
-  font-weight: bold;
-  font-style: normal;
-}
-
-.toolbar i.format.italic::before {
-  content: "I";
-  font-style: italic;
-}
-
-.toolbar i.format.underline::before {
-  content: "U";
-  text-decoration: underline;
-  font-style: normal;
-}
-
-.toolbar i.format.strikethrough::before {
-  content: "S";
-  text-decoration: line-through;
-  font-style: normal;
-}
-
-.toolbar i.format.code::before {
-  content: "</>";
-  font-family: monospace;
-  font-style: normal;
-  font-size: 14px;
-}
-
-.toolbar i.format.list-ul::before {
-  content: "•";
-  font-style: normal;
-  font-size: 18px;
-}
-
-.toolbar i.format.list-ol::before {
-  content: "1.";
-  font-style: normal;
-  font-size: 14px;
-}
-
-.toolbar i.format.link::before {
-  content: "🔗";
-  font-style: normal;
-}
-
-.toolbar i.format.image::before {
-  content: "🖼";
-  font-style: normal;
-}
-
-.toolbar i.format.table::before {
-  content: "⊞";
-  font-style: normal;
-  font-size: 16px;
-}
+/* Format Icons using SVG Background Images */
+/* Icons are defined in src/index.css using background-image: url() */
+/* This ensures consistent SVG icon appearance across the toolbar */
 
 /* Responsive toolbar */
 @media (max-width: 1025px) {
@@ -842,72 +798,42 @@
   color: #777;
 }
 
-.dropdown .dropdown-menu .item .icon.paragraph::before {
-  content: "¶";
+.dropdown .dropdown-menu .item .icon.paragraph {
+  background-image: url(/icons/text-paragraph.svg);
 }
 
-.dropdown .dropdown-menu .item .icon.h1::before {
-  content: "H1";
-  font-weight: bold;
+.dropdown .dropdown-menu .item .icon.h1 {
+  background-image: url(/icons/type-h1.svg);
 }
 
-.dropdown .dropdown-menu .item .icon.h2::before {
-  content: "H2";
-  font-weight: bold;
+.dropdown .dropdown-menu .item .icon.h2 {
+  background-image: url(/icons/type-h2.svg);
 }
 
-.dropdown .dropdown-menu .item .icon.h3::before {
-  content: "H3";
-  font-weight: bold;
+.dropdown .dropdown-menu .item .icon.h3 {
+  background-image: url(/icons/type-h3.svg);
 }
 
-.dropdown .dropdown-menu .item .icon.quote::before {
-  content: '"';
-  font-size: 18px;
+.dropdown .dropdown-menu .item .icon.quote {
+  background-image: url(/icons/quote.svg);
 }
 
-.dropdown .dropdown-menu .item .icon.code::before {
-  content: "</>";
-  font-family: monospace;
+.dropdown .dropdown-menu .item .icon.code {
+  background-image: url(/icons/code.svg);
+}
+
+/* Dropdown icon styles */
+.dropdown .dropdown-menu .item .icon {
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  width: 20px;
+  height: 20px;
 }
 
 /* Additional format icons */
-.toolbar i.format.subscript::before {
-  content: "X₂";
-  font-style: normal;
-  font-size: 12px;
-}
-
-.toolbar i.format.superscript::before {
-  content: "X²";
-  font-style: normal;
-  font-size: 12px;
-}
-
-.toolbar i.format.check::before {
-  content: "☑";
-  font-style: normal;
-}
-
-.toolbar i.format.left-align::before {
-  content: "⬅";
-  font-style: normal;
-}
-
-.toolbar i.format.center-align::before {
-  content: "↔";
-  font-style: normal;
-}
-
-.toolbar i.format.right-align::before {
-  content: "➡";
-  font-style: normal;
-}
-
-.toolbar i.format.justify-align::before {
-  content: "⬌";
-  font-style: normal;
-}
+/* All icons now use SVG background images defined in src/index.css */
+/* This ensures professional, consistent appearance */
 
 /* Floating Text Format Toolbar */
 .floating-text-format-popup {
@@ -1182,30 +1108,77 @@
 @media (max-width: 768px) {
   .editor-container {
     height: 100vh;
+    max-width: 100% !important;
   }
   
   .editor-input {
-    padding: 15px;
+    padding: 15px 20px;
     min-height: calc(100vh - 100px);
   }
   
   .editor-placeholder {
     top: 15px;
-    left: 15px;
+    left: 20px;
   }
 }
 
 @media (max-width: 480px) {
   .editor-input {
-    padding: 10px;
+    padding: 10px 15px;
     min-height: calc(100vh - 80px);
     font-size: 14px;
   }
   
   .editor-placeholder {
     top: 10px;
-    left: 10px;
+    left: 15px;
     font-size: 14px;
+  }
+}
+
+/* Wider editor on larger screens */
+@media (min-width: 1200px) {
+  .editor-container {
+    max-width: 1000px !important;
+  }
+  
+  .editor-input {
+    padding: 25px 50px;
+  }
+  
+  .editor-placeholder {
+    left: 50px;
+    top: 25px;
+  }
+}
+
+@media (min-width: 1400px) {
+  .editor-container {
+    max-width: 1100px !important;
+  }
+  
+  .editor-input {
+    padding: 30px 60px;
+  }
+  
+  .editor-placeholder {
+    left: 60px;
+    top: 30px;
+  }
+}
+
+@media (min-width: 1600px) {
+  .editor-container {
+    max-width: 1200px !important;
+  }
+  
+  .editor-input {
+    padding: 35px 70px;
+  }
+  
+  .editor-placeholder {
+    left: 70px;
+    top: 35px;
   }
 }
 
@@ -1270,7 +1243,6 @@
 /* Ensure editor takes full available space */
 .editor-container {
   width: 100%;
-  max-width: 100%;
   box-sizing: border-box;
 }
 
