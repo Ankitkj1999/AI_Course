@@ -1,6 +1,6 @@
 /**
  * Speech to Text Plugin for AI Course Editor
- * Based on Lexical playground implementation
+ * Based on Lexical playground implementation with real-time feedback
  */
 
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
@@ -16,6 +16,7 @@ import {
   VOICE_COMMANDS, 
   SUPPORT_SPEECH_RECOGNITION 
 } from './SpeechToTextConstants';
+import useReport from '../hooks/useReport';
 
 // TypeScript declarations for SpeechRecognition API
 declare global {
@@ -72,6 +73,7 @@ function SpeechToTextPlugin(): null {
     (window.SpeechRecognition || window.webkitSpeechRecognition) as SpeechRecognitionConstructor;
   
   const recognition = useRef<ISpeechRecognition | null>(null);
+  const report = useReport();
 
   useEffect(() => {
     if (isEnabled && recognition.current === null) {
@@ -84,6 +86,9 @@ function SpeechToTextPlugin(): null {
       recognition.current.addEventListener('result', (event: SpeechRecognitionEvent) => {
         const resultItem = event.results.item(event.resultIndex);
         const { transcript } = resultItem.item(0);
+
+        // Show real-time feedback for both interim and final results
+        report(transcript, !resultItem.isFinal);
 
         // Only process final results to avoid inserting interim text
         if (!resultItem.isFinal) {
@@ -153,7 +158,7 @@ function SpeechToTextPlugin(): null {
         recognition.current.stop();
       }
     };
-  }, [SpeechRecognitionClass, editor, isEnabled]);
+  }, [SpeechRecognitionClass, editor, isEnabled, report]);
 
   // Register the speech to text command
   useEffect(() => {
