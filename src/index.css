@@ -760,7 +760,7 @@ body {
 }
 
 .toolbar i.format.image {
-  background-image: url(/icons/image.svg) !important;
+  background-image: url(/icons/file-image.svg) !important;
 }
 
 /* Font size control icons */
@@ -779,6 +779,102 @@ body {
 
 .toolbar i.format.text-color {
   background-image: url(/icons/font-color.svg) !important;
+}
+
+/* All Toolbar Format Icons - Consolidated */
+.toolbar button.toolbar-item i.format.bold {
+  background-image: url(/icons/type-bold.svg);
+}
+
+.toolbar button.toolbar-item i.format.italic {
+  background-image: url(/icons/type-italic.svg);
+}
+
+.toolbar button.toolbar-item i.format.underline {
+  background-image: url(/icons/type-underline.svg);
+}
+
+.toolbar button.toolbar-item i.format.code {
+  background-image: url(/icons/code.svg);
+}
+
+.toolbar button.toolbar-item i.format.link {
+  background-image: url(/icons/link.svg);
+}
+
+.toolbar button.toolbar-item i.format.undo {
+  background-image: url(/icons/arrow-counterclockwise.svg);
+}
+
+.toolbar button.toolbar-item i.format.redo {
+  background-image: url(/icons/arrow-clockwise.svg);
+}
+
+.toolbar button.toolbar-item i.format.list-ul {
+  background-image: url(/icons/list-ul.svg);
+}
+
+.toolbar button.toolbar-item i.format.list-ol {
+  background-image: url(/icons/list-ol.svg);
+}
+
+.toolbar button.toolbar-item i.format.check {
+  background-image: url(/icons/square-check.svg);
+}
+
+.toolbar button.toolbar-item i.format.left-align {
+  background-image: url(/icons/text-left.svg);
+}
+
+.toolbar button.toolbar-item i.format.center-align {
+  background-image: url(/icons/text-center.svg);
+}
+
+.toolbar button.toolbar-item i.format.right-align {
+  background-image: url(/icons/text-right.svg);
+}
+
+.toolbar button.toolbar-item i.format.justify-align {
+  background-image: url(/icons/justify.svg);
+}
+
+.toolbar button.toolbar-item i.format.image {
+  background-image: url(/icons/image.svg);
+}
+
+.toolbar button.toolbar-item i.format.table {
+  background-image: url(/icons/table.svg);
+}
+
+/* Color picker and dropdown icons */
+.toolbar button.toolbar-item .icon.font-color {
+  background-image: url(/icons/font-color.svg);
+  width: 16px;
+  height: 16px;
+  display: block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.toolbar button.toolbar-item .icon.bg-color {
+  background-image: url(/icons/bg-color.svg);
+  width: 16px;
+  height: 16px;
+  display: block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.toolbar button.toolbar-item .icon.dropdown-more {
+  background-image: url(/icons/dropdown-more.svg);
+  width: 16px;
+  height: 16px;
+  display: block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
 }
 
 /* Dark mode styles for Lexical */
