@@ -57,6 +57,7 @@ import ToolbarPlugin from './plugins/ToolbarPlugin';
 import TreeViewPlugin from './plugins/TreeViewPlugin';
 import CodeHighlightPlugin from './plugins/CodeHighlightPlugin';
 import FloatingLinkEditorPlugin from './plugins/FloatingLinkEditorPlugin';
+import FloatingTextFormatToolbarPlugin from './plugins/FloatingTextFormatToolbarPlugin';
 import ImagesPlugin from './plugins/ImagesPlugin';
 import TableCellResizerPlugin from './plugins/TableCellResizerPlugin';
 import { parseAllowedColor, parseAllowedFontSize } from './styleConfig';
@@ -260,6 +261,14 @@ function Editor() {
             <FloatingLinkEditorPlugin 
               anchorElem={floatingAnchorElem}
               isLinkEditMode={isLinkEditMode}
+              setIsLinkEditMode={setIsLinkEditMode}
+            />
+          )}
+          
+          {/* Floating text format toolbar */}
+          {floatingAnchorElem && (
+            <FloatingTextFormatToolbarPlugin
+              anchorElem={floatingAnchorElem}
               setIsLinkEditMode={setIsLinkEditMode}
             />
           )}
