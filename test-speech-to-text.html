@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech to Text Test</title>
+</head>
+<body>
+    <h1>Speech to Text Browser Support Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        const resultsDiv = document.getElementById('results');
+        
+        // Test browser support
+        const hasSpeechRecognition = 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
+        
+        resultsDiv.innerHTML = `
+            <h2>Browser Support:</h2>
+            <p>SpeechRecognition supported: <strong>${hasSpeechRecognition ? 'YES' : 'NO'}</strong></p>
+            <p>SpeechRecognition: ${typeof window.SpeechRecognition}</p>
+            <p>webkitSpeechRecognition: ${typeof window.webkitSpeechRecognition}</p>
+            <p>User Agent: ${navigator.userAgent}</p>
+        `;
+        
+        if (hasSpeechRecognition) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            
+            resultsDiv.innerHTML += `
+                <h2>Speech Recognition Test:</h2>
+                <button id="startBtn">Start Speech Recognition</button>
+                <button id="stopBtn" disabled>Stop Speech Recognition</button>
+                <div id="transcript"></div>
+            `;
+            
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const transcriptDiv = document.getElementById('transcript');
+            
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+            
+            recognition.onstart = () => {
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                transcriptDiv.innerHTML = '<p>Listening...</p>';
+            };
+            
+            recognition.onresult = (event) => {
+                let transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    transcript += event.results[i][0].transcript;
+                }
+                transcriptDiv.innerHTML = `<p>Transcript: ${transcript}</p>`;
+            };
+            
+            recognition.onerror = (event) => {
+                transcriptDiv.innerHTML = `<p style="color: red;">Error: ${event.error}</p>`;
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+            };
+            
+            recognition.onend = () => {
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+            };
+            
+            startBtn.onclick = () => {
+                recognition.start();
+            };
+            
+            stopBtn.onclick = () => {
+                recognition.stop();
+            };
+        }
+    </script>
+</body>
+</html>

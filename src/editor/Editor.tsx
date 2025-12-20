@@ -61,6 +61,7 @@ import FloatingLinkEditorPlugin from './plugins/FloatingLinkEditorPlugin';
 import FloatingTextFormatToolbarPlugin from './plugins/FloatingTextFormatToolbarPlugin';
 import ImagesPlugin from './plugins/ImagesPlugin';
 import TableCellResizerPlugin from './plugins/TableCellResizerPlugin';
+import SpeechToTextPlugin from './plugins/SpeechToTextPlugin';
 import { parseAllowedColor, parseAllowedFontSize } from './styleConfig';
 
 const placeholder = 'Enter some rich text...';
@@ -296,6 +297,9 @@ function Editor() {
           
           {/* Image support */}
           <ImagesPlugin />
+          
+          {/* Speech to Text support */}
+          <SpeechToTextPlugin />
           
           {/* Debug view */}
           <TreeViewPlugin />

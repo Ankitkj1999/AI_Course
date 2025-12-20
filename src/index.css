@@ -877,6 +877,11 @@ body {
   background-position: center;
 }
 
+/* Microphone icon for Speech to Text */
+.toolbar button.toolbar-item i.format.mic {
+  background-image: url(/icons/mic.svg);
+}
+
 /* Dark mode styles for Lexical */
 .dark .editor-text-code {
   background-color: #374151;

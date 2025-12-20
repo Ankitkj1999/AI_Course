@@ -56,6 +56,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as React from 'react';
 import { INSERT_IMAGE_COMMAND } from './ImagesPlugin';
+import { SPEECH_TO_TEXT_COMMAND, SUPPORT_SPEECH_RECOGNITION } from './SpeechToTextConstants';
 
 // Block type mapping
 const blockTypeToBlockName = {
@@ -695,6 +696,7 @@ export default function ToolbarPlugin() {
   const [fontColor, setFontColor] = useState('#000');
   const [bgColor, setBgColor] = useState('#fff');
   const [isEditable, setIsEditable] = useState(() => editor.isEditable());
+  const [isSpeechToText, setIsSpeechToText] = useState(false);
 
   const $updateToolbar = useCallback(() => {
     const selection = $getSelection();
@@ -1062,6 +1064,24 @@ export default function ToolbarPlugin() {
       />
       
       <Divider />
+      
+      {/* Speech to Text */}
+      {SUPPORT_SPEECH_RECOGNITION && (
+        <>
+          <button
+            disabled={!isEditable}
+            onClick={() => {
+              editor.dispatchCommand(SPEECH_TO_TEXT_COMMAND, !isSpeechToText);
+              setIsSpeechToText(!isSpeechToText);
+            }}
+            className={'toolbar-item spaced ' + (isSpeechToText ? 'active' : '')}
+            aria-label="Speech to Text"
+            title={`${isSpeechToText ? 'Stop' : 'Start'} Speech to Text`}>
+            <i className="format mic" />
+          </button>
+          <Divider />
+        </>
+      )}
       
       {/* Insert Elements Group */}
       <button
