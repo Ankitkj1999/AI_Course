@@ -13,9 +13,14 @@ import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ListPlugin } from '@lexical/react/LexicalListPlugin';
+import { CheckListPlugin } from '@lexical/react/LexicalCheckListPlugin';
 import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
+import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
+import { ClickableLinkPlugin } from '@lexical/react/LexicalClickableLinkPlugin';
+import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
+import { TabIndentationPlugin } from '@lexical/react/LexicalTabIndentationPlugin';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   $isTextNode,
   DOMConversionMap,
@@ -29,32 +34,32 @@ import {
   TextNode,
 } from 'lexical';
 
-import ExampleTheme from './ExampleTheme';
-import ToolbarPlugin from './plugins/ToolbarPlugin';
-import TreeViewPlugin from './plugins/TreeViewPlugin';
-import { parseAllowedColor, parseAllowedFontSize } from './styleConfig';
+// Import transformers for markdown
+import { TRANSFORMERS } from '@lexical/markdown';
 
-// Import code highlighting utilities
-// import { registerCodeHighlighting } from '@lexical/code';
-// import { createLowlight } from 'lowlight';
+// Import CSS styles
+import './Editor.css';
 
 // Import node types
 import {
   HeadingNode,
   QuoteNode,
-  CodeNode,
-  LinkNode,
-  ImageNode,
-} from './nodes';
-
-// Import code highlight node
-import { CodeHighlightNode } from '@lexical/code';
-
-// Import list node types
+} from '@lexical/rich-text';
+import { CodeNode, CodeHighlightNode } from '@lexical/code';
+import { LinkNode, AutoLinkNode } from '@lexical/link';
 import { ListNode, ListItemNode } from '@lexical/list';
-
-// Import table node types
 import { TableNode, TableCellNode, TableRowNode } from '@lexical/table';
+import { ImageNode } from './nodes';
+
+// Import plugins
+import ExampleTheme from './ExampleTheme';
+import ToolbarPlugin from './plugins/ToolbarPlugin';
+import TreeViewPlugin from './plugins/TreeViewPlugin';
+import CodeHighlightPlugin from './plugins/CodeHighlightPlugin';
+import FloatingLinkEditorPlugin from './plugins/FloatingLinkEditorPlugin';
+import ImagesPlugin from './plugins/ImagesPlugin';
+import TableCellResizerPlugin from './plugins/TableCellResizerPlugin';
+import { parseAllowedColor, parseAllowedFontSize } from './styleConfig';
 
 const placeholder = 'Enter some rich text...';
 
@@ -151,38 +156,56 @@ const constructImportMap = (): DOMConversionMap => {
   return importMap;
 };
 
+// Complete editor configuration with all core features
 const editorConfig = {
   html: {
     export: exportMap,
     import: constructImportMap(),
   },
-  namespace: 'React.js Demo',
+  namespace: 'AiCourse Editor',
   nodes: [
+    // Core nodes
     ParagraphNode,
     TextNode,
+    // Rich text nodes
     HeadingNode,
     QuoteNode,
+    // Code nodes
     CodeNode,
     CodeHighlightNode,
+    // Link nodes
     LinkNode,
-    ImageNode,
+    AutoLinkNode,
+    // List nodes
     ListNode,
     ListItemNode,
+    // Table nodes
     TableNode,
     TableCellNode,
     TableRowNode,
+    // Image node
+    ImageNode,
   ],
   onError(error: Error) {
-    throw error;
+    console.error('Lexical Error:', error);
   },
   theme: ExampleTheme,
 };
 
 function Editor() {
+  const [floatingAnchorElem, setFloatingAnchorElem] = useState<HTMLDivElement | null>(null);
+  const [isLinkEditMode, setIsLinkEditMode] = useState<boolean>(false);
+
+  const onRef = (_floatingAnchorElem: HTMLDivElement) => {
+    if (_floatingAnchorElem !== null) {
+      setFloatingAnchorElem(_floatingAnchorElem);
+    }
+  };
+
   const initialConfig = {
     ...editorConfig,
     onError(error: Error) {
-      throw error;
+      console.error('Lexical Error:', error);
     },
   };
 
@@ -193,39 +216,64 @@ function Editor() {
         <div className="editor-inner">
           <RichTextPlugin
             contentEditable={
-              <ContentEditable
-                className="editor-input"
-                aria-placeholder={placeholder}
-                placeholder={
-                  <div className="editor-placeholder">{placeholder}</div>
-                }
-              />
+              <div className="editor-scroller">
+                <div className="editor" ref={onRef}>
+                  <ContentEditable
+                    className="editor-input"
+                    aria-placeholder={placeholder}
+                    placeholder={
+                      <div className="editor-placeholder">{placeholder}</div>
+                    }
+                  />
+                </div>
+              </div>
             }
             ErrorBoundary={LexicalErrorBoundary}
           />
+          
+          {/* Core plugins */}
           <HistoryPlugin />
-          <ListPlugin />
-          <TablePlugin />
           <AutoFocusPlugin />
+          
+          {/* Rich text features */}
+          <CodeHighlightPlugin />
+          <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
+          <TabIndentationPlugin />
+          
+          {/* List support */}
+          <ListPlugin />
+          <CheckListPlugin />
+          
+          {/* Table support */}
+          <TablePlugin 
+            hasCellMerge={true}
+            hasCellBackgroundColor={true}
+          />
+          {floatingAnchorElem && (
+            <TableCellResizerPlugin anchorElem={floatingAnchorElem} />
+          )}
+          
+          {/* Link support */}
+          <LinkPlugin />
+          <ClickableLinkPlugin />
+          {floatingAnchorElem && (
+            <FloatingLinkEditorPlugin 
+              anchorElem={floatingAnchorElem}
+              isLinkEditMode={isLinkEditMode}
+              setIsLinkEditMode={setIsLinkEditMode}
+            />
+          )}
+          
+          {/* Image support */}
+          <ImagesPlugin />
+          
+          {/* Debug view */}
           <TreeViewPlugin />
         </div>
       </div>
     </LexicalComposer>
   );
 }
-
-// Component to set up code highlighting (disabled for now)
-// function EditorSetup() {
-//   const [editor] = useLexicalComposerContext();
-
-//   useEffect(() => {
-//     // Register code highlighting
-//     const lowlightInstance = createLowlight();
-//     registerCodeHighlighting(editor, lowlightInstance);
-//   }, [editor]);
-
-//   return null;
-// }
 
 export { Editor };
 export default Editor;
