@@ -63,9 +63,11 @@ import * as React from 'react';
 import { INSERT_IMAGE_COMMAND } from './ImagesPlugin';
 import { INSERT_PAGE_BREAK } from './PageBreakPlugin';
 import { INSERT_DATETIME_COMMAND } from './DateTimePlugin';
+import { INSERT_EQUATION_COMMAND, InsertEquationDialog } from './EquationsPlugin';
 import { SPEECH_TO_TEXT_COMMAND, SUPPORT_SPEECH_RECOGNITION } from './SpeechToTextConstants';
 import { clearFormatting, isKeyboardInput, dropDownActiveClass, dispatchFormatTextCommand } from './ToolbarUtils';
 import { SHORTCUTS } from './ToolbarShortcuts';
+import Modal from '../ui/Modal';
 
 // Block type mapping
 const blockTypeToBlockName = {
@@ -733,6 +735,7 @@ export default function ToolbarPlugin() {
   const [bgColor, setBgColor] = useState('#fff');
   const [isEditable, setIsEditable] = useState(() => editor.isEditable());
   const [isSpeechToText, setIsSpeechToText] = useState(false);
+  const [showEquationModal, setShowEquationModal] = useState(false);
 
   const $updateToolbar = useCallback(() => {
     const selection = $getSelection();
@@ -1236,8 +1239,7 @@ export default function ToolbarPlugin() {
           </DropDownItem>
           <DropDownItem
             onClick={() => {
-              // Insert Equation
-              console.log('Insert Equation - placeholder');
+              setShowEquationModal(true);
             }}
             className="item">
             <i className="icon equation" />
@@ -1292,6 +1294,19 @@ export default function ToolbarPlugin() {
           </DropDownItem>
         </>
       </DropDown>
+      
+      {/* Equation Modal */}
+      {showEquationModal && (
+        <Modal
+          onClose={() => setShowEquationModal(false)}
+          title="Insert Equation"
+        >
+          <InsertEquationDialog
+            activeEditor={editor}
+            onClose={() => setShowEquationModal(false)}
+          />
+        </Modal>
+      )}
     </div>
   );
 }
