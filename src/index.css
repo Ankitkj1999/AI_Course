@@ -967,6 +967,97 @@ body {
   background-position: center;
 }
 
+/* Insert dropdown icons */
+.toolbar button.toolbar-item .icon.page-break {
+  background-image: url(/icons/scissors.svg);
+  width: 16px;
+  height: 16px;
+  display: block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.toolbar button.toolbar-item .icon.gif {
+  background-image: url(/icons/filetype-gif.svg);
+  width: 16px;
+  height: 16px;
+  display: block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.toolbar button.toolbar-item .icon.diagram-2 {
+  background-image: url(/icons/diagram-2.svg);
+  width: 16px;
+  height: 16px;
+  display: block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.toolbar button.toolbar-item .icon.poll {
+  background-image: url(/icons/card-checklist.svg);
+  width: 16px;
+  height: 16px;
+  display: block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.toolbar button.toolbar-item .icon.columns {
+  background-image: url(/icons/3-columns.svg);
+  width: 16px;
+  height: 16px;
+  display: block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.toolbar button.toolbar-item .icon.equation {
+  background-image: url(/icons/plus-slash-minus.svg);
+  width: 16px;
+  height: 16px;
+  display: block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.toolbar button.toolbar-item .icon.sticky {
+  background-image: url(/icons/sticky.svg);
+  width: 16px;
+  height: 16px;
+  display: block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.toolbar button.toolbar-item .icon.caret-right {
+  background-image: url(/icons/caret-right-fill.svg);
+  width: 16px;
+  height: 16px;
+  display: block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.toolbar button.toolbar-item .icon.calendar {
+  background-image: url(/icons/calendar.svg);
+  width: 16px;
+  height: 16px;
+  display: block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
 /* Shortcut styling in dropdown items */
 .dropdown-menu .item .shortcut {
   margin-left: auto;

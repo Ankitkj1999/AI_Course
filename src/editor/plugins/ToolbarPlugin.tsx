@@ -52,12 +52,17 @@ import {
   TOGGLE_LINK_COMMAND,
 } from '@lexical/link';
 import {
+  INSERT_HORIZONTAL_RULE_COMMAND,
+} from '@lexical/react/LexicalHorizontalRuleNode';
+import {
   $getSelectionStyleValueForProperty,
   $patchStyleText,
 } from '@lexical/selection';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as React from 'react';
 import { INSERT_IMAGE_COMMAND } from './ImagesPlugin';
+import { INSERT_PAGE_BREAK } from './PageBreakPlugin';
+import { INSERT_DATETIME_COMMAND } from './DateTimePlugin';
 import { SPEECH_TO_TEXT_COMMAND, SUPPORT_SPEECH_RECOGNITION } from './SpeechToTextConstants';
 import { clearFormatting, isKeyboardInput, dropDownActiveClass, dispatchFormatTextCommand } from './ToolbarUtils';
 import { SHORTCUTS } from './ToolbarShortcuts';
@@ -1164,10 +1169,44 @@ export default function ToolbarPlugin() {
         buttonIconClassName="icon plus">
         <>
           <DropDownItem
+            onClick={() => {
+              editor.dispatchCommand(INSERT_HORIZONTAL_RULE_COMMAND, undefined);
+            }}
+            className="item">
+            <i className="icon horizontal-rule" />
+            <span className="text">Horizontal Rule</span>
+          </DropDownItem>
+          <DropDownItem
+            onClick={() => {
+              editor.dispatchCommand(INSERT_PAGE_BREAK, undefined);
+            }}
+            className="item">
+            <i className="icon page-break" />
+            <span className="text">Page Break</span>
+          </DropDownItem>
+          <DropDownItem
             onClick={insertImage}
             className="item">
             <i className="icon image" />
             <span className="text">Image</span>
+          </DropDownItem>
+          <DropDownItem
+            onClick={() => {
+              // Insert GIF
+              console.log('Insert GIF - placeholder');
+            }}
+            className="item">
+            <i className="icon gif" />
+            <span className="text">GIF</span>
+          </DropDownItem>
+          <DropDownItem
+            onClick={() => {
+              // Insert Excalidraw
+              console.log('Insert Excalidraw - placeholder');
+            }}
+            className="item">
+            <i className="icon diagram-2" />
+            <span className="text">Excalidraw</span>
           </DropDownItem>
           <DropDownItem
             onClick={() => {
@@ -1179,12 +1218,61 @@ export default function ToolbarPlugin() {
           </DropDownItem>
           <DropDownItem
             onClick={() => {
-              // Insert horizontal rule - we'll need to implement this
-              console.log('Insert horizontal rule');
+              // Insert Poll
+              console.log('Insert Poll - placeholder');
             }}
             className="item">
-            <i className="icon horizontal-rule" />
-            <span className="text">Horizontal Rule</span>
+            <i className="icon poll" />
+            <span className="text">Poll</span>
+          </DropDownItem>
+          <DropDownItem
+            onClick={() => {
+              // Insert Columns Layout
+              console.log('Insert Columns Layout - placeholder');
+            }}
+            className="item">
+            <i className="icon columns" />
+            <span className="text">Columns Layout</span>
+          </DropDownItem>
+          <DropDownItem
+            onClick={() => {
+              // Insert Equation
+              console.log('Insert Equation - placeholder');
+            }}
+            className="item">
+            <i className="icon equation" />
+            <span className="text">Equation</span>
+          </DropDownItem>
+          <DropDownItem
+            onClick={() => {
+              // Insert Sticky Note
+              editor.update(() => {
+                console.log('Insert Sticky Note - placeholder');
+              });
+            }}
+            className="item">
+            <i className="icon sticky" />
+            <span className="text">Sticky Note</span>
+          </DropDownItem>
+          <DropDownItem
+            onClick={() => {
+              // Insert Collapsible container
+              console.log('Insert Collapsible container - placeholder');
+            }}
+            className="item">
+            <i className="icon caret-right" />
+            <span className="text">Collapsible container</span>
+          </DropDownItem>
+          <DropDownItem
+            onClick={() => {
+              // Insert Date
+              const dateTime = new Date();
+              dateTime.setHours(0, 0, 0, 0);
+              editor.dispatchCommand(INSERT_DATETIME_COMMAND, { dateTime });
+            }}
+            className="item">
+            <i className="icon calendar" />
+            <span className="text">Date</span>
           </DropDownItem>
           <DropDownItem
             onClick={() => {

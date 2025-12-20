@@ -50,7 +50,8 @@ import { CodeNode, CodeHighlightNode } from '@lexical/code';
 import { LinkNode, AutoLinkNode } from '@lexical/link';
 import { ListNode, ListItemNode } from '@lexical/list';
 import { TableNode, TableCellNode, TableRowNode } from '@lexical/table';
-import { ImageNode } from './nodes';
+import { HorizontalRuleNode } from '@lexical/react/LexicalHorizontalRuleNode';
+import { ImageNode, PageBreakNode } from './nodes';
 
 // Import plugins
 import ExampleTheme from './ExampleTheme';
@@ -62,6 +63,8 @@ import FloatingTextFormatToolbarPlugin from './plugins/FloatingTextFormatToolbar
 import ImagesPlugin from './plugins/ImagesPlugin';
 import TableCellResizerPlugin from './plugins/TableCellResizerPlugin';
 import SpeechToTextPlugin from './plugins/SpeechToTextPlugin';
+import PageBreakPlugin from './plugins/PageBreakPlugin';
+import DateTimePlugin from './plugins/DateTimePlugin';
 import { parseAllowedColor, parseAllowedFontSize } from './styleConfig';
 
 const placeholder = 'Enter some rich text...';
@@ -186,6 +189,10 @@ const editorConfig = {
     TableNode,
     TableCellNode,
     TableRowNode,
+    // Horizontal rule node
+    HorizontalRuleNode,
+    // Page break node
+    PageBreakNode,
     // Image node
     ImageNode,
   ],
@@ -297,6 +304,12 @@ function Editor() {
           
           {/* Image support */}
           <ImagesPlugin />
+          
+          {/* Page break support */}
+          <PageBreakPlugin />
+          
+          {/* DateTime support */}
+          <DateTimePlugin />
           
           {/* Speech to Text support */}
           <SpeechToTextPlugin />

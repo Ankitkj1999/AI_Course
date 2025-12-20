@@ -1421,6 +1421,43 @@
   background-image: url("/icons/justify.svg");
 }
 
+/* Insert dropdown menu icons */
+.dropdown-menu .item .icon.page-break {
+  background-image: url("/icons/scissors.svg");
+}
+
+.dropdown-menu .item .icon.gif {
+  background-image: url("/icons/filetype-gif.svg");
+}
+
+.dropdown-menu .item .icon.diagram-2 {
+  background-image: url("/icons/diagram-2.svg");
+}
+
+.dropdown-menu .item .icon.poll {
+  background-image: url("/icons/card-checklist.svg");
+}
+
+.dropdown-menu .item .icon.columns {
+  background-image: url("/icons/3-columns.svg");
+}
+
+.dropdown-menu .item .icon.equation {
+  background-image: url("/icons/plus-slash-minus.svg");
+}
+
+.dropdown-menu .item .icon.sticky {
+  background-image: url("/icons/sticky.svg");
+}
+
+.dropdown-menu .item .icon.caret-right {
+  background-image: url("/icons/caret-right-fill.svg");
+}
+
+.dropdown-menu .item .icon.calendar {
+  background-image: url("/icons/calendar.svg");
+}
+
 /* Optimize for print */
 @media print {
   .toolbar {
