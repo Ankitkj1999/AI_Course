@@ -1545,3 +1545,158 @@
     display: none;
   }
 }
+/* Typeahead Menu Styles */
+.typeahead-popover {
+  background: #fff;
+  box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  margin-top: 25px;
+  z-index: 1000;
+  position: absolute;
+  max-height: 200px;
+  overflow-y: auto;
+  min-width: 200px;
+}
+
+.component-picker-menu {
+  width: 200px;
+}
+
+.component-picker-menu ul {
+  padding: 0;
+  list-style: none;
+  margin: 0;
+  border-radius: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.component-picker-menu ul:focus {
+  outline: none;
+}
+
+.component-picker-menu .item {
+  margin: 0 8px 0 8px;
+  padding: 8px 6px 8px 16px;
+  color: #050505;
+  cursor: pointer;
+  line-height: 16px;
+  font-size: 15px;
+  display: flex;
+  align-content: center;
+  flex-direction: row;
+  flex-shrink: 0;
+  background-color: #fff;
+  border-radius: 8px;
+  border: 0;
+  max-width: 250px;
+  min-width: 180px;
+}
+
+.component-picker-menu .item.selected {
+  background-color: #eee;
+}
+
+.component-picker-menu .item:first-child {
+  margin-top: 8px;
+}
+
+.component-picker-menu .item:last-child {
+  margin-bottom: 8px;
+}
+
+.component-picker-menu .item:hover {
+  background-color: #eee;
+}
+
+.component-picker-menu .item .icon {
+  display: flex;
+  width: 20px;
+  height: 20px;
+  user-select: none;
+  margin-right: 12px;
+  line-height: 16px;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.component-picker-menu .item .text {
+  display: flex;
+  line-height: 20px;
+  flex-grow: 1;
+  min-width: 150px;
+}
+
+/* Component Picker Menu Icons */
+.component-picker-menu .icon.paragraph {
+  background-image: url('/public/icons/text-paragraph.svg');
+}
+
+.component-picker-menu .icon.h1 {
+  background-image: url('/public/icons/type-h1.svg');
+}
+
+.component-picker-menu .icon.h2 {
+  background-image: url('/public/icons/type-h2.svg');
+}
+
+.component-picker-menu .icon.h3 {
+  background-image: url('/public/icons/type-h3.svg');
+}
+
+.component-picker-menu .icon.table {
+  background-image: url('/public/icons/table.svg');
+}
+
+.component-picker-menu .icon.number {
+  background-image: url('/public/icons/list-ol.svg');
+}
+
+.component-picker-menu .icon.bullet {
+  background-image: url('/public/icons/list-ul.svg');
+}
+
+.component-picker-menu .icon.check {
+  background-image: url('/public/icons/square-check.svg');
+}
+
+.component-picker-menu .icon.quote {
+  background-image: url('/public/icons/chat-square-quote.svg');
+}
+
+.component-picker-menu .icon.code {
+  background-image: url('/public/icons/code.svg');
+}
+
+.component-picker-menu .icon.horizontal-rule {
+  background-image: url('/public/icons/horizontal-rule.svg');
+}
+
+.component-picker-menu .icon.page-break {
+  background-image: url('/public/icons/file-earmark-text.svg');
+}
+
+.component-picker-menu .icon.calendar {
+  background-image: url('/public/icons/calendar.svg');
+}
+
+.component-picker-menu .icon.equation {
+  background-image: url('/public/icons/plus-slash-minus.svg');
+}
+
+.component-picker-menu .icon.left-align {
+  background-image: url('/public/icons/text-left.svg');
+}
+
+.component-picker-menu .icon.center-align {
+  background-image: url('/public/icons/text-center.svg');
+}
+
+.component-picker-menu .icon.right-align {
+  background-image: url('/public/icons/text-right.svg');
+}
+
+.component-picker-menu .icon.justify-align {
+  background-image: url('/public/icons/justify.svg');
+}

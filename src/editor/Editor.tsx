@@ -67,6 +67,7 @@ import PageBreakPlugin from './plugins/PageBreakPlugin';
 import DateTimePlugin from './plugins/DateTimePlugin';
 import EquationsPlugin from './plugins/EquationsPlugin';
 import DraggableBlockPlugin from './plugins/DraggableBlockPlugin';
+import ComponentPickerPlugin from './plugins/ComponentPickerPlugin';
 import { parseAllowedColor, parseAllowedFontSize } from './styleConfig';
 
 const placeholder = 'Enter some rich text...';
@@ -325,6 +326,9 @@ function Editor() {
           
           {/* Speech to Text support */}
           <SpeechToTextPlugin />
+          
+          {/* Component Picker (Slash Menu) */}
+          <ComponentPickerPlugin />
           
           {/* Debug view */}
           <TreeViewPlugin />
