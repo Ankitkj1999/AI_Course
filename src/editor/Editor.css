@@ -821,6 +821,70 @@
   background-color: #eee;
 }
 
+/* Floating popup icon styles */
+.floating-text-format-popup button.popup-item i.format.bold {
+  background-image: url("/icons/type-bold.svg");
+  background-size: 16px 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.floating-text-format-popup button.popup-item i.format.italic {
+  background-image: url("/icons/type-italic.svg");
+  background-size: 16px 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.floating-text-format-popup button.popup-item i.format.underline {
+  background-image: url("/icons/type-underline.svg");
+  background-size: 16px 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.floating-text-format-popup button.popup-item i.format.strikethrough {
+  background-image: url("/icons/type-strikethrough.svg");
+  background-size: 16px 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.floating-text-format-popup button.popup-item i.format.subscript {
+  background-image: url("/icons/type-subscript.svg");
+  background-size: 16px 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.floating-text-format-popup button.popup-item i.format.superscript {
+  background-image: url("/icons/type-superscript.svg");
+  background-size: 16px 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.floating-text-format-popup button.popup-item i.format.code {
+  background-image: url("/icons/code.svg");
+  background-size: 16px 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.floating-text-format-popup button.popup-item i.format.link {
+  background-image: url("/icons/link.svg");
+  background-size: 16px 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.floating-text-format-popup button.popup-item i.format.highlight {
+  background-image: url("/icons/highlighter.svg");
+  background-size: 16px 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
 /* Text alignment styles */
 .editor-paragraph[style*="text-align: center"] {
   text-align: center;
