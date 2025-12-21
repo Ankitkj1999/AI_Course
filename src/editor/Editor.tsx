@@ -66,6 +66,7 @@ import SpeechToTextPlugin from './plugins/SpeechToTextPlugin';
 import PageBreakPlugin from './plugins/PageBreakPlugin';
 import DateTimePlugin from './plugins/DateTimePlugin';
 import EquationsPlugin from './plugins/EquationsPlugin';
+import DraggableBlockPlugin from './plugins/DraggableBlockPlugin';
 import { parseAllowedColor, parseAllowedFontSize } from './styleConfig';
 
 const placeholder = 'Enter some rich text...';
@@ -316,6 +317,11 @@ function Editor() {
           
           {/* Equations support */}
           <EquationsPlugin />
+          
+          {/* Draggable Block support */}
+          {floatingAnchorElem && (
+            <DraggableBlockPlugin anchorElem={floatingAnchorElem} />
+          )}
           
           {/* Speech to Text support */}
           <SpeechToTextPlugin />
