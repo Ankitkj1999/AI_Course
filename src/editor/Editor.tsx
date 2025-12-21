@@ -69,6 +69,7 @@ import EquationsPlugin from './plugins/EquationsPlugin';
 import DraggableBlockPlugin from './plugins/DraggableBlockPlugin';
 import ComponentPickerPlugin from './plugins/ComponentPickerPlugin';
 import ReadOnlyTogglePlugin from './plugins/ReadOnlyTogglePlugin';
+import ActionsPlugin from './plugins/ActionsPlugin';
 import { parseAllowedColor, parseAllowedFontSize } from './styleConfig';
 
 const placeholder = 'Enter some rich text...';
@@ -330,6 +331,9 @@ function Editor() {
           
           {/* Component Picker (Slash Menu) */}
           <ComponentPickerPlugin />
+          
+          {/* Actions (Import/Export) */}
+          <ActionsPlugin />
           
           {/* Read-Only Toggle */}
           <ReadOnlyTogglePlugin />
