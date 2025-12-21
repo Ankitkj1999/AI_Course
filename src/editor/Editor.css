@@ -1884,6 +1884,10 @@
   gap: 10px;
 }
 
+.action-dropdown {
+  position: relative;
+}
+
 .action-button {
   background-color: #fff;
   border: 1px solid #ddd;
@@ -1947,10 +1951,84 @@
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' class='bi bi-upload' viewBox='0 0 16 16'%3e%3cpath d='M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z'/%3e%3cpath d='M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z'/%3e%3c/svg%3e");
 }
 
+.action-button i.chevron-down {
+  width: 12px;
+  height: 12px;
+  background-size: 12px 12px;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='white' class='bi bi-chevron-down' viewBox='0 0 16 16'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+  margin-left: 4px;
+}
+
 .action-text {
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.5px;
+}
+
+/* Dropdown Menu Styles */
+.dropdown-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 8px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 140px;
+  overflow: hidden;
+  z-index: 1001;
+}
+
+.dropdown-item {
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #333;
+  transition: background-color 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background-color: #f8f9fa;
+}
+
+.dropdown-item:first-child {
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+
+.dropdown-item:last-child {
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+/* Format Icons */
+.dropdown-item i {
+  width: 16px;
+  height: 16px;
+  background-size: 16px 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+  display: block;
+}
+
+.dropdown-item i.json-icon {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23007bff' class='bi bi-filetype-json' viewBox='0 0 16 16'%3e%3cpath fill-rule='evenodd' d='M14 4.5V11h-1V4.5h-2A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v9H2V2a2 2 0 0 1 2-2h5.5L14 4.5ZM4.151 15.29a1.176 1.176 0 0 1-.111-.449h.764a.578.578 0 0 0 .255.384c.07.049.154.087.25.114.095.028.201.041.319.041.164 0 .301-.023.413-.07a.559.559 0 0 0 .255-.193.507.507 0 0 0 .085-.29.387.387 0 0 0-.153-.326c-.101-.08-.256-.144-.463-.193l-.618-.143a1.72 1.72 0 0 1-.539-.214 1.001 1.001 0 0 1-.351-.367 1.068 1.068 0 0 1-.123-.524c0-.244.063-.457.19-.639.127-.181.303-.322.527-.422.225-.1.484-.149.777-.149.305 0 .564.05.78.152.216.102.383.239.5.41.12.17.186.359.2.566h-.75a.56.56 0 0 0-.12-.258.624.624 0 0 0-.246-.181.923.923 0 0 0-.37-.068c-.151 0-.276.018-.375.055a.64.64 0 0 0-.246.181.56.56 0 0 0-.09.255.48.48 0 0 0 .08.28c.058.08.137.142.238.186a2.18 2.18 0 0 0 .405.12l.48.108c.201.045.37.111.507.199.136.088.243.209.318.363.075.153.112.33.112.528a1.29 1.29 0 0 1-.26.77c-.173.212-.398.368-.674.466-.275.099-.596.148-.963.148-.272 0-.52-.03-.744-.09a1.402 1.402 0 0 1-.571-.29Z'/%3e%3c/svg%3e");
+}
+
+.dropdown-item i.html-icon {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23e34c26' class='bi bi-filetype-html' viewBox='0 0 16 16'%3e%3cpath fill-rule='evenodd' d='M14 4.5V11h-1V4.5h-2A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v9H2V2a2 2 0 0 1 2-2h5.5L14 4.5Zm-9.736 7.35v3.999h-.791v-1.714H1.79v1.714H1V11.85h.791v1.626h1.682V11.85h.79Zm2.251.662v3.337h-.794v-3.337H4.588v-.662h3.064v.662H6.515Zm2.176 3.337v-2.66h.038l.952 2.159h.516l.946-2.16h.038v2.661h.715V11.85h-.8l-1.14 2.596H9.93L8.79 11.85h-.805v3.999h.706Zm4.71-.674h1.696v.674H12.61V11.85h.79v3.325Z'/%3e%3c/svg%3e");
+}
+
+.dropdown-item i.markdown-icon {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%236f42c1' class='bi bi-markdown' viewBox='0 0 16 16'%3e%3cpath d='M14 3a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h12zM2 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H2z'/%3e%3cpath fill-rule='evenodd' d='M9.146 8.146a.5.5 0 0 1 .708 0L11.5 9.793l1.646-1.647a.5.5 0 0 1 .708.708l-2 2a.5.5 0 0 1-.708 0l-2-2a.5.5 0 0 1 0-.708z'/%3e%3cpath fill-rule='evenodd' d='M11.5 6a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 1 .5-.5z'/%3e%3cpath d='M3.56 11V7.01h.056l1.428 3.239h.774l1.42-3.24h.056V11h1.073V5.001h-1.2l-1.71 3.894h-.039l-1.71-3.894H2.5V11h1.06z'/%3e%3c/svg%3e");
 }
 
 /* Responsive adjustments for actions */
@@ -2056,5 +2134,191 @@
 @media (max-width: 480px) {
   .actions-container {
     bottom: 80px; /* Move up to avoid overlap with read-only toggle */
+  }
+}
+/* Responsive adjustments for actions */
+@media (max-width: 768px) {
+  .actions-container {
+    bottom: 15px;
+    left: 15px;
+    gap: 8px;
+  }
+  
+  .action-button {
+    padding: 8px 12px;
+    font-size: 13px;
+    min-width: 80px;
+  }
+  
+  .action-text {
+    font-size: 12px;
+  }
+  
+  .dropdown-menu {
+    min-width: 120px;
+  }
+  
+  .dropdown-item {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .actions-container {
+    bottom: 10px;
+    left: 10px;
+    gap: 6px;
+    flex-direction: column;
+  }
+  
+  .action-button {
+    padding: 6px 10px;
+    font-size: 12px;
+    min-width: 70px;
+  }
+  
+  .action-button i {
+    width: 14px;
+    height: 14px;
+    background-size: 14px 14px;
+  }
+  
+  .action-button i.chevron-down {
+    width: 10px;
+    height: 10px;
+    background-size: 10px 10px;
+  }
+  
+  .action-text {
+    font-size: 11px;
+  }
+  
+  .dropdown-menu {
+    min-width: 100px;
+    margin-bottom: 6px;
+  }
+  
+  .dropdown-item {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  
+  .dropdown-item i {
+    width: 14px;
+    height: 14px;
+    background-size: 14px 14px;
+  }
+}
+
+/* Animation for actions */
+.action-button {
+  animation: slideInLeft 0.3s ease-in-out;
+}
+
+.dropdown-menu {
+  animation: slideInUp 0.2s ease-in-out;
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Focus states for accessibility */
+.action-button:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+.action-button:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.dropdown-item:focus {
+  outline: 2px solid #007bff;
+  outline-offset: -2px;
+  background-color: #e3f2fd;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .action-button {
+    border-width: 2px;
+  }
+  
+  .action-button.import {
+    background-color: #000;
+    border-color: #000;
+  }
+  
+  .action-button.export {
+    background-color: #000;
+    border-color: #000;
+  }
+  
+  .dropdown-menu {
+    border-width: 2px;
+  }
+  
+  .dropdown-item:hover {
+    background-color: #000;
+    color: #fff;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .action-button {
+    transition: none;
+    animation: none;
+  }
+  
+  .dropdown-menu {
+    animation: none;
+  }
+  
+  .action-button:hover {
+    transform: none;
+  }
+}
+
+/* Ensure actions don't overlap with read-only toggle */
+@media (max-width: 480px) {
+  .actions-container {
+    bottom: 80px; /* Move up to avoid overlap with read-only toggle */
+  }
+}
+
+/* Dark mode support (if needed) */
+@media (prefers-color-scheme: dark) {
+  .dropdown-menu {
+    background: #2d3748;
+    border-color: #4a5568;
+  }
+  
+  .dropdown-item {
+    color: #e2e8f0;
+  }
+  
+  .dropdown-item:hover {
+    background-color: #4a5568;
   }
 }
