@@ -1700,3 +1700,177 @@
 .component-picker-menu .icon.justify-align {
   background-image: url('/public/icons/justify.svg');
 }
+
+/* Read-Only Toggle Button Styles */
+.read-only-toggle {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+
+.read-only-button {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 25px;
+  padding: 10px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+  min-width: 120px;
+  justify-content: center;
+}
+
+.read-only-button:hover {
+  background-color: #f8f9fa;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
+}
+
+.read-only-button.lock {
+  background-color: #28a745;
+  color: white;
+  border-color: #28a745;
+}
+
+.read-only-button.lock:hover {
+  background-color: #218838;
+  border-color: #1e7e34;
+}
+
+.read-only-button.unlock {
+  background-color: #dc3545;
+  color: white;
+  border-color: #dc3545;
+}
+
+.read-only-button.unlock:hover {
+  background-color: #c82333;
+  border-color: #bd2130;
+}
+
+.read-only-button i {
+  width: 16px;
+  height: 16px;
+  background-size: 16px 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+  display: block;
+}
+
+.read-only-button i.lock {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' class='bi bi-lock-fill' viewBox='0 0 16 16'%3e%3cpath d='M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z'/%3e%3c/svg%3e");
+}
+
+.read-only-button i.unlock {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' class='bi bi-unlock-fill' viewBox='0 0 16 16'%3e%3cpath d='M11 1a2 2 0 0 0-2 2v4a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h5V3a3 3 0 1 1 6 0v4a.5.5 0 0 1-1 0V3a2 2 0 0 0-2-2z'/%3e%3c/svg%3e");
+}
+
+.read-only-text {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* Responsive adjustments for read-only toggle */
+@media (max-width: 768px) {
+  .read-only-toggle {
+    bottom: 15px;
+    right: 15px;
+  }
+  
+  .read-only-button {
+    padding: 8px 12px;
+    font-size: 13px;
+    min-width: 100px;
+  }
+  
+  .read-only-text {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .read-only-toggle {
+    bottom: 10px;
+    right: 10px;
+  }
+  
+  .read-only-button {
+    padding: 6px 10px;
+    font-size: 12px;
+    min-width: 90px;
+  }
+  
+  .read-only-button i {
+    width: 14px;
+    height: 14px;
+    background-size: 14px 14px;
+  }
+  
+  .read-only-text {
+    font-size: 11px;
+  }
+}
+
+/* Animation for state changes */
+.read-only-button {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Focus states for accessibility */
+.read-only-button:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+.read-only-button:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .read-only-button {
+    border-width: 2px;
+  }
+  
+  .read-only-button.lock {
+    background-color: #000;
+    border-color: #000;
+  }
+  
+  .read-only-button.unlock {
+    background-color: #fff;
+    color: #000;
+    border-color: #000;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .read-only-button {
+    transition: none;
+    animation: none;
+  }
+  
+  .read-only-button:hover {
+    transform: none;
+  }
+}
