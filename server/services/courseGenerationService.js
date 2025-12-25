@@ -28,12 +28,14 @@ class CourseGenerationService {
             // Parse the legacy content structure
             const parsedContent = this.parseLegacyContent(content);
             
-            // Create the course using CourseService
+            // Create the course using CourseService (without legacy content)
             const course = await CourseService.createCourse({
                 title: parsedContent.title || mainTopic,
                 type: this.mapTypeToEnum(type),
                 mainTopic,
                 photo,
+                // Don't store content in legacy field for new courses
+                content: null,
                 settings: {
                     maxNestingDepth: 3,
                     allowComments: true,
@@ -42,8 +44,9 @@ class CourseGenerationService {
                 },
                 generationMeta: {
                     ...generationMeta,
-                    originalFormat: 'legacy_json',
-                    convertedAt: new Date()
+                    originalFormat: 'ai_generated',
+                    convertedAt: new Date(),
+                    architecture: 'section-based'
                 },
                 isPublic
             }, userId);
@@ -326,6 +329,20 @@ class CourseGenerationService {
             logger.error(`Failed to convert legacy course ${courseId}:`, error);
             throw error;
         }
+    }
+    
+    /**
+     * Check if a course uses the new section-based architecture
+     */
+    static isNewArchitecture(course) {
+        return course.sections && course.sections.length > 0 && !course.content;
+    }
+    
+    /**
+     * Check if a course is a legacy course that needs migration
+     */
+    static isLegacyCourse(course) {
+        return course.content && (!course.sections || course.sections.length === 0);
     }
     
     /**

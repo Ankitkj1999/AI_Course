@@ -1745,6 +1745,58 @@ app.post("/api/course/convert/:courseId", requireAuth, async (req, res) => {
   }
 });
 
+//GET COURSE ARCHITECTURE INFO
+app.get("/api/course/architecture/:courseId", requireAuth, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const userId = req.user.id;
+    
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: "Course not found"
+      });
+    }
+    
+    // Check if user owns the course
+    if (course.user !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied"
+      });
+    }
+    
+    // Import CourseGenerationService
+    const { default: CourseGenerationService } = await import('./services/courseGenerationService.js');
+    
+    const isNew = CourseGenerationService.isNewArchitecture(course);
+    const isLegacy = CourseGenerationService.isLegacyCourse(course);
+    
+    res.json({
+      success: true,
+      courseId: course._id,
+      title: course.title,
+      architecture: {
+        isNewArchitecture: isNew,
+        isLegacyCourse: isLegacy,
+        hasContent: !!course.content,
+        hasSections: course.sections && course.sections.length > 0,
+        sectionCount: course.sections ? course.sections.length : 0,
+        needsMigration: isLegacy
+      },
+      generationMeta: course.generationMeta
+    });
+    
+  } catch (error) {
+    console.error('Get course architecture error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to get course architecture info"
+    });
+  }
+});
+
 //GET COURSE GENERATION STATS
 app.get("/api/course/stats/:courseId", requireAuth, async (req, res) => {
   try {

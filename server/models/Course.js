@@ -24,9 +24,11 @@ const courseSchema = new mongoose.Schema({
         type: String 
     },
     
-    // Legacy content field (maintained for backward compatibility)
+    // Legacy content field (only for unmigrated legacy courses)
+    // New courses should use the sections array instead
     content: { 
-        type: String 
+        type: String,
+        default: null // Don't store content for new courses
     },
     
     // Enhanced Type System
