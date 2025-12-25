@@ -1,0 +1,68 @@
+so this is my course schema for now. so when an arrange generates content this is the format we save on to Mango db. but we have notice some issues with that it is difficult for this course to extend, since all the content is stored in a single key it is very difficult to even edit a separate separates of topic content. therefore I would like to generate a new schema so that it is more flexible in order for the course to get extended be edited be may want to add topics sub topics and other stuff. but all in all it should not be super complex.
+
+The Courses can be on a single page like a guide or tutorial or like a book with different chapters and Topics livel. We should store the visible name or title in a key, we should also store some metadata related to course content generation, like the input prompt of the user to generate this course. 
+
+Ans since the LLM will initially generate content in Markdown we need to store that. (the idea is at the inital level the LLM generates the first topic of page of the course. Once generate that piece will be converted into HTML for rendering on UI for users to See. And If a user go ahead asn wants to edit their content then we need to save the lexical json as well to best store the editor state. Then the latest changes will be generate into HTML again for the users to see. So that will update the content in DB.
+
+
+
+
+
+This is my course schema: 
+
+```javascript
+const courseSchema = new mongoose.Schema({
+    user: String,
+    content: { type: String, required: true },
+    type: String,
+    mainTopic: String,
+    slug: { type: String, unique: true, index: true },
+    photo: String,
+    date: { type: Date, default: Date.now },
+    end: { type: Date, default: Date.now },
+    completed: { type: Boolean, default: false },
+    // Visibility and fork fields
+    isPublic: { type: Boolean, default: false, index: true },
+    forkCount: { type: Number, default: 0 },
+    forkedFrom: {
+        contentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', default: null },
+        originalOwnerId: { type: String, default: null },
+        originalOwnerName: { type: String, default: null },
+        forkedAt: { type: Date, default: null }
+    },
+    ownerName: { type: String, default: '' },
+    // Document source tracking
+    sourceDocument: {
+        processingId: { type: mongoose.Schema.Types.ObjectId, ref: 'DocumentProcessing' },
+        filename: { type: String },
+        extractedFrom: { type: String, enum: ['pdf', 'docx', 'txt', 'url'] }
+    }
+});
+
+
+
+// Create compound index for efficient public content queries
+courseSchema.index({ isPublic: 1, date: -1 });
+const subscriptionSchema = new mongoose.Schema({
+    user: String,
+    subscription: String,
+    subscriberId: String,
+    plan: String,
+    method: String,
+    date: { type: Date, default: Date.now },
+    active: { type: Boolean, default: true }
+});
+const contactShema = new mongoose.Schema({
+    fname: String,
+    lname: String,
+    email: String,
+    phone: Number,
+    msg: String,
+    date: { type: Date, default: Date.now },
+});
+
+const notesSchema = new mongoose.Schema({
+    course: String,
+    notes: String,
+});
+```

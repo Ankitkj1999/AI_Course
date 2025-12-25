@@ -30,6 +30,7 @@ import {
 } from "./utils/slugify.js";
 import Settings from "./models/Settings.js";
 import DocumentProcessing from "./models/DocumentProcessing.js";
+import { Course, Section, Notes, Exam, Language } from "./models/index.js";
 import settingsCache from "./services/settingsCache.js";
 import { generateCourseSEO } from "./utils/seo.js";
 import { getServerPort, getServerURL, validateConfig } from "./utils/config.js";
@@ -43,6 +44,11 @@ import {
 import { cleanupFile } from "./services/fileCleanup.js";
 import fs from "fs/promises";
 import path from "path";
+import apiRoutes from "./routes/apiRoutes.js";
+import databaseOptimizationService from "./services/databaseOptimization.js";
+import cachingService from "./services/cachingService.js";
+import relatedModelMigrationService from "./services/relatedModelMigration.js";
+import fixLexicalContent from "./scripts/fixLexicalContent.js";
 
 // NOTE: Google Generative AI SDK is still available for future advanced features
 // such as Gemini Live APIs, Deep Research, Google Search integration, etc.
@@ -143,8 +149,28 @@ mongoose.connect(process.env.MONGODB_URI, {
 });
 
 // MongoDB connection event handlers
-mongoose.connection.on("connected", () => {
+mongoose.connection.on("connected", async () => {
   logger.info("MongoDB connected successfully");
+  
+  // Temporarily disable startup functions to isolate the issue
+  /*
+  try {
+    // Initialize database optimizations
+    await databaseOptimizationService.initializeIndexes();
+    logger.info("Database indexes initialized");
+    
+    // Run related model migration
+    await relatedModelMigrationService.migrateExistingData();
+    logger.info("Related model migration completed");
+    
+    // Fix any invalid Lexical content
+    await fixLexicalContent();
+    logger.info("Lexical content cleanup completed");
+    
+  } catch (error) {
+    logger.error("Startup initialization error:", error);
+  }
+  */
 });
 
 mongoose.connection.on("error", (err) => {
@@ -193,43 +219,8 @@ const userSchema = new mongoose.Schema({
   resetPasswordToken: { type: String, default: null },
   resetPasswordExpires: { type: Date, default: null },
 });
-const courseSchema = new mongoose.Schema({
-  user: String,
-  content: { type: String, required: true },
-  type: String,
-  mainTopic: String,
-  slug: { type: String, unique: true, index: true },
-  photo: String,
-  date: { type: Date, default: Date.now },
-  end: { type: Date, default: Date.now },
-  completed: { type: Boolean, default: false },
-  // Visibility and fork fields
-  isPublic: { type: Boolean, default: false, index: true },
-  forkCount: { type: Number, default: 0 },
-  forkedFrom: {
-    contentId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Course",
-      default: null,
-    },
-    originalOwnerId: { type: String, default: null },
-    originalOwnerName: { type: String, default: null },
-    forkedAt: { type: Date, default: null },
-  },
-  ownerName: { type: String, default: "" },
-  // Document source tracking
-  sourceDocument: {
-    processingId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "DocumentProcessing",
-    },
-    filename: { type: String },
-    extractedFrom: { type: String, enum: ["pdf", "docx", "txt", "url"] },
-  },
-});
+// Course schema is now defined in models/Course.js
 
-// Create compound index for efficient public content queries
-courseSchema.index({ isPublic: 1, date: -1 });
 const subscriptionSchema = new mongoose.Schema({
   user: String,
   subscription: String,
@@ -248,21 +239,9 @@ const contactShema = new mongoose.Schema({
   date: { type: Date, default: Date.now },
 });
 
-const notesSchema = new mongoose.Schema({
-  course: String,
-  notes: String,
-});
+// Legacy schemas removed - now using enhanced models from models/index.js
+// Notes, Exam, and Language models are imported and provide enhanced functionality
 
-const examSchema = new mongoose.Schema({
-  course: String,
-  exam: String,
-  marks: String,
-  passed: { type: Boolean, default: false },
-});
-const langSchema = new mongoose.Schema({
-  course: String,
-  lang: String,
-});
 const blogSchema = new mongoose.Schema({
   title: { type: String, unique: true, required: true },
   excerpt: String,
@@ -434,13 +413,11 @@ guideSchema.index({ isPublic: 1, createdAt: -1 });
 
 //MODEL
 const User = mongoose.model("User", userSchema);
-const Course = mongoose.model("Course", courseSchema);
+// Course model is imported from models/Course.js
 const Subscription = mongoose.model("Subscription", subscriptionSchema);
 const Contact = mongoose.model("Contact", contactShema);
 const Admin = mongoose.model("Admin", adminSchema);
-const NotesSchema = mongoose.model("Notes", notesSchema);
-const ExamSchema = mongoose.model("Exams", examSchema);
-const LangSchema = mongoose.model("Lang", langSchema);
+// Enhanced models imported from models/index.js - Notes, Exam, Language
 const BlogSchema = mongoose.model("Blog", blogSchema);
 const Quiz = mongoose.model("Quiz", quizSchema);
 const Flashcard = mongoose.model("Flashcard", flashcardSchema);
@@ -1363,7 +1340,7 @@ app.post("/api/transcript", async (req, res) => {
     });
 });
 
-//STORE COURSE
+//STORE COURSE (Enhanced with new section-based architecture)
 app.post("/api/course", requireAuth, async (req, res) => {
   const { user, content, type, mainTopic, lang, isPublic } = req.body;
 
@@ -1417,22 +1394,43 @@ app.post("/api/course", requireAuth, async (req, res) => {
     }
 
     try {
-      // Generate SEO-friendly slug
-      const title = extractTitleFromContent(content, mainTopic);
-      const slug = await generateUniqueSlug(title, Course);
-
-      const newCourse = new Course({
-        user,
+      // Import CourseGenerationService
+      const { default: CourseGenerationService } = await import('./services/courseGenerationService.js');
+      
+      // Use the new CourseGenerationService to create course with sections
+      const newCourse = await CourseGenerationService.createCourseFromGeneration({
         content,
         type,
         mainTopic,
-        slug,
         photo,
-        isPublic: isPublic ?? false, // Default to false for backward compatibility
-      });
-      await newCourse.save();
-      const newLang = new LangSchema({ course: newCourse._id, lang: lang });
-      await newLang.save();
+        lang,
+        isPublic: isPublic ?? false,
+        generationMeta: {
+          userPrompt: mainTopic,
+          model: 'ai-generated',
+          generatedAt: new Date()
+        }
+      }, user);
+      
+      // Create language record with better error handling
+      try {
+        const newLang = new Language({ 
+          userId: user, 
+          courseId: newCourse._id, 
+          lang: lang,
+          course: newCourse.slug // Maintain backward compatibility
+        });
+        await newLang.save();
+      } catch (langError) {
+        // Log language creation error but don't fail the course creation
+        logger.llm.logRequestError(requestId, "/api/course", langError, {
+          userId: user,
+          courseId: newCourse._id,
+          lang,
+          step: "language_creation",
+        });
+        console.warn('Language record creation failed:', langError.message);
+      }
 
       const duration = Date.now() - startTime;
 
@@ -1442,10 +1440,12 @@ app.post("/api/course", requireAuth, async (req, res) => {
         "/api/course",
         {
           courseId: newCourse._id,
-          slug,
+          slug: newCourse.slug,
           hasPhoto: !!photo,
           mainTopic,
           isPublic: newCourse.isPublic,
+          sectionsCreated: newCourse.sections.length,
+          newArchitecture: true
         },
         duration,
         user,
@@ -1454,10 +1454,12 @@ app.post("/api/course", requireAuth, async (req, res) => {
 
       res.json({
         success: true,
-        message: "Course created successfully",
+        message: "Course created successfully with new architecture",
         courseId: newCourse._id,
-        slug: slug,
+        slug: newCourse.slug,
         isPublic: newCourse.isPublic,
+        sectionsCreated: newCourse.sections.length,
+        architecture: 'section-based'
       });
     } catch (error) {
       // Log course creation error with context
@@ -1465,11 +1467,26 @@ app.post("/api/course", requireAuth, async (req, res) => {
         userId: user,
         mainTopic,
         hasPhoto: !!photo,
-        step: "course_creation",
+        step: "course_generation",
+        errorDetails: {
+          name: error.name,
+          message: error.message,
+          code: error.code,
+          stack: error.stack
+        }
       });
+      
+      console.error('Course generation error:', {
+        error: error.message,
+        name: error.name,
+        code: error.code,
+        user,
+        mainTopic
+      });
+      
       res
         .status(500)
-        .json({ success: false, message: "Internal server error" });
+        .json({ success: false, message: "Course generation failed", error: error.message });
     }
   } catch (error) {
     // Handle Unsplash API errors gracefully
@@ -1482,20 +1499,43 @@ app.post("/api/course", requireAuth, async (req, res) => {
 
     // Continue course creation without photo
     try {
-      const title = extractTitleFromContent(content, mainTopic);
-      const slug = await generateUniqueSlug(title, Course);
-
-      const newCourse = new Course({
-        user,
+      // Import CourseGenerationService
+      const { default: CourseGenerationService } = await import('./services/courseGenerationService.js');
+      
+      // Use the new CourseGenerationService to create course with sections (no photo)
+      const newCourse = await CourseGenerationService.createCourseFromGeneration({
         content,
         type,
         mainTopic,
-        slug,
         photo: null,
-      });
-      await newCourse.save();
-      const newLang = new LangSchema({ course: newCourse._id, lang: lang });
-      await newLang.save();
+        lang,
+        isPublic: isPublic ?? false,
+        generationMeta: {
+          userPrompt: mainTopic,
+          model: 'ai-generated',
+          generatedAt: new Date()
+        }
+      }, user);
+      
+      // Create language record with better error handling
+      try {
+        const newLang = new Language({ 
+          userId: user, 
+          courseId: newCourse._id, 
+          lang: lang,
+          course: newCourse.slug // Maintain backward compatibility
+        });
+        await newLang.save();
+      } catch (langError) {
+        // Log language creation error but don't fail the course creation
+        logger.llm.logRequestError(requestId, "/api/course", langError, {
+          userId: user,
+          courseId: newCourse._id,
+          lang,
+          step: "fallback_language_creation",
+        });
+        console.warn('Language record creation failed in fallback:', langError.message);
+      }
 
       const duration = Date.now() - startTime;
 
@@ -1505,10 +1545,12 @@ app.post("/api/course", requireAuth, async (req, res) => {
         "/api/course",
         {
           courseId: newCourse._id,
-          slug,
+          slug: newCourse.slug,
           hasPhoto: false,
           mainTopic,
           fallback: true,
+          sectionsCreated: newCourse.sections.length,
+          newArchitecture: true
         },
         duration,
         user,
@@ -1517,20 +1559,37 @@ app.post("/api/course", requireAuth, async (req, res) => {
 
       res.json({
         success: true,
-        message: "Course created successfully (without image)",
+        message: "Course created successfully with new architecture (without image)",
         courseId: newCourse._id,
-        slug: slug,
+        slug: newCourse.slug,
+        sectionsCreated: newCourse.sections.length,
+        architecture: 'section-based'
       });
     } catch (courseError) {
       // Log fallback course creation error
       logger.llm.logRequestError(requestId, "/api/course", courseError, {
         userId: user,
         mainTopic,
-        step: "fallback_course_creation",
+        step: "fallback_course_generation",
+        errorDetails: {
+          name: courseError.name,
+          message: courseError.message,
+          code: courseError.code,
+          stack: courseError.stack
+        }
       });
+      
+      console.error('Fallback course generation error:', {
+        error: courseError.message,
+        name: courseError.name,
+        code: courseError.code,
+        user,
+        mainTopic
+      });
+      
       res
         .status(500)
-        .json({ success: false, message: "Internal server error" });
+        .json({ success: false, message: "Course generation failed", error: courseError.message });
     }
   }
 });
@@ -1653,6 +1712,61 @@ app.post("/api/courseshared", requireAuth, async (req, res) => {
         .status(500)
         .json({ success: false, message: "Internal server error" });
     }
+  }
+});
+
+//CONVERT LEGACY COURSE TO NEW FORMAT
+app.post("/api/course/convert/:courseId", requireAuth, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const userId = req.user.id;
+    
+    // Import CourseGenerationService
+    const { default: CourseGenerationService } = await import('./services/courseGenerationService.js');
+    
+    // Convert the legacy course
+    const convertedCourse = await CourseGenerationService.convertLegacyCourse(courseId, userId);
+    
+    res.json({
+      success: true,
+      message: "Course successfully converted to new architecture",
+      courseId: convertedCourse._id,
+      slug: convertedCourse.slug,
+      sectionsCreated: convertedCourse.sections.length,
+      architecture: 'section-based'
+    });
+    
+  } catch (error) {
+    console.error('Course conversion error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Course conversion failed"
+    });
+  }
+});
+
+//GET COURSE GENERATION STATS
+app.get("/api/course/stats/:courseId", requireAuth, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    
+    // Import CourseGenerationService
+    const { default: CourseGenerationService } = await import('./services/courseGenerationService.js');
+    
+    // Get generation statistics
+    const stats = await CourseGenerationService.getGenerationStats(courseId);
+    
+    res.json({
+      success: true,
+      stats
+    });
+    
+  } catch (error) {
+    console.error('Get course stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to get course statistics"
+    });
   }
 });
 
@@ -4232,6 +4346,10 @@ app.get("/api/blogs/public", async (req, res) => {
   }
 });
 
+// NEW API ROUTES (Section-based architecture)
+// Mount the new API routes with enhanced course management
+app.use('/api', apiRoutes);
+
 //STATIC FILE SERVING
 // Serve static files from the dist directory (in parent directory)
 app.use(express.static("../dist"));
@@ -4279,6 +4397,14 @@ const startServer = async () => {
         logger.info(`⚙️  Settings cache initialized`);
       } catch (error) {
         logger.error(`❌ Settings cache initialization failed:`, error);
+      }
+
+      // Initialize database optimizations
+      try {
+        await databaseOptimizationService.initialize();
+        logger.info(`🔧 Database optimizations initialized`);
+      } catch (error) {
+        logger.error(`❌ Database optimization initialization failed:`, error);
       }
 
       // Initialize scheduled cleanup job for stale files
@@ -6996,29 +7122,94 @@ app.post("/api/:contentType/:slug/fork", requireAuth, async (req, res) => {
   }
 });
 
-// Graceful shutdown
-const gracefulShutdown = (signal) => {
-  logger.info(`Received ${signal}. Starting graceful shutdown...`);
+// Use API routes
+app.use('/api', apiRoutes);
 
-  server.close(() => {
-    logger.info("HTTP server closed.");
-
-    // Close database connection
-    mongoose.connection.close(false, () => {
-      logger.info("MongoDB connection closed.");
-      process.exit(0);
+// Initialize optimization services and run migrations on startup
+const initializeServer = async () => {
+  try {
+    logger.info('🚀 Initializing server...');
+    
+    // Initialize database optimization services
+    await databaseOptimizationService.initialize();
+    // cachingService initializes itself when imported
+    logger.info('✅ Optimization services initialized');
+    
+    // Run related model migration
+    logger.info('🔄 Running related model migration...');
+    const migrationResults = await relatedModelMigrationService.migrateAllModels({
+      dryRun: false,
+      batchSize: 50
     });
-  });
-
-  // Force close server after 30 seconds
-  setTimeout(() => {
-    logger.error(
-      "Could not close connections in time, forcefully shutting down"
-    );
-    process.exit(1);
-  }, 30000);
+    logger.info('✅ Related model migration completed:', migrationResults);
+    
+    // Perform consistency checks
+    const consistencyResults = await relatedModelMigrationService.performConsistencyChecks();
+    if (consistencyResults.orphanedNotes > 0 || consistencyResults.orphanedExams > 0 || consistencyResults.orphanedLanguages > 0) {
+      logger.warn('⚠️ Found orphaned data:', consistencyResults);
+    } else {
+      logger.info('✅ Data consistency check passed');
+    }
+    
+  } catch (error) {
+    logger.error('❌ Server initialization failed:', error);
+    // Continue startup even if migration fails
+  }
 };
 
-// Listen for termination signals
-process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
-process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+// Start server
+const launchServer = async () => {
+  try {
+    const serverPort = await getServerPort();
+    const httpServer = app.listen(serverPort, async () => {
+      logger.info(`🌟 Server running on port ${serverPort}`);
+      logger.info(`🌐 Server URL: ${getServerURL(serverPort)}`);
+      
+      // Initialize services and run migrations
+      await initializeServer();
+    });
+
+    // Graceful shutdown
+    const gracefulShutdown = (signal) => {
+      logger.info(`Received ${signal}. Starting graceful shutdown...`);
+
+      httpServer.close(() => {
+        logger.info("HTTP server closed.");
+
+        // Cleanup optimization services
+        try {
+          databaseOptimizationService.cleanup();
+          cachingService.cleanup();
+          logger.info("Optimization services cleaned up.");
+        } catch (error) {
+          logger.error("Error cleaning up optimization services:", error);
+        }
+
+        // Close database connection
+        mongoose.connection.close(false, () => {
+          logger.info("MongoDB connection closed.");
+          process.exit(0);
+        });
+      });
+
+      // Force close server after 30 seconds
+      setTimeout(() => {
+        logger.error(
+          "Could not close connections in time, forcefully shutting down"
+        );
+        process.exit(1);
+      }, 30000);
+    };
+
+    // Listen for termination signals
+    process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+    process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+    
+  } catch (error) {
+    logger.error('Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+// Start the server
+launchServer();

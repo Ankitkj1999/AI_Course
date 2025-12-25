@@ -1,0 +1,1195 @@
+Based on your requirements, here's a redesigned schema that's flexible, scalable, and handles the multi-format content storage (Markdown → HTML → Lexical JSON):
+
+```javascript
+// ============================================
+// MAIN COURSE SCHEMA
+// ============================================
+const courseSchema = new mongoose.Schema({
+    // Basic Info
+    user: { type: String, required: true, index: true },
+    title: { type: String, required: true },
+    slug: { type: String, unique: true, index: true, required: true },
+    description: { type: String },
+    photo: { type: String },
+    
+    // Course Type & Structure
+    type: { 
+        type: String, 
+        enum: ['guide', 'tutorial', 'book', 'article'],
+        default: 'guide'
+    },
+    
+    // Hierarchical structure: 'flat' for single-page, 'hierarchical' for chapters/topics
+    structure: {
+        type: String,
+        enum: ['flat', 'hierarchical'],
+        default: 'flat'
+    },
+    
+    // Generation Metadata
+    generationMeta: {
+        userPrompt: { type: String }, // Original user input
+        model: { type: String }, // e.g., 'claude-sonnet-4'
+        generatedAt: { type: Date, default: Date.now },
+        lastModified: { type: Date, default: Date.now }
+    },
+    
+    // Status & Dates
+    status: {
+        type: String,
+        enum: ['draft', 'in_progress', 'completed', 'archived'],
+        default: 'draft'
+    },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
+    completedAt: { type: Date },
+    
+    // Visibility & Social
+    isPublic: { type: Boolean, default: false, index: true },
+    forkCount: { type: Number, default: 0 },
+    viewCount: { type: Number, default: 0 },
+    
+    forkedFrom: {
+        courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course' },
+        originalOwnerId: { type: String },
+        originalOwnerName: { type: String },
+        forkedAt: { type: Date }
+    },
+    
+    ownerName: { type: String },
+    
+    // Document Source (if generated from upload)
+    sourceDocument: {
+        processingId: { type: mongoose.Schema.Types.ObjectId, ref: 'DocumentProcessing' },
+        filename: { type: String },
+        extractedFrom: { type: String, enum: ['pdf', 'docx', 'txt', 'url', 'ai_generated'] }
+    },
+    
+    // Content Organization
+    // For flat structure: references single ContentBlock
+    // For hierarchical: references multiple Chapters
+    contentType: {
+        type: String,
+        enum: ['single_block', 'chapters'],
+        default: 'single_block'
+    },
+    
+    // Reference to root content (for flat courses)
+    rootContent: { type: mongoose.Schema.Types.ObjectId, ref: 'ContentBlock' },
+    
+    // Array of chapter references (for hierarchical courses)
+    chapters: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Chapter'
+    }],
+    
+    // Statistics
+    stats: {
+        totalWords: { type: Number, default: 0 },
+        totalTopics: { type: Number, default: 0 },
+        estimatedReadTime: { type: Number, default: 0 } // in minutes
+    }
+}, {
+    timestamps: true // Auto-manages createdAt and updatedAt
+});
+
+// Indexes
+courseSchema.index({ user: 1, createdAt: -1 });
+courseSchema.index({ isPublic: 1, createdAt: -1 });
+courseSchema.index({ slug: 1 });
+
+// ============================================
+// CHAPTER SCHEMA (for hierarchical courses)
+// ============================================
+const chapterSchema = new mongoose.Schema({
+    courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
+    
+    title: { type: String, required: true },
+    slug: { type: String, required: true }, // chapter-specific slug
+    description: { type: String },
+    
+    // Chapter ordering
+    order: { type: Number, required: true, default: 0 },
+    
+    // Array of topic references
+    topics: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Topic'
+    }],
+    
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+}, {
+    timestamps: true
+});
+
+// Compound index for course + order
+chapterSchema.index({ courseId: 1, order: 1 });
+
+// ============================================
+// TOPIC SCHEMA (for individual topics/sections)
+// ============================================
+const topicSchema = new mongoose.Schema({
+    chapterId: { type: mongoose.Schema.Types.ObjectId, ref: 'Chapter' },
+    courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
+    
+    title: { type: String, required: true },
+    slug: { type: String, required: true },
+    
+    // Topic ordering within chapter
+    order: { type: Number, required: true, default: 0 },
+    
+    // Reference to actual content
+    content: { type: mongoose.Schema.Types.ObjectId, ref: 'ContentBlock', required: true },
+    
+    // Sub-topics (for nested structure)
+    subTopics: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Topic'
+    }],
+    
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+}, {
+    timestamps: true
+});
+
+topicSchema.index({ courseId: 1, order: 1 });
+topicSchema.index({ chapterId: 1, order: 1 });
+
+// ============================================
+// CONTENT BLOCK SCHEMA (stores actual content)
+// ============================================
+const contentBlockSchema = new mongoose.Schema({
+    // Multi-format content storage
+    formats: {
+        // Original markdown from LLM
+        markdown: {
+            content: { type: String },
+            generatedAt: { type: Date }
+        },
+        
+        // HTML for rendering (converted from markdown)
+        html: {
+            content: { type: String },
+            generatedAt: { type: Date }
+        },
+        
+        // Lexical JSON (when user edits)
+        lexical: {
+            editorState: { type: mongoose.Schema.Mixed }, // Stores JSON object
+            lastEditedAt: { type: Date }
+        }
+    },
+    
+    // Track which format is the "source of truth"
+    primaryFormat: {
+        type: String,
+        enum: ['markdown', 'lexical'],
+        default: 'markdown'
+    },
+    
+    // Generation metadata for this specific block
+    generationMeta: {
+        prompt: { type: String },
+        model: { type: String },
+        generatedAt: { type: Date }
+    },
+    
+    // Version history (optional, for tracking changes)
+    versions: [{
+        format: { type: String, enum: ['markdown', 'lexical', 'html'] },
+        content: { type: mongoose.Schema.Mixed },
+        savedAt: { type: Date, default: Date.now },
+        savedBy: { type: String } // userId
+    }],
+    
+    // Content statistics
+    wordCount: { type: Number, default: 0 },
+    readTime: { type: Number, default: 0 }, // in minutes
+    
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+}, {
+    timestamps: true
+});
+
+// ============================================
+// MODELS EXPORT
+// ============================================
+const Course = mongoose.model('Course', courseSchema);
+const Chapter = mongoose.model('Chapter', chapterSchema);
+const Topic = mongoose.model('Topic', topicSchema);
+const ContentBlock = mongoose.model('ContentBlock', contentBlockSchema);
+
+module.exports = { Course, Chapter, Topic, ContentBlock };
+```
+
+## Schema Design Benefits:
+
+### ✅ **Flexibility**
+- Supports both flat (single-page) and hierarchical (book-like) structures
+- Easy to add/remove/reorder chapters and topics
+- Can nest sub-topics for deeper structure
+
+### ✅ **Multi-Format Content Storage**
+- **Markdown**: Original LLM output
+- **HTML**: Rendered version for display
+- **Lexical JSON**: Editor state when user edits
+- Tracks which format is primary
+
+### ✅ **Easy Editing**
+- Each topic/section is a separate ContentBlock
+- Edit individual sections without touching others
+- Version history for tracking changes
+
+### ✅ **Extensibility**
+- Add new chapters: Just create Chapter doc and add to course.chapters array
+- Add new topics: Create Topic and ContentBlock, link to chapter
+- Reorder easily: Update `order` field
+
+### ✅ **Performance**
+- Indexed fields for fast queries
+- Can load individual sections on-demand
+- Populated references for efficient data fetching
+
+## Usage Examples:
+
+### **Creating a Flat Course (Single Page)**
+```javascript
+// 1. Create content block with AI-generated markdown
+const contentBlock = await ContentBlock.create({
+    formats: {
+        markdown: {
+            content: aiGeneratedMarkdown,
+            generatedAt: new Date()
+        }
+    },
+    primaryFormat: 'markdown',
+    generationMeta: {
+        prompt: userPrompt,
+        model: 'claude-sonnet-4',
+        generatedAt: new Date()
+    }
+});
+
+// 2. Convert to HTML and save
+const htmlContent = await convertMarkdownToHTML(aiGeneratedMarkdown);
+contentBlock.formats.html = {
+    content: htmlContent,
+    generatedAt: new Date()
+};
+await contentBlock.save();
+
+// 3. Create course
+const course = await Course.create({
+    user: userId,
+    title: 'My Guide',
+    slug: 'my-guide',
+    type: 'guide',
+    structure: 'flat',
+    contentType: 'single_block',
+    rootContent: contentBlock._id,
+    generationMeta: {
+        userPrompt: userPrompt,
+        model: 'claude-sonnet-4'
+    }
+});
+```
+
+### **Creating a Hierarchical Course (Book with Chapters)**
+```javascript
+// 1. Create course first
+const course = await Course.create({
+    user: userId,
+    title: 'Complete React Guide',
+    type: 'book',
+    structure: 'hierarchical',
+    contentType: 'chapters',
+    generationMeta: { userPrompt: userPrompt }
+});
+
+// 2. Create chapter
+const chapter = await Chapter.create({
+    courseId: course._id,
+    title: 'Introduction to React',
+    slug: 'intro-to-react',
+    order: 0
+});
+
+// 3. Create topic with content
+const contentBlock = await ContentBlock.create({
+    formats: {
+        markdown: { content: aiMarkdown, generatedAt: new Date() },
+        html: { content: htmlContent, generatedAt: new Date() }
+    },
+    primaryFormat: 'markdown'
+});
+
+const topic = await Topic.create({
+    courseId: course._id,
+    chapterId: chapter._id,
+    title: 'What is React?',
+    slug: 'what-is-react',
+    order: 0,
+    content: contentBlock._id
+});
+
+// 4. Link everything
+chapter.topics.push(topic._id);
+await chapter.save();
+
+course.chapters.push(chapter._id);
+await course.save();
+```
+
+### **User Edits Content (Save Lexical State)**
+```javascript
+// When user edits in Lexical editor
+const contentBlock = await ContentBlock.findById(contentBlockId);
+
+// Save Lexical state
+contentBlock.formats.lexical = {
+    editorState: lexicalJsonState,
+    lastEditedAt: new Date()
+};
+
+// Update primary format to lexical (now it's the source of truth)
+contentBlock.primaryFormat = 'lexical';
+
+// Convert to HTML for display
+const newHtml = await convertLexicalToHTML(lexicalJsonState);
+contentBlock.formats.html = {
+    content: newHtml,
+    generatedAt: new Date()
+};
+
+await contentBlock.save();
+```
+
+Would you like me to create the helper functions for converting between formats (Markdown ↔ HTML ↔ Lexical)?
+
+Great questions! You're absolutely right on both points. Let me address them:
+
+## 1. **Limiting Nesting Depth** ✅
+
+Yes, we should **definitely limit nesting**. Unlimited nesting causes:
+- UI complexity (how do you display 5+ levels?)
+- Performance issues (deep queries)
+- Poor UX (users get lost)
+- Over-complicated content structure
+
+**Recommended limit: 3 levels maximum**
+- **Level 1**: Chapter
+- **Level 2**: Topic
+- **Level 3**: Sub-topic (optional)
+
+Most educational content doesn't need more than this. Even books rarely go beyond 3 levels.
+
+## 2. **Content at Each Level** ✅
+
+Excellent insight! Yes, allowing content at each level gives you **maximum flexibility** and eliminates the need to pre-decide structure. This is actually how Notion works - every block can have content AND children.
+
+## **Improved Schema Design:**
+
+```javascript
+// ============================================
+// SIMPLIFIED COURSE SCHEMA
+// ============================================
+const courseSchema = new mongoose.Schema({
+    // Basic Info
+    user: { type: String, required: true, index: true },
+    title: { type: String, required: true },
+    slug: { type: String, unique: true, index: true, required: true },
+    description: { type: String },
+    photo: { type: String },
+    
+    // Course Type (for UI/presentation purposes only)
+    type: { 
+        type: String, 
+        enum: ['guide', 'tutorial', 'book', 'article', 'documentation'],
+        default: 'guide'
+    },
+    
+    // Generation Metadata
+    generationMeta: {
+        userPrompt: { type: String },
+        model: { type: String },
+        generatedAt: { type: Date, default: Date.now },
+        lastModified: { type: Date, default: Date.now }
+    },
+    
+    // Status & Dates
+    status: {
+        type: String,
+        enum: ['draft', 'in_progress', 'completed', 'archived'],
+        default: 'draft'
+    },
+    
+    // Visibility & Social
+    isPublic: { type: Boolean, default: false, index: true },
+    forkCount: { type: Number, default: 0 },
+    viewCount: { type: Number, default: 0 },
+    
+    forkedFrom: {
+        courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course' },
+        originalOwnerId: { type: String },
+        originalOwnerName: { type: String },
+        forkedAt: { type: Date }
+    },
+    
+    ownerName: { type: String },
+    
+    // Document Source
+    sourceDocument: {
+        processingId: { type: mongoose.Schema.Types.ObjectId, ref: 'DocumentProcessing' },
+        filename: { type: String },
+        extractedFrom: { type: String, enum: ['pdf', 'docx', 'txt', 'url', 'ai_generated'] }
+    },
+    
+    // Root sections (top-level sections of the course)
+    sections: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Section'
+    }],
+    
+    // Settings
+    settings: {
+        maxNestingDepth: { type: Number, default: 3, min: 1, max: 5 },
+        allowComments: { type: Boolean, default: true },
+        showTableOfContents: { type: Boolean, default: true }
+    },
+    
+    // Statistics
+    stats: {
+        totalSections: { type: Number, default: 0 },
+        totalWords: { type: Number, default: 0 },
+        estimatedReadTime: { type: Number, default: 0 }
+    }
+}, {
+    timestamps: true
+});
+
+courseSchema.index({ user: 1, createdAt: -1 });
+courseSchema.index({ isPublic: 1, createdAt: -1 });
+
+// ============================================
+// UNIFIED SECTION SCHEMA
+// Replaces Chapter, Topic, ContentBlock - all in one!
+// ============================================
+const sectionSchema = new mongoose.Schema({
+    // Parent references
+    courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true, index: true },
+    parentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Section', default: null, index: true },
+    
+    // Hierarchy tracking
+    level: { 
+        type: Number, 
+        required: true, 
+        min: 0, 
+        max: 5,
+        default: 0 
+    }, // 0 = root/chapter, 1 = topic, 2 = sub-topic, etc.
+    
+    path: { type: String, index: true }, // e.g., "0", "0.1", "0.1.2" for efficient querying
+    
+    // Section Info
+    title: { type: String, required: true },
+    slug: { type: String, required: true },
+    order: { type: Number, required: true, default: 0 },
+    
+    // Icon/Emoji (optional, for visual hierarchy)
+    icon: { type: String },
+    
+    // CONTENT - Now every section can have content!
+    content: {
+        // Multi-format storage
+        markdown: {
+            text: { type: String },
+            generatedAt: { type: Date }
+        },
+        
+        html: {
+            text: { type: String },
+            generatedAt: { type: Date }
+        },
+        
+        lexical: {
+            editorState: { type: mongoose.Schema.Mixed },
+            lastEditedAt: { type: Date }
+        },
+        
+        // Which format is source of truth
+        primaryFormat: {
+            type: String,
+            enum: ['markdown', 'lexical'],
+            default: 'markdown'
+        }
+    },
+    
+    // Child sections (nested content)
+    children: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Section'
+    }],
+    
+    // Has content flag (optimization for queries)
+    hasContent: { type: Boolean, default: false },
+    hasChildren: { type: Boolean, default: false },
+    
+    // Generation metadata
+    generationMeta: {
+        prompt: { type: String },
+        model: { type: String },
+        generatedAt: { type: Date }
+    },
+    
+    // Section-specific settings
+    settings: {
+        isCollapsible: { type: Boolean, default: true },
+        isExpanded: { type: Boolean, default: true },
+        showInTOC: { type: Boolean, default: true }
+    },
+    
+    // Statistics
+    wordCount: { type: Number, default: 0 },
+    readTime: { type: Number, default: 0 },
+    
+    // Version history (optional)
+    versions: [{
+        format: String,
+        content: mongoose.Schema.Mixed,
+        savedAt: { type: Date, default: Date.now },
+        savedBy: String
+    }]
+}, {
+    timestamps: true
+});
+
+// Indexes for efficient queries
+sectionSchema.index({ courseId: 1, parentId: 1, order: 1 });
+sectionSchema.index({ courseId: 1, path: 1 });
+sectionSchema.index({ courseId: 1, level: 1 });
+
+// Virtual for full path (e.g., "Chapter 1 > Topic 2 > Subtopic 1")
+sectionSchema.virtual('breadcrumb').get(function() {
+    return this.path.split('.').join(' > ');
+});
+
+// ============================================
+// VALIDATION MIDDLEWARE
+// ============================================
+sectionSchema.pre('save', async function(next) {
+    // Enforce max nesting depth
+    const course = await mongoose.model('Course').findById(this.courseId);
+    const maxDepth = course?.settings?.maxNestingDepth || 3;
+    
+    if (this.level >= maxDepth) {
+        return next(new Error(`Maximum nesting depth of ${maxDepth} exceeded`));
+    }
+    
+    // Update hasContent flag
+    this.hasContent = !!(
+        this.content?.markdown?.text || 
+        this.content?.html?.text || 
+        this.content?.lexical?.editorState
+    );
+    
+    // Update hasChildren flag
+    this.hasChildren = this.children && this.children.length > 0;
+    
+    // Auto-generate path if creating new section
+    if (this.isNew && this.parentId) {
+        const parent = await mongoose.model('Section').findById(this.parentId);
+        if (parent) {
+            this.path = `${parent.path}.${this.order}`;
+            this.level = parent.level + 1;
+        }
+    } else if (this.isNew && !this.parentId) {
+        this.path = `${this.order}`;
+        this.level = 0;
+    }
+    
+    next();
+});
+
+// ============================================
+// MODELS
+// ============================================
+const Course = mongoose.model('Course', courseSchema);
+const Section = mongoose.model('Section', sectionSchema);
+
+module.exports = { Course, Section };
+```
+
+## **Key Improvements:**
+
+### ✅ **1. Nesting Control**
+```javascript
+// In course settings
+maxNestingDepth: 3  // Configurable per course (default: 3)
+
+// Enforced in pre-save middleware
+if (this.level >= maxDepth) {
+    throw new Error(`Maximum nesting depth of ${maxDepth} exceeded`);
+}
+```
+
+### ✅ **2. Content at Every Level**
+Every section can have:
+- Content (markdown/HTML/Lexical)
+- Children sections (nested)
+- Both!
+- Neither (just a container)
+
+### ✅ **3. No Pre-decided Structure**
+```javascript
+// Flat course (like a blog post)
+Course
+  └─ Section (has content, no children)
+
+// Simple course (chapter-topic)
+Course
+  └─ Section (Chapter, has intro content)
+       ├─ Section (Topic 1, has content)
+       └─ Section (Topic 2, has content)
+
+// Complex course (full hierarchy)
+Course
+  └─ Section (Part 1, has intro)
+       └─ Section (Chapter 1, has intro)
+            ├─ Section (Topic 1, has content)
+            └─ Section (Topic 2, has content)
+                 └─ Section (Subtopic, has content)
+```
+
+### ✅ **4. Efficient Querying**
+```javascript
+// Path-based queries (fast!)
+Section.find({ 
+    courseId: courseId,
+    path: /^0\.1/ // All sections under "0.1"
+});
+
+// Get all root sections
+Section.find({ 
+    courseId: courseId,
+    level: 0 
+}).sort('order');
+
+// Get immediate children
+Section.find({ 
+    parentId: sectionId 
+}).sort('order');
+```
+
+## **Usage Examples:**
+
+### **Example 1: Simple Guide (Flat)**
+```javascript
+const course = await Course.create({
+    title: 'How to Make Pizza',
+    type: 'guide',
+    settings: { maxNestingDepth: 1 } // Only root level
+});
+
+const section = await Section.create({
+    courseId: course._id,
+    title: 'Pizza Recipe',
+    level: 0,
+    order: 0,
+    content: {
+        markdown: { text: aiGeneratedMarkdown },
+        primaryFormat: 'markdown'
+    }
+});
+
+course.sections.push(section._id);
+await course.save();
+```
+
+### **Example 2: Book with Chapters & Topics**
+```javascript
+const course = await Course.create({
+    title: 'Complete React Course',
+    type: 'book',
+    settings: { maxNestingDepth: 3 }
+});
+
+// Chapter with intro content
+const chapter = await Section.create({
+    courseId: course._id,
+    title: 'Chapter 1: Getting Started',
+    level: 0,
+    order: 0,
+    content: {
+        markdown: { text: 'Welcome to React...' },
+        primaryFormat: 'markdown'
+    }
+});
+
+// Topic under chapter
+const topic = await Section.create({
+    courseId: course._id,
+    parentId: chapter._id,
+    title: 'Installing React',
+    level: 1,
+    order: 0,
+    content: {
+        markdown: { text: 'To install React...' },
+        primaryFormat: 'markdown'
+    }
+});
+
+chapter.children.push(topic._id);
+await chapter.save();
+
+course.sections.push(chapter._id);
+await course.save();
+```
+
+### **Example 3: Adding Content After Creation**
+```javascript
+// Start with just structure
+const chapter = await Section.create({
+    courseId: course._id,
+    title: 'Advanced Topics',
+    level: 0,
+    order: 1
+    // No content initially
+});
+
+// Later, add content to the chapter itself
+chapter.content = {
+    markdown: { 
+        text: 'This chapter covers advanced concepts...', 
+        generatedAt: new Date() 
+    },
+    primaryFormat: 'markdown'
+};
+await chapter.save();
+```
+
+## **Benefits of This Approach:**
+
+1. **Maximum Flexibility**: Structure emerges naturally as content is added
+2. **Simple Schema**: Only 2 models (Course + Section) instead of 4
+3. **Controlled Nesting**: Configurable depth limit prevents chaos
+4. **Content Everywhere**: Every level can have both content and children
+5. **Efficient Queries**: Path-based indexing for fast tree traversal
+6. **Easy Migration**: Old flat courses work fine (just 1 section)
+
+**Should we go with this unified approach?** It's much cleaner and more flexible than the previous design!
+
+Great questions! You're absolutely right on both points. Let me address them:
+
+## 1. **Limiting Nesting Depth** ✅
+
+Yes, we should **definitely limit nesting**. Unlimited nesting causes:
+- UI complexity (how do you display 5+ levels?)
+- Performance issues (deep queries)
+- Poor UX (users get lost)
+- Over-complicated content structure
+
+**Recommended limit: 3 levels maximum**
+- **Level 1**: Chapter
+- **Level 2**: Topic
+- **Level 3**: Sub-topic (optional)
+
+Most educational content doesn't need more than this. Even books rarely go beyond 3 levels.
+
+## 2. **Content at Each Level** ✅
+
+Excellent insight! Yes, allowing content at each level gives you **maximum flexibility** and eliminates the need to pre-decide structure. This is actually how Notion works - every block can have content AND children.
+
+## **Improved Schema Design:**
+
+```javascript
+// ============================================
+// SIMPLIFIED COURSE SCHEMA
+// ============================================
+const courseSchema = new mongoose.Schema({
+    // Basic Info
+    user: { type: String, required: true, index: true },
+    title: { type: String, required: true },
+    slug: { type: String, unique: true, index: true, required: true },
+    description: { type: String },
+    photo: { type: String },
+    
+    // Course Type (for UI/presentation purposes only)
+    type: { 
+        type: String, 
+        enum: ['guide', 'tutorial', 'book', 'article', 'documentation'],
+        default: 'guide'
+    },
+    
+    // Generation Metadata
+    generationMeta: {
+        userPrompt: { type: String },
+        model: { type: String },
+        generatedAt: { type: Date, default: Date.now },
+        lastModified: { type: Date, default: Date.now }
+    },
+    
+    // Status & Dates
+    status: {
+        type: String,
+        enum: ['draft', 'in_progress', 'completed', 'archived'],
+        default: 'draft'
+    },
+    
+    // Visibility & Social
+    isPublic: { type: Boolean, default: false, index: true },
+    forkCount: { type: Number, default: 0 },
+    viewCount: { type: Number, default: 0 },
+    
+    forkedFrom: {
+        courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course' },
+        originalOwnerId: { type: String },
+        originalOwnerName: { type: String },
+        forkedAt: { type: Date }
+    },
+    
+    ownerName: { type: String },
+    
+    // Document Source
+    sourceDocument: {
+        processingId: { type: mongoose.Schema.Types.ObjectId, ref: 'DocumentProcessing' },
+        filename: { type: String },
+        extractedFrom: { type: String, enum: ['pdf', 'docx', 'txt', 'url', 'ai_generated'] }
+    },
+    
+    // Root sections (top-level sections of the course)
+    sections: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Section'
+    }],
+    
+    // Settings
+    settings: {
+        maxNestingDepth: { type: Number, default: 3, min: 1, max: 5 },
+        allowComments: { type: Boolean, default: true },
+        showTableOfContents: { type: Boolean, default: true }
+    },
+    
+    // Statistics
+    stats: {
+        totalSections: { type: Number, default: 0 },
+        totalWords: { type: Number, default: 0 },
+        estimatedReadTime: { type: Number, default: 0 }
+    }
+}, {
+    timestamps: true
+});
+
+courseSchema.index({ user: 1, createdAt: -1 });
+courseSchema.index({ isPublic: 1, createdAt: -1 });
+
+// ============================================
+// UNIFIED SECTION SCHEMA
+// Replaces Chapter, Topic, ContentBlock - all in one!
+// ============================================
+const sectionSchema = new mongoose.Schema({
+    // Parent references
+    courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true, index: true },
+    parentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Section', default: null, index: true },
+    
+    // Hierarchy tracking
+    level: { 
+        type: Number, 
+        required: true, 
+        min: 0, 
+        max: 5,
+        default: 0 
+    }, // 0 = root/chapter, 1 = topic, 2 = sub-topic, etc.
+    
+    path: { type: String, index: true }, // e.g., "0", "0.1", "0.1.2" for efficient querying
+    
+    // Section Info
+    title: { type: String, required: true },
+    slug: { type: String, required: true },
+    order: { type: Number, required: true, default: 0 },
+    
+    // Icon/Emoji (optional, for visual hierarchy)
+    icon: { type: String },
+    
+    // CONTENT - Now every section can have content!
+    content: {
+        // Multi-format storage
+        markdown: {
+            text: { type: String },
+            generatedAt: { type: Date }
+        },
+        
+        html: {
+            text: { type: String },
+            generatedAt: { type: Date }
+        },
+        
+        lexical: {
+            editorState: { type: mongoose.Schema.Mixed },
+            lastEditedAt: { type: Date }
+        },
+        
+        // Which format is source of truth
+        primaryFormat: {
+            type: String,
+            enum: ['markdown', 'lexical'],
+            default: 'markdown'
+        }
+    },
+    
+    // Child sections (nested content)
+    children: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Section'
+    }],
+    
+    // Has content flag (optimization for queries)
+    hasContent: { type: Boolean, default: false },
+    hasChildren: { type: Boolean, default: false },
+    
+    // Generation metadata
+    generationMeta: {
+        prompt: { type: String },
+        model: { type: String },
+        generatedAt: { type: Date }
+    },
+    
+    // Section-specific settings
+    settings: {
+        isCollapsible: { type: Boolean, default: true },
+        isExpanded: { type: Boolean, default: true },
+        showInTOC: { type: Boolean, default: true }
+    },
+    
+    // Statistics
+    wordCount: { type: Number, default: 0 },
+    readTime: { type: Number, default: 0 },
+    
+    // Version history (optional)
+    versions: [{
+        format: String,
+        content: mongoose.Schema.Mixed,
+        savedAt: { type: Date, default: Date.now },
+        savedBy: String
+    }]
+}, {
+    timestamps: true
+});
+
+// Indexes for efficient queries
+sectionSchema.index({ courseId: 1, parentId: 1, order: 1 });
+sectionSchema.index({ courseId: 1, path: 1 });
+sectionSchema.index({ courseId: 1, level: 1 });
+
+// Virtual for full path (e.g., "Chapter 1 > Topic 2 > Subtopic 1")
+sectionSchema.virtual('breadcrumb').get(function() {
+    return this.path.split('.').join(' > ');
+});
+
+// ============================================
+// VALIDATION MIDDLEWARE
+// ============================================
+sectionSchema.pre('save', async function(next) {
+    // Enforce max nesting depth
+    const course = await mongoose.model('Course').findById(this.courseId);
+    const maxDepth = course?.settings?.maxNestingDepth || 3;
+    
+    if (this.level >= maxDepth) {
+        return next(new Error(`Maximum nesting depth of ${maxDepth} exceeded`));
+    }
+    
+    // Update hasContent flag
+    this.hasContent = !!(
+        this.content?.markdown?.text || 
+        this.content?.html?.text || 
+        this.content?.lexical?.editorState
+    );
+    
+    // Update hasChildren flag
+    this.hasChildren = this.children && this.children.length > 0;
+    
+    // Auto-generate path if creating new section
+    if (this.isNew && this.parentId) {
+        const parent = await mongoose.model('Section').findById(this.parentId);
+        if (parent) {
+            this.path = `${parent.path}.${this.order}`;
+            this.level = parent.level + 1;
+        }
+    } else if (this.isNew && !this.parentId) {
+        this.path = `${this.order}`;
+        this.level = 0;
+    }
+    
+    next();
+});
+
+// ============================================
+// MODELS
+// ============================================
+const Course = mongoose.model('Course', courseSchema);
+const Section = mongoose.model('Section', sectionSchema);
+
+module.exports = { Course, Section };
+```
+
+## **Key Improvements:**
+
+### ✅ **1. Nesting Control**
+```javascript
+// In course settings
+maxNestingDepth: 3  // Configurable per course (default: 3)
+
+// Enforced in pre-save middleware
+if (this.level >= maxDepth) {
+    throw new Error(`Maximum nesting depth of ${maxDepth} exceeded`);
+}
+```
+
+### ✅ **2. Content at Every Level**
+Every section can have:
+- Content (markdown/HTML/Lexical)
+- Children sections (nested)
+- Both!
+- Neither (just a container)
+
+### ✅ **3. No Pre-decided Structure**
+```javascript
+// Flat course (like a blog post)
+Course
+  └─ Section (has content, no children)
+
+// Simple course (chapter-topic)
+Course
+  └─ Section (Chapter, has intro content)
+       ├─ Section (Topic 1, has content)
+       └─ Section (Topic 2, has content)
+
+// Complex course (full hierarchy)
+Course
+  └─ Section (Part 1, has intro)
+       └─ Section (Chapter 1, has intro)
+            ├─ Section (Topic 1, has content)
+            └─ Section (Topic 2, has content)
+                 └─ Section (Subtopic, has content)
+```
+
+### ✅ **4. Efficient Querying**
+```javascript
+// Path-based queries (fast!)
+Section.find({ 
+    courseId: courseId,
+    path: /^0\.1/ // All sections under "0.1"
+});
+
+// Get all root sections
+Section.find({ 
+    courseId: courseId,
+    level: 0 
+}).sort('order');
+
+// Get immediate children
+Section.find({ 
+    parentId: sectionId 
+}).sort('order');
+```
+
+## **Usage Examples:**
+
+### **Example 1: Simple Guide (Flat)**
+```javascript
+const course = await Course.create({
+    title: 'How to Make Pizza',
+    type: 'guide',
+    settings: { maxNestingDepth: 1 } // Only root level
+});
+
+const section = await Section.create({
+    courseId: course._id,
+    title: 'Pizza Recipe',
+    level: 0,
+    order: 0,
+    content: {
+        markdown: { text: aiGeneratedMarkdown },
+        primaryFormat: 'markdown'
+    }
+});
+
+course.sections.push(section._id);
+await course.save();
+```
+
+### **Example 2: Book with Chapters & Topics**
+```javascript
+const course = await Course.create({
+    title: 'Complete React Course',
+    type: 'book',
+    settings: { maxNestingDepth: 3 }
+});
+
+// Chapter with intro content
+const chapter = await Section.create({
+    courseId: course._id,
+    title: 'Chapter 1: Getting Started',
+    level: 0,
+    order: 0,
+    content: {
+        markdown: { text: 'Welcome to React...' },
+        primaryFormat: 'markdown'
+    }
+});
+
+// Topic under chapter
+const topic = await Section.create({
+    courseId: course._id,
+    parentId: chapter._id,
+    title: 'Installing React',
+    level: 1,
+    order: 0,
+    content: {
+        markdown: { text: 'To install React...' },
+        primaryFormat: 'markdown'
+    }
+});
+
+chapter.children.push(topic._id);
+await chapter.save();
+
+course.sections.push(chapter._id);
+await course.save();
+```
+
+### **Example 3: Adding Content After Creation**
+```javascript
+// Start with just structure
+const chapter = await Section.create({
+    courseId: course._id,
+    title: 'Advanced Topics',
+    level: 0,
+    order: 1
+    // No content initially
+});
+
+// Later, add content to the chapter itself
+chapter.content = {
+    markdown: { 
+        text: 'This chapter covers advanced concepts...', 
+        generatedAt: new Date() 
+    },
+    primaryFormat: 'markdown'
+};
+await chapter.save();
+```
+
+## **Benefits of This Approach:**
+
+1. **Maximum Flexibility**: Structure emerges naturally as content is added
+2. **Simple Schema**: Only 2 models (Course + Section) instead of 4
+3. **Controlled Nesting**: Configurable depth limit prevents chaos
+4. **Content Everywhere**: Every level can have both content and children
+5. **Efficient Queries**: Path-based indexing for fast tree traversal
+6. **Easy Migration**: Old flat courses work fine (just 1 section)
+
+**Should we go with this unified approach?** It's much cleaner and more flexible than the previous design!
+
