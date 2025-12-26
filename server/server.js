@@ -1925,7 +1925,7 @@ app.get("/api/courses", async (req, res) => {
 
     const courses = await Course.find(query)
       .select(
-        "user content type mainTopic slug photo date end completed isPublic forkCount forkedFrom ownerName"
+        "user content type mainTopic title slug photo date end completed isPublic forkCount forkedFrom ownerName generationMeta"
       )
       .skip(parseInt(skip))
       .limit(parseInt(limit))
@@ -1933,9 +1933,46 @@ app.get("/api/courses", async (req, res) => {
 
     const total = await Course.countDocuments(query);
 
+    // Enhance courses with description/summary for frontend
+    const enhancedCourses = courses.map(course => {
+      // Generate description from content or use mainTopic
+      let description = course.mainTopic;
+      
+      if (course.content) {
+        // Extract first paragraph or sentence as description
+        const contentText = course.content.replace(/[#*`]/g, '').trim();
+        const firstParagraph = contentText.split('\n\n')[0];
+        const firstSentence = firstParagraph.split('.')[0];
+        description = firstSentence.length > 10 && firstSentence.length < 200 
+          ? firstSentence + '.'
+          : course.mainTopic;
+      }
+      
+      return {
+        _id: course._id,
+        user: course.user,
+        title: course.title || course.mainTopic,
+        mainTopic: course.mainTopic,
+        description: description,
+        slug: course.slug,
+        photo: course.photo,
+        type: course.type,
+        date: course.date,
+        end: course.end,
+        completed: course.completed,
+        isPublic: course.isPublic,
+        forkCount: course.forkCount,
+        forkedFrom: course.forkedFrom,
+        ownerName: course.ownerName,
+        content: course.content, // Include content for navigation
+        hasContent: !!course.content,
+        generationMeta: course.generationMeta
+      };
+    });
+
     res.json({
       success: true,
-      courses: courses,
+      courses: enhancedCourses,
       pagination: {
         currentPage: parseInt(page),
         totalPages: Math.ceil(total / limit),
@@ -2006,6 +2043,124 @@ app.get("/api/course/:slug", optionalAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Internal server error",
+    });
+  }
+});
+
+//GET COURSE CONTENT WITH SECTIONS (New Architecture)
+app.get("/api/course/:courseId/content", requireAuth, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const userId = req.user._id.toString();
+    
+    // Get course with basic info
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: "Course not found"
+      });
+    }
+    
+    // Check access permissions
+    const isOwner = course.user === userId;
+    const isPublic = course.isPublic === true;
+    
+    if (!isPublic && !isOwner) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied"
+      });
+    }
+    
+    // Import CourseGenerationService to check architecture
+    const { default: CourseGenerationService } = await import('./services/courseGenerationService.js');
+    
+    const isNewArchitecture = CourseGenerationService.isNewArchitecture(course);
+    const isLegacy = CourseGenerationService.isLegacyCourse(course);
+    
+    if (isNewArchitecture) {
+      // Get sections for new architecture
+      const sections = await Section.find({ courseId: courseId })
+        .sort({ order: 1, createdAt: 1 });
+      
+      res.json({
+        success: true,
+        architecture: 'section-based',
+        course: {
+          _id: course._id,
+          title: course.title || course.mainTopic,
+          slug: course.slug,
+          mainTopic: course.mainTopic,
+          type: course.type,
+          photo: course.photo,
+          isPublic: course.isPublic,
+          createdAt: course.date,
+          generationMeta: course.generationMeta
+        },
+        sections: sections.map(section => ({
+          _id: section._id,
+          title: section.title,
+          order: section.order,
+          parentId: section.parentId,
+          level: section.level,
+          content: {
+            markdown: section.content.markdown,
+            html: section.content.html,
+            lexical: section.content.lexical
+          },
+          metadata: section.metadata,
+          createdAt: section.createdAt
+        })),
+        sectionCount: sections.length
+      });
+    } else if (isLegacy) {
+      // Return legacy course with migration suggestion
+      res.json({
+        success: true,
+        architecture: 'legacy',
+        course: {
+          _id: course._id,
+          title: course.title || course.mainTopic,
+          slug: course.slug,
+          mainTopic: course.mainTopic,
+          type: course.type,
+          photo: course.photo,
+          isPublic: course.isPublic,
+          content: course.content, // Legacy content
+          createdAt: course.date
+        },
+        sections: [],
+        sectionCount: 0,
+        migrationAvailable: true,
+        message: "This course uses legacy architecture. Consider converting to section-based format."
+      });
+    } else {
+      // Empty course
+      res.json({
+        success: true,
+        architecture: 'empty',
+        course: {
+          _id: course._id,
+          title: course.title || course.mainTopic,
+          slug: course.slug,
+          mainTopic: course.mainTopic,
+          type: course.type,
+          photo: course.photo,
+          isPublic: course.isPublic,
+          createdAt: course.date
+        },
+        sections: [],
+        sectionCount: 0,
+        message: "Course has no content yet."
+      });
+    }
+    
+  } catch (error) {
+    logger.error("Get course content error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
     });
   }
 });
@@ -4223,36 +4378,99 @@ app.post("/api/sendexammail", async (req, res) => {
   });
 });
 
-//GET RESULT
+//GET COURSE PROGRESS (Renamed from getmyresult)
+app.get("/api/course/:courseId/progress", requireAuth, async (req, res) => {
+  const { courseId } = req.params;
+  const userId = req.user._id.toString();
+  
+  try {
+    // Check if user owns the course or has access
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: "Course not found"
+      });
+    }
+    
+    // Check access permissions
+    const isOwner = course.user === userId;
+    const isPublic = course.isPublic === true;
+    
+    if (!isPublic && !isOwner) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied"
+      });
+    }
+    
+    // Get exam results and language info using correct model names
+    const examResult = await Exam.findOne({ courseId: courseId, userId: userId });
+    const languageInfo = await Language.findOne({ courseId: courseId, userId: userId });
+    
+    const response = {
+      success: true,
+      courseId: courseId,
+      progress: {
+        hasExamResult: !!examResult,
+        examPassed: examResult ? examResult.passed : false,
+        examScore: examResult ? examResult.score : null,
+        completedAt: examResult ? examResult.completedAt : null
+      },
+      language: languageInfo ? languageInfo.lang : "English",
+      course: {
+        title: course.title || course.mainTopic,
+        slug: course.slug,
+        isPublic: course.isPublic
+      }
+    };
+    
+    res.json(response);
+  } catch (error) {
+    logger.error("Get course progress error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+});
+
+//BACKWARD COMPATIBILITY: Legacy getmyresult endpoint (DEPRECATED)
 app.post("/api/getmyresult", async (req, res) => {
   const { courseId } = req.body;
+  
+  // Add deprecation warning to response headers
+  res.set('X-API-Deprecated', 'true');
+  res.set('X-API-Deprecated-Message', 'Use GET /api/course/:courseId/progress instead');
+  
   try {
-    const existingNotes = await ExamSchema.findOne({ course: courseId });
-    const lang = await LangSchema.findOne({ course: courseId });
-    if (existingNotes) {
-      if (lang) {
-        res.json({
-          success: true,
-          message: existingNotes.passed,
-          lang: lang.lang,
-        });
-      } else {
-        res.json({
-          success: true,
-          message: existingNotes.passed,
-          lang: "English",
-        });
-      }
+    // Use correct model names (Exam and Language instead of ExamSchema and LangSchema)
+    const existingExam = await Exam.findOne({ courseId: courseId });
+    const lang = await Language.findOne({ courseId: courseId });
+    
+    if (existingExam) {
+      res.json({
+        success: true,
+        message: existingExam.passed,
+        lang: lang ? lang.lang : "English",
+        // Add migration hint
+        _deprecated: "This endpoint is deprecated. Use GET /api/course/:courseId/progress instead"
+      });
     } else {
-      if (lang) {
-        res.json({ success: false, message: false, lang: lang.lang });
-      } else {
-        res.json({ success: false, message: false, lang: "English" });
-      }
+      res.json({ 
+        success: false, 
+        message: false, 
+        lang: lang ? lang.lang : "English",
+        _deprecated: "This endpoint is deprecated. Use GET /api/course/:courseId/progress instead"
+      });
     }
   } catch (error) {
-    console.log("Error", error);
-    res.status(500).send("Internal Server Error");
+    logger.error("Legacy getmyresult error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      _deprecated: "This endpoint is deprecated. Use GET /api/course/:courseId/progress instead"
+    });
   }
 });
 

@@ -19,16 +19,16 @@ const getServerURL = () => {
     return `${window.location.protocol}//${window.location.host}`;
   }
   
-  // In development, try common ports in order
+  // In development, use the standard port 5010 (matches .env.example)
   if (import.meta.env.DEV && typeof window !== 'undefined') {
     const protocol = window.location.protocol;
     const hostname = window.location.hostname;
     
-    // Try ports in order: 5011 (current), 5010 (default), 5012, 5013
-    return `${protocol}//${hostname}:5011`;
+    // Use port 5010 (standard server port as per .env.example)
+    return `${protocol}//${hostname}:5010`;
   }
   
-  return 'http://localhost:5011';
+  return 'http://localhost:5010';
 };
 
 export const serverURL = getServerURL();

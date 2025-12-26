@@ -1,9 +1,7 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
 import React, { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Clock, Users, BookOpen, Sparkles, ArrowRight, BookPlus, FileQuestion, Loader, MoreVertical, Share, Trash2, Grid3X3, List } from 'lucide-react';
+import { BookOpen, Sparkles, ArrowRight, BookPlus, FileQuestion, MoreVertical, Share, Trash2, Grid3X3, List } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Link, useNavigate } from 'react-router-dom';
 import SEO from '@/components/SEO';
@@ -16,31 +14,92 @@ import ShareOnSocial from 'react-share-on-social';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import CourseImage from '@/components/CourseImage';
 import { Progress } from '@/components/ui/progress';
+import { CourseAPI } from '@/services/courseApi';
+
+interface HierarchySection {
+  title: string;
+  children?: HierarchySection[];
+  content?: {
+    markdown?: {
+      text?: string;
+    };
+    html?: {
+      text?: string;
+    };
+  };
+}
+
+interface HierarchyResponse {
+  hierarchy: HierarchySection[];
+}
+
+// Helper function to convert new hierarchy format to legacy format
+const convertHierarchyToLegacyFormat = (hierarchyData: HierarchyResponse, mainTopic: string): CourseData => {
+  const legacyFormat: CourseData = {
+    [mainTopic.toLowerCase()]: []
+  };
+
+  if (hierarchyData && hierarchyData.hierarchy && Array.isArray(hierarchyData.hierarchy)) {
+    legacyFormat[mainTopic.toLowerCase()] = hierarchyData.hierarchy.map((section: HierarchySection) => ({
+      title: section.title,
+      subtopics: section.children && Array.isArray(section.children) 
+        ? section.children.map((child: HierarchySection) => ({
+            title: child.title,
+            done: false, // Default to not done
+            content: child.content?.markdown?.text || child.content?.html?.text || ''
+          }))
+        : []
+    }));
+  }
+
+  return legacyFormat;
+};
+
+// Type definitions for course content structure
+interface CourseSubtopic {
+  done?: boolean;
+  [key: string]: unknown;
+}
+
+interface CourseTopic {
+  subtopics?: CourseSubtopic[];
+  [key: string]: unknown;
+}
+
+interface CourseData {
+  [key: string]: CourseTopic[];
+}
+
+interface ProgressMap {
+  [courseId: string]: number;
+}
+
+interface Course {
+  _id: string;
+  mainTopic: string;
+  type: string;
+  content?: string | null;
+  completed: boolean;
+  end: string;
+  slug: string;
+  photo: string;
+  description?: string;
+}
 
 const Dashboard = () => {
 
   const navigate = useNavigate();
-  const [courses, setCourses] = useState([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const userId = localStorage.getItem('uid');
-  const [courseProgress, setCourseProgress] = useState({});
-  const [modules, setTotalModules] = useState({});
-  const [lessons, setTotalLessons] = useState({});
+  const [courseProgress, setCourseProgress] = useState<Record<string, number>>({});
+  const [modules, setTotalModules] = useState<Record<string, number>>({});
+  const [lessons, setTotalLessons] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   const { toast } = useToast();
-
-  const getQuiz = async (courseId: string) => {
-    const postURL = serverURL + '/api/getmyresult';
-    const response = await axios.post(postURL, { courseId });
-    if (response.data.success) {
-      return response.data.message;
-    } else {
-      return false;
-    }
-  };
 
   const fetchUserCourses = useCallback(async () => {
     setIsLoading(page === 1);
@@ -56,38 +115,48 @@ const Dashboard = () => {
       if (coursesData.length === 0) {
         setHasMore(false);
       } else {
-        const progressMap = { ...courseProgress }; // Spread existing state
-        const modulesMap = { ...modules }; // Spread existing state
-        const lessonsMap = { ...lessons }; // Spread existing state
+        const progressMap: ProgressMap = {}; // Create fresh state
+        const modulesMap: ProgressMap = {}; // Create fresh state
+        const lessonsMap: ProgressMap = {}; // Create fresh state
 
         // Calculate progress data synchronously to avoid API calls
-        coursesData.forEach((course) => {
+        coursesData.forEach((course: Course) => {
           try {
-            const jsonData = JSON.parse(course.content);
+            if (!course.content) {
+              // For courses without legacy content, set default values
+              progressMap[course._id] = 0;
+              modulesMap[course._id] = 0;
+              lessonsMap[course._id] = 0;
+              return;
+            }
+            
+            const jsonData: CourseData = JSON.parse(course.content);
             const mainTopicKey = course.mainTopic.toLowerCase();
 
             // Count done topics
             let doneCount = 0;
             let totalTopics = 0;
-            if (jsonData[mainTopicKey]) {
-              jsonData[mainTopicKey].forEach((topic: { subtopics: string[]; }) => {
-                topic.subtopics.forEach((subtopic) => {
-                  if (subtopic.done) {
-                    doneCount++;
-                  }
-                  totalTopics++;
-                });
+            if (jsonData[mainTopicKey] && Array.isArray(jsonData[mainTopicKey])) {
+              jsonData[mainTopicKey].forEach((topic: CourseTopic) => {
+                if (topic.subtopics && Array.isArray(topic.subtopics)) {
+                  topic.subtopics.forEach((subtopic: CourseSubtopic) => {
+                    if (subtopic.done) {
+                      doneCount++;
+                    }
+                    totalTopics++;
+                  });
+                }
               });
             }
             const completionPercentage = totalTopics > 0 ? Math.round((doneCount / totalTopics) * 100) : 0;
             progressMap[course._id] = completionPercentage;
 
             // Count modules
-            modulesMap[course._id] = jsonData[mainTopicKey] ? jsonData[mainTopicKey].length : 0;
+            modulesMap[course._id] = jsonData[mainTopicKey] && Array.isArray(jsonData[mainTopicKey]) ? jsonData[mainTopicKey].length : 0;
 
             // Count lessons
-            lessonsMap[course._id] = jsonData[mainTopicKey] ?
-              jsonData[mainTopicKey].reduce((total: number, topic: { subtopics: string[]; }) => total + topic.subtopics.length, 0) : 0;
+            lessonsMap[course._id] = jsonData[mainTopicKey] && Array.isArray(jsonData[mainTopicKey]) ?
+              jsonData[mainTopicKey].reduce((total: number, topic: CourseTopic) => total + (topic.subtopics ? topic.subtopics.length : 0), 0) : 0;
 
           } catch (error) {
             console.error('Error parsing course content:', error);
@@ -99,9 +168,9 @@ const Dashboard = () => {
         setCourseProgress(progressMap);
         setTotalModules(modulesMap);
         setTotalLessons(lessonsMap);
-        await setCourses((prevCourses) => {
-          const existingIds = new Set(prevCourses.map(course => course._id));
-          const newCourses = coursesData.filter(course => !existingIds.has(course._id));
+        setCourses((prevCourses) => {
+          const existingIds = new Set(prevCourses.map((course: Course) => course._id));
+          const newCourses = coursesData.filter((course: Course) => !existingIds.has(course._id));
           return [...prevCourses, ...newCourses];
         });
         console.log('Courses state updated, isLoading should be false now');
@@ -136,35 +205,157 @@ const Dashboard = () => {
     navigate("/dashboard/generate-course");
   }
 
-  async function redirectCourse(content: string, mainTopic: string, type: string, courseId: string, completed: string, end: string) {
-    const postURL = serverURL + '/api/getmyresult';
-    const response = await axios.post(postURL, { courseId });
-    if (response.data.success) {
-      const jsonData = JSON.parse(content);
-      localStorage.setItem('courseId', courseId);
-      localStorage.setItem('first', completed);
-      localStorage.setItem('jsonData', JSON.stringify(jsonData));
-      let ending = '';
-      if (completed) ending = end;
-      navigate('/course/' + courseId, {
-        state: {
+  async function redirectCourse(content: string | null, mainTopic: string, type: string, courseId: string, completed: boolean, end: string, slug: string) {
+    console.log('🎯 Starting course navigation for:', courseId);
+    
+    try {
+      // Use the new CourseAPI to get course progress
+      console.log('📡 Calling CourseAPI.getCourseProgress...');
+      const progressResponse = await CourseAPI.getCourseProgress(courseId);
+      
+      console.log('📊 Progress response received:', progressResponse);
+      
+      if (progressResponse.success) {
+        // Handle both legacy and new architecture courses
+        let jsonData: CourseData;
+        if (content) {
+          // Legacy course with monolithic content
+          jsonData = JSON.parse(content);
+        } else {
+          // New architecture course - fetch hierarchy and convert to legacy format
+          try {
+            console.log('📡 Fetching course hierarchy for new architecture course...');
+            const hierarchyResponse = await fetch(`${serverURL}/api/v2/courses/${courseId}/hierarchy?includeContent=true`);
+            const hierarchyData = await hierarchyResponse.json();
+            
+            if (hierarchyData.success && hierarchyData.hierarchy) {
+              // Convert new hierarchy to legacy format
+              jsonData = convertHierarchyToLegacyFormat(hierarchyData, mainTopic);
+              console.log('🔄 Converted hierarchy to legacy format:', jsonData);
+            } else {
+              // Fallback to empty structure
+              jsonData = {
+                [mainTopic.toLowerCase()]: []
+              };
+            }
+          } catch (hierarchyError) {
+            console.error('❌ Error fetching course hierarchy:', hierarchyError);
+            // Fallback to empty structure
+            jsonData = {
+              [mainTopic.toLowerCase()]: []
+            };
+          }
+        }
+        
+        localStorage.setItem('courseId', courseId);
+        localStorage.setItem('first', completed.toString());
+        localStorage.setItem('jsonData', JSON.stringify(jsonData));
+        let ending = '';
+        if (completed) ending = end;
+        
+        const navigationState = {
           jsonData,
           mainTopic: mainTopic.toUpperCase(),
           type: type.toLowerCase(),
           courseId,
           end: ending,
-          pass: response.data.message,
-          lang: response.data.lang
+          pass: progressResponse.progress.examPassed,
+          lang: progressResponse.language
+        };
+        
+        console.log('🧭 Navigating to course with state:', navigationState);
+        
+        // Use slug for navigation (consistent with Courses.tsx)
+        navigate('/course/' + slug, { state: navigationState });
+      } else {
+        console.warn('⚠️ Progress API returned success: false, using fallback');
+        // Fallback behavior if progress API fails
+        let jsonData: CourseData;
+        if (content) {
+          jsonData = JSON.parse(content);
+        } else {
+          // New architecture course - try to fetch hierarchy
+          try {
+            console.log('📡 Fetching course hierarchy for new architecture course (fallback)...');
+            const hierarchyResponse = await fetch(`${serverURL}/api/v2/courses/${courseId}/hierarchy?includeContent=true`);
+            const hierarchyData = await hierarchyResponse.json();
+            
+            if (hierarchyData.success && hierarchyData.hierarchy) {
+              jsonData = convertHierarchyToLegacyFormat(hierarchyData, mainTopic);
+            } else {
+              jsonData = {
+                [mainTopic.toLowerCase()]: []
+              };
+            }
+          } catch (hierarchyError) {
+            console.error('❌ Error fetching course hierarchy (fallback):', hierarchyError);
+            jsonData = {
+              [mainTopic.toLowerCase()]: []
+            };
+          }
         }
-      });
-    } else {
-      const jsonData = JSON.parse(content);
+        
+        localStorage.setItem('courseId', courseId);
+        localStorage.setItem('first', completed.toString());
+        localStorage.setItem('jsonData', JSON.stringify(jsonData));
+        let ending = '';
+        if (completed) ending = end;
+        
+        navigate('/course/' + slug, {
+          state: {
+            jsonData,
+            mainTopic: mainTopic.toUpperCase(),
+            type: type.toLowerCase(),
+            courseId,
+            end: ending,
+            pass: false,
+            lang: 'English'
+          }
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error getting course progress:', error);
+      // Fallback to legacy behavior
+      let jsonData: CourseData;
+      if (content) {
+        try {
+          jsonData = JSON.parse(content);
+        } catch (parseError) {
+          console.error('Error parsing content:', parseError);
+          jsonData = {
+            [mainTopic.toLowerCase()]: []
+          };
+        }
+      } else {
+        // New architecture course - try to fetch hierarchy
+        try {
+          console.log('📡 Fetching course hierarchy for new architecture course (error fallback)...');
+          const hierarchyResponse = await fetch(`${serverURL}/api/v2/courses/${courseId}/hierarchy?includeContent=true`);
+          const hierarchyData = await hierarchyResponse.json();
+          
+          if (hierarchyData.success && hierarchyData.hierarchy) {
+            jsonData = convertHierarchyToLegacyFormat(hierarchyData, mainTopic);
+          } else {
+            jsonData = {
+              [mainTopic.toLowerCase()]: []
+            };
+          }
+        } catch (hierarchyError) {
+          console.error('❌ Error fetching course hierarchy (error fallback):', hierarchyError);
+          jsonData = {
+            [mainTopic.toLowerCase()]: []
+          };
+        }
+      }
+      
       localStorage.setItem('courseId', courseId);
-      localStorage.setItem('first', completed);
+      localStorage.setItem('first', completed.toString());
       localStorage.setItem('jsonData', JSON.stringify(jsonData));
       let ending = '';
       if (completed) ending = end;
-      navigate('/course/' + courseId, {
+      
+      console.log('🔄 Using fallback navigation');
+      navigate('/course/' + slug, {
         state: {
           jsonData,
           mainTopic: mainTopic.toUpperCase(),
@@ -172,13 +363,13 @@ const Dashboard = () => {
           courseId,
           end: ending,
           pass: false,
-          lang: response.data.lang
+          lang: 'English'
         }
       });
     }
   }
 
-  const handleDeleteCourse = async (courseId: number) => {
+  const handleDeleteCourse = async (courseId: string) => {
     setIsLoading(true);
     const postURL = serverURL + '/api/deletecourse';
     const response = await axios.post(postURL, { courseId: courseId });
@@ -309,8 +500,7 @@ const Dashboard = () => {
               ))}
             </div>
           )
-        )
-          :
+        ) : (
           <>
             {courses.length > 0 ? (
               viewMode === 'grid' ? (
@@ -377,7 +567,7 @@ const Dashboard = () => {
                       </CardContent>
                       <CardFooter className="pt-0">
                         <Button
-                          onClick={() => redirectCourse(course.content, course.mainTopic, course.type, course._id, course.completed, course.end)}
+                          onClick={() => redirectCourse(course.content, course.mainTopic, course.type, course._id, course.completed, course.end, course.slug)}
                           variant="ghost"
                           size="sm"
                           className="w-full bg-accent/10 border border-border/50 group-hover:bg-accent transition-colors justify-between text-xs h-8"
@@ -457,7 +647,7 @@ const Dashboard = () => {
                           </CardContent>
                           <CardFooter className="pt-0">
                             <Button
-                              onClick={() => redirectCourse(course.content, course.mainTopic, course.type, course._id, course.completed, course.end)}
+                              onClick={() => redirectCourse(course.content, course.mainTopic, course.type, course._id, course.completed, course.end, course.slug)}
                               variant="ghost"
                               size="sm"
                               className="bg-accent/10 border border-border/50 group-hover:bg-accent transition-colors justify-between text-xs h-8 px-4"
@@ -545,7 +735,7 @@ const Dashboard = () => {
               )
             )}
           </>
-        }
+        )}
 
       </div>
     </>

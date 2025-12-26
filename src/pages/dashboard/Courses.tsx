@@ -1,5 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
 import React, { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,6 +15,18 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import CourseImage from '@/components/CourseImage';
 import { Progress } from '@/components/ui/progress';
+import { CourseAPI } from '@/services/courseApi';
+
+// Type definitions for course content structure
+interface CourseSubtopic {
+  done?: boolean;
+  [key: string]: unknown;
+}
+
+interface CourseTopic {
+  subtopics?: CourseSubtopic[];
+  [key: string]: unknown;
+}
 
 const Courses = () => {
 
@@ -39,35 +49,117 @@ const Courses = () => {
   }
 
   async function redirectCourse(content: string, mainTopic: string, type: string, courseId: string, completed: string, end: string, slug: string) {
-    const postURL = serverURL + '/api/getmyresult';
-    const response = await axios.post(postURL, { courseId });
-    if (response.data.success) {
-      const jsonData = JSON.parse(content);
-      localStorage.setItem('courseId', courseId);
-      localStorage.setItem('first', completed);
-      localStorage.setItem('jsonData', JSON.stringify(jsonData));
-      let ending = '';
-      if (completed) ending = end;
-      // Use slug for navigation (primary method)
-      navigate('/course/' + slug, {
-        state: {
+    console.log('🎯 Starting course navigation for:', courseId);
+    
+    try {
+      // Use the new CourseAPI to get course progress
+      console.log('📡 Calling CourseAPI.getCourseProgress...');
+      const progressResponse = await CourseAPI.getCourseProgress(courseId);
+      
+      console.log('📊 Progress response received:', progressResponse);
+      
+      if (progressResponse.success) {
+        // Handle both legacy and new architecture courses
+        let jsonData;
+        if (content) {
+          try {
+            jsonData = JSON.parse(content);
+          } catch (parseError) {
+            console.error('Error parsing content:', parseError);
+            jsonData = {
+              [mainTopic.toLowerCase()]: []
+            };
+          }
+        } else {
+          // For new architecture courses without legacy content, create minimal structure
+          jsonData = {
+            [mainTopic.toLowerCase()]: []
+          };
+        }
+        
+        localStorage.setItem('courseId', courseId);
+        localStorage.setItem('first', completed);
+        localStorage.setItem('jsonData', JSON.stringify(jsonData));
+        let ending = '';
+        if (completed) ending = end;
+        
+        const navigationState = {
           jsonData,
           mainTopic: mainTopic.toUpperCase(),
           type: type.toLowerCase(),
           courseId,
           end: ending,
-          pass: response.data.message,
-          lang: response.data.lang
+          pass: progressResponse.progress.examPassed,
+          lang: progressResponse.language
+        };
+        
+        console.log('🧭 Navigating to course with state:', navigationState);
+        
+        // Use slug for navigation (primary method)
+        navigate('/course/' + slug, { state: navigationState });
+      } else {
+        console.warn('⚠️ Progress API returned success: false, using fallback');
+        // Fallback behavior if progress API fails
+        let jsonData;
+        if (content) {
+          try {
+            jsonData = JSON.parse(content);
+          } catch (parseError) {
+            console.error('Error parsing content:', parseError);
+            jsonData = {
+              [mainTopic.toLowerCase()]: []
+            };
+          }
+        } else {
+          jsonData = {
+            [mainTopic.toLowerCase()]: []
+          };
         }
-      });
-    } else {
-      const jsonData = JSON.parse(content);
+        
+        localStorage.setItem('courseId', courseId);
+        localStorage.setItem('first', completed);
+        localStorage.setItem('jsonData', JSON.stringify(jsonData));
+        let ending = '';
+        if (completed) ending = end;
+        
+        navigate('/course/' + slug, {
+          state: {
+            jsonData,
+            mainTopic: mainTopic.toUpperCase(),
+            type: type.toLowerCase(),
+            courseId,
+            end: ending,
+            pass: false,
+            lang: 'English'
+          }
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error getting course progress:', error);
+      // Fallback to legacy behavior
+      let jsonData;
+      if (content) {
+        try {
+          jsonData = JSON.parse(content);
+        } catch (parseError) {
+          console.error('Error parsing content:', parseError);
+          jsonData = {
+            [mainTopic.toLowerCase()]: []
+          };
+        }
+      } else {
+        jsonData = {
+          [mainTopic.toLowerCase()]: []
+        };
+      }
+      
       localStorage.setItem('courseId', courseId);
       localStorage.setItem('first', completed);
       localStorage.setItem('jsonData', JSON.stringify(jsonData));
       let ending = '';
       if (completed) ending = end;
-      // Use slug for navigation (primary method)
+      
+      console.log('🔄 Using fallback navigation');
       navigate('/course/' + slug, {
         state: {
           jsonData,
@@ -76,7 +168,7 @@ const Courses = () => {
           courseId,
           end: ending,
           pass: false,
-          lang: response.data.lang
+          lang: 'English'
         }
       });
     }
@@ -140,60 +232,84 @@ const Courses = () => {
   };
 
   const getQuiz = useCallback(async (courseId: string) => {
-    const postURL = serverURL + '/api/getmyresult';
-    const response = await axios.post(postURL, { courseId });
-    if (response.data.success) {
-      return response.data.message;
-    } else {
+    try {
+      // Use the new CourseAPI to get course progress
+      const progressResponse = await CourseAPI.getCourseProgress(courseId);
+      if (progressResponse.success) {
+        return progressResponse.progress.examPassed;
+      } else {
+        return false;
+      }
+    } catch (error) {
+      console.error('Error getting course progress:', error);
       return false;
     }
   }, []);
 
   const CountDoneTopics = useCallback(async (json: string, mainTopic: string, courseId: string) => {
     try {
+      if (!json) {
+        // For courses without legacy content, return 0% progress
+        return 0;
+      }
+      
       const jsonData = JSON.parse(json);
       let doneCount = 0;
       let totalTopics = 0;
-      jsonData[mainTopic.toLowerCase()].forEach((topic: { subtopics: string[]; }) => {
-        topic.subtopics.forEach((subtopic) => {
-          if (subtopic.done) {
-            doneCount++;
+      
+      const topicKey = mainTopic.toLowerCase();
+      if (jsonData[topicKey] && Array.isArray(jsonData[topicKey])) {
+        jsonData[topicKey].forEach((topic: CourseTopic) => {
+          if (topic.subtopics && Array.isArray(topic.subtopics)) {
+            topic.subtopics.forEach((subtopic: CourseSubtopic) => {
+              if (subtopic.done) {
+                doneCount++;
+              }
+              totalTopics++;
+            });
           }
-          totalTopics++;
         });
-      });
+      }
+      
       const quizCount = await getQuiz(courseId);
       totalTopics = totalTopics + 1;
       if (quizCount) {
         totalTopics = totalTopics - 1;
       }
-      const completionPercentage = Math.round((doneCount / totalTopics) * 100);
+      const completionPercentage = totalTopics > 0 ? Math.round((doneCount / totalTopics) * 100) : 0;
       return completionPercentage;
     } catch (error) {
-      console.error(error);
+      console.error('Error calculating progress:', error);
       return 0;
     }
   }, [getQuiz]);
 
   const CountTotalModules = useCallback(async (json: string, mainTopic: string) => {
     try {
+      if (!json) return 0;
+      
       const jsonData = JSON.parse(json);
-      return jsonData[mainTopic.toLowerCase()].length;
+      const topicKey = mainTopic.toLowerCase();
+      return jsonData[topicKey] && Array.isArray(jsonData[topicKey]) ? jsonData[topicKey].length : 0;
     } catch (error) {
-      console.error(error);
+      console.error('Error counting modules:', error);
       return 0;
     }
   }, []);
 
   const CountTotalLessons = useCallback(async (json: string, mainTopic: string) => {
     try {
+      if (!json) return 0;
+      
       const jsonData = JSON.parse(json);
-      return jsonData[mainTopic.toLowerCase()].reduce(
-        (total, topic) => total + topic.subtopics.length,
-        0
-      );
+      const topicKey = mainTopic.toLowerCase();
+      return jsonData[topicKey] && Array.isArray(jsonData[topicKey]) ?
+        jsonData[topicKey].reduce(
+          (total: number, topic: CourseTopic) => total + (topic.subtopics ? topic.subtopics.length : 0),
+          0
+        ) : 0;
     } catch (error) {
-      console.error(error);
+      console.error('Error counting lessons:', error);
       return 0;
     }
   }, []);
