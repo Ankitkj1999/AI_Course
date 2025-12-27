@@ -1822,6 +1822,264 @@ app.get("/api/course/stats/:courseId", requireAuth, async (req, res) => {
   }
 });
 
+//UPDATE SECTION CONTENT (New Architecture)
+app.post("/api/sections/:sectionId/content", requireAuth, async (req, res) => {
+  const { sectionId } = req.params;
+  const { content, contentType = "markdown", metadata = {} } = req.body;
+  
+  console.log('📝 Section Content Update Request:', {
+    sectionId,
+    contentLength: content?.length || 0,
+    contentType,
+    metadataKeys: Object.keys(metadata),
+    userId: req.user._id.toString()
+  });
+  
+  try {
+    // Import required services
+    const { default: SectionService } = await import('./services/sectionService.js');
+    const { default: ContentConverter } = await import('./services/contentConverter.js');
+    
+    // Get the section and verify ownership
+    const section = await SectionService.getSection(sectionId);
+    if (!section) {
+      console.log('❌ Section not found:', sectionId);
+      return res.status(404).json({ success: false, message: "Section not found" });
+    }
+    
+    console.log('📄 Found section:', {
+      sectionId: section._id,
+      title: section.title,
+      courseId: section.courseId,
+      hasExistingContent: !!section.content
+    });
+    
+    // Verify user has access to this course
+    const Course = (await import('./models/Course.js')).default;
+    const course = await Course.findById(section.courseId);
+    if (!course || course.user !== req.user._id.toString()) {
+      console.log('❌ Access denied for user:', req.user._id.toString());
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
+    
+    let updateData = {};
+    
+    // If content is provided, convert it to multi-format structure
+    if (content !== undefined) {
+      console.log('🔄 Converting content to multi-format...');
+      const convertedContent = await ContentConverter.convertToMultiFormat(content, contentType);
+      console.log('✅ Content converted:', {
+        hasMarkdown: !!convertedContent.markdown?.text,
+        hasHtml: !!convertedContent.html?.text,
+        primaryFormat: convertedContent.primaryFormat,
+        markdownLength: convertedContent.markdown?.text?.length || 0,
+        htmlLength: convertedContent.html?.text?.length || 0
+      });
+      updateData.content = convertedContent;
+    }
+    
+    // If metadata is provided, merge it with existing metadata
+    if (Object.keys(metadata).length > 0) {
+      const existingMetadata = section.content?.metadata || {};
+      updateData['content.metadata'] = { ...existingMetadata, ...metadata };
+      console.log('📋 Metadata merged:', {
+        existing: Object.keys(existingMetadata),
+        new: Object.keys(metadata),
+        merged: Object.keys(updateData['content.metadata'])
+      });
+    }
+    
+    console.log('💾 Updating section with data:', {
+      hasContent: !!updateData.content,
+      hasMetadata: !!updateData['content.metadata']
+    });
+    
+    // Update section content
+    const updatedSection = await SectionService.updateSection(sectionId, updateData);
+    
+    console.log('✅ Section updated successfully:', {
+      sectionId: updatedSection._id,
+      hasContent: !!updatedSection.content,
+      contentStructure: updatedSection.content ? {
+        hasMarkdown: !!updatedSection.content.markdown?.text,
+        hasHtml: !!updatedSection.content.html?.text,
+        primaryFormat: updatedSection.content.primaryFormat,
+        hasMetadata: !!updatedSection.content.metadata
+      } : null
+    });
+    
+    res.json({ 
+      success: true, 
+      message: "Section content updated successfully",
+      section: updatedSection
+    });
+    
+  } catch (error) {
+    console.error("❌ Section content update error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
+//GET COURSE PROGRESS (New Architecture)
+app.get("/api/course/:courseId/progress", requireAuth, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const userId = req.user._id.toString();
+    
+    // Get course
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: "Course not found"
+      });
+    }
+    
+    // Check access permissions
+    const isOwner = course.user === userId;
+    const isPublic = course.isPublic === true;
+    
+    if (!isPublic && !isOwner) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied"
+      });
+    }
+    
+    // Get sections for progress calculation
+    const sections = await Section.find({ courseId: courseId });
+    const totalSections = sections.length;
+    const completedSections = sections.filter(s => s.content?.metadata?.done).length;
+    const progressPercentage = totalSections > 0 ? Math.round((completedSections / totalSections) * 100) : 0;
+    
+    // Get language preference
+    const language = await Language.findOne({ courseId: courseId, userId: userId });
+    
+    res.json({
+      success: true,
+      courseId: course._id,
+      progress: {
+        completed: completedSections,
+        total: totalSections,
+        percentage: progressPercentage,
+        isCompleted: course.completed || false
+      },
+      language: language?.lang || 'english',
+      course: {
+        _id: course._id,
+        title: course.title || course.mainTopic,
+        mainTopic: course.mainTopic,
+        slug: course.slug,
+        type: course.type,
+        photo: course.photo,
+        isPublic: course.isPublic,
+        createdAt: course.date,
+        // Convert to legacy format for compatibility
+        content: course.content || null
+      }
+    });
+    
+  } catch (error) {
+    logger.error("Get course progress error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+});
+
+//GET COURSE HIERARCHY (New Architecture)
+app.get("/api/v2/courses/:courseId/hierarchy", requireAuth, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { includeContent = false } = req.query;
+    const userId = req.user._id.toString();
+    
+    // Get course
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: "Course not found"
+      });
+    }
+    
+    // Check access permissions
+    const isOwner = course.user === userId;
+    const isPublic = course.isPublic === true;
+    
+    if (!isPublic && !isOwner) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied"
+      });
+    }
+    
+    // Get all sections for this course
+    const sections = await Section.find({ courseId: courseId })
+      .sort({ order: 1, createdAt: 1 });
+    
+    // Build hierarchical structure
+    const rootSections = sections.filter(s => !s.parentId);
+    
+    const buildHierarchy = (parentSections) => {
+      return parentSections.map(section => {
+        const children = sections.filter(s => 
+          s.parentId && s.parentId.toString() === section._id.toString()
+        );
+        
+        const sectionData = {
+          _id: section._id,
+          title: section.title,
+          order: section.order,
+          level: section.level || 1,
+          hasChildren: children.length > 0,
+          createdAt: section.createdAt
+        };
+        
+        // Include content if requested
+        if (includeContent === 'true') {
+          sectionData.content = section.content;
+        }
+        
+        // Recursively build children
+        if (children.length > 0) {
+          sectionData.children = buildHierarchy(children);
+        }
+        
+        return sectionData;
+      });
+    };
+    
+    const hierarchy = buildHierarchy(rootSections);
+    
+    res.json({
+      success: true,
+      courseId: course._id,
+      course: {
+        _id: course._id,
+        title: course.title || course.mainTopic,
+        mainTopic: course.mainTopic,
+        slug: course.slug,
+        type: course.type,
+        photo: course.photo,
+        isPublic: course.isPublic,
+        createdAt: course.date
+      },
+      hierarchy: hierarchy,
+      totalSections: sections.length,
+      rootSections: rootSections.length
+    });
+    
+  } catch (error) {
+    logger.error("Get course hierarchy error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+});
+
 //UPDATE COURSE
 app.post("/api/update", async (req, res) => {
   const { content, courseId } = req.body;

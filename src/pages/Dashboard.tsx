@@ -225,7 +225,9 @@ const Dashboard = () => {
           // New architecture course - fetch hierarchy and convert to legacy format
           try {
             console.log('📡 Fetching course hierarchy for new architecture course...');
-            const hierarchyResponse = await fetch(`${serverURL}/api/v2/courses/${courseId}/hierarchy?includeContent=true`);
+            const hierarchyResponse = await fetch(`${serverURL}/api/v2/courses/${courseId}/hierarchy?includeContent=true`, {
+              credentials: 'include'
+            });
             const hierarchyData = await hierarchyResponse.json();
             
             if (hierarchyData.success && hierarchyData.hierarchy) {
@@ -277,7 +279,9 @@ const Dashboard = () => {
           // New architecture course - try to fetch hierarchy
           try {
             console.log('📡 Fetching course hierarchy for new architecture course (fallback)...');
-            const hierarchyResponse = await fetch(`${serverURL}/api/v2/courses/${courseId}/hierarchy?includeContent=true`);
+            const hierarchyResponse = await fetch(`${serverURL}/api/v2/courses/${courseId}/hierarchy?includeContent=true`, {
+              credentials: 'include'
+            });
             const hierarchyData = await hierarchyResponse.json();
             
             if (hierarchyData.success && hierarchyData.hierarchy) {
@@ -330,7 +334,9 @@ const Dashboard = () => {
         // New architecture course - try to fetch hierarchy
         try {
           console.log('📡 Fetching course hierarchy for new architecture course (error fallback)...');
-          const hierarchyResponse = await fetch(`${serverURL}/api/v2/courses/${courseId}/hierarchy?includeContent=true`);
+          const hierarchyResponse = await fetch(`${serverURL}/api/v2/courses/${courseId}/hierarchy?includeContent=true`, {
+            credentials: 'include'
+          });
           const hierarchyData = await hierarchyResponse.json();
           
           if (hierarchyData.success && hierarchyData.hierarchy) {

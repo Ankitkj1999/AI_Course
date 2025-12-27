@@ -24,11 +24,11 @@ const getServerURL = () => {
     const protocol = window.location.protocol;
     const hostname = window.location.hostname;
     
-    // Use port 5010 (standard server port as per .env.example)
-    return `${protocol}//${hostname}:5010`;
+    // Use port 5013 (current running server port)
+    return `${protocol}//${hostname}:5013`;
   }
   
-  return 'http://localhost:5010';
+  return 'http://localhost:5013';
 };
 
 export const serverURL = getServerURL();

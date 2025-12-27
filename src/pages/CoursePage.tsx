@@ -58,6 +58,28 @@ import html2pdf from "html2pdf.js";
 import { SubtopicEditor } from "@/components/course/SubtopicEditor";
 import { Pencil } from "lucide-react";
 
+// Helper function to convert hierarchy to legacy format for compatibility
+const convertHierarchyToLegacyFormat = (hierarchy: any, mainTopic: string) => {
+  if (!hierarchy || !hierarchy.hierarchy) return {};
+  
+  const legacyFormat = {
+    [mainTopic.toLowerCase()]: hierarchy.hierarchy.map((section: any) => ({
+      title: section.title,
+      subtopics: section.children ? section.children.map((child: any) => ({
+        title: child.title,
+        theory: child.content?.markdown?.text || child.content?.html?.text || "",
+        contentType: child.content?.primaryFormat || "markdown",
+        done: child.content?.metadata?.done || false,
+        image: child.content?.metadata?.image || "",
+        youtube: child.content?.metadata?.youtube || "",
+        sectionId: child._id // Store section ID for updates
+      })) : []
+    }))
+  };
+  
+  return legacyFormat;
+};
+
 const CoursePage = () => {
   //ADDED FROM v4.0
   const { state } = useLocation();
@@ -67,7 +89,31 @@ const CoursePage = () => {
   const [courseData, setCourseData] = useState(null);
   const [isFetchingCourse, setIsFetchingCourse] = useState(false);
 
-  const jsonData = JSON.parse(localStorage.getItem("jsonData"));
+  // State for section-based architecture
+  const [courseHierarchy, setCourseHierarchy] = useState(null);
+  const [currentSection, setCurrentSection] = useState(null);
+  const [sectionContent, setSectionContent] = useState("");
+  const [sectionContentType, setSectionContentType] = useState("markdown");
+  
+  // Content generation lock to prevent duplicate calls
+  const [generatingContent, setGeneratingContent] = useState(new Set());
+
+  // State variables for course data when fetched from server
+  const [mainTopic, setMainTopic] = useState(state?.mainTopic || "");
+  const [type, setType] = useState(state?.type || "");
+  const [courseId, setCourseId] = useState(state?.courseId || "");
+  const [courseSlug, setCourseSlug] = useState(urlSlug || "");
+  const [end, setEnd] = useState(state?.end || "");
+  const [pass, setPass] = useState(state?.pass || false);
+  const [lang, setLang] = useState(state?.lang || "english");
+
+  // Initialize jsonData after mainTopic is available - MOVED BEFORE USAGE
+  const getJsonData = useCallback(() => {
+    if (!mainTopic) return JSON.parse(localStorage.getItem("jsonData") || "{}");
+    return courseHierarchy ? convertHierarchyToLegacyFormat(courseHierarchy, mainTopic) : JSON.parse(localStorage.getItem("jsonData") || "{}");
+  }, [mainTopic, courseHierarchy]);
+
+  const jsonData = getJsonData();
   const [selected, setSelected] = useState("");
   const [theory, setTheory] = useState("");
   const [contentType, setContentType] = useState("html"); // Track content type for proper rendering
@@ -82,17 +128,8 @@ const CoursePage = () => {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingSubtopic, setEditingSubtopic] = useState<{ title: string; content: string } | null>(null);
 
-  // State variables for course data when fetched from server
-  const [mainTopic, setMainTopic] = useState(state?.mainTopic || "");
-  const [type, setType] = useState(state?.type || "");
-  const [courseId, setCourseId] = useState(state?.courseId || "");
-  const [courseSlug, setCourseSlug] = useState(urlSlug || "");
-  const [end, setEnd] = useState(state?.end || "");
-  const [pass, setPass] = useState(state?.pass || false);
-  const [lang, setLang] = useState(state?.lang || "english");
-
-  const defaultMessage = `Hey there! I'm your AI teacher. If you have any questions about your ${mainTopic || 'this'} course, whether it's about videos, images, or theory, just ask me. I'm here to clear your doubts.`;
-  const defaultPrompt = `I have a doubt about this topic :- ${mainTopic || 'this topic'}. Please clarify my doubt in very short :- `;
+  const defaultMessage = `Hey there! I'm your AI teacher. If you have any questions about your ${mainTopic ? mainTopic : 'this'} course, whether it's about videos, images, or theory, just ask me. I'm here to clear your doubts.`;
+  const defaultPrompt = `I have a doubt about this topic :- ${mainTopic ? mainTopic : 'this topic'}. Please clarify my doubt in very short :- `;
 
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(true);
@@ -100,6 +137,58 @@ const CoursePage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const initializedRef = useRef(false);
   const { toast } = useToast();
+
+  // Load course hierarchy from Section-based API
+  const loadCourseHierarchy = useCallback(async () => {
+    if (!courseId) return;
+    
+    try {
+      console.log('🔄 Loading course hierarchy for:', courseId);
+      const response = await fetch(`${serverURL}/api/v2/courses/${courseId}/hierarchy?includeContent=true`, {
+        credentials: 'include'
+      });
+      const data = await response.json();
+      
+      console.log('📥 Hierarchy API response:', {
+        success: data.success,
+        hasHierarchy: !!data.hierarchy,
+        sectionsCount: data.hierarchy?.length || 0
+      });
+      
+      if (data.success) {
+        // Debug log the hierarchy structure
+        if (data.hierarchy) {
+          console.log('📊 Hierarchy structure:', data.hierarchy.map(section => ({
+            title: section.title,
+            childrenCount: section.children?.length || 0,
+            childrenWithContent: section.children?.filter(child => 
+              child.content?.markdown?.text || child.content?.html?.text
+            ).length || 0,
+            children: section.children?.map(child => ({
+              title: child.title,
+              hasMarkdown: !!child.content?.markdown?.text,
+              hasHtml: !!child.content?.html?.text,
+              markdownLength: child.content?.markdown?.text?.length || 0,
+              htmlLength: child.content?.html?.text?.length || 0,
+              primaryFormat: child.content?.primaryFormat,
+              metadata: child.content?.metadata
+            })) || []
+          })));
+        }
+        
+        setCourseHierarchy(data);
+        console.log('✅ Course hierarchy loaded and state updated');
+        return data;
+      } else {
+        console.error('❌ Failed to load course hierarchy:', data);
+        return null;
+      }
+    } catch (error) {
+      console.error('❌ Error loading course hierarchy:', error);
+      return null;
+    }
+  }, [courseId]);
+
   const isMobile = useIsMobile();
   const mainContentRef = useRef<HTMLDivElement>(null);
   const [value, setValue] = useState<Content>("");
@@ -177,10 +266,43 @@ const CoursePage = () => {
 
   // Loading skeleton for course content
   const CourseContentSkeleton = () => (
-    <div className="space-y-6 animate-pulse">
-      <Skeleton className="h-8 w-3/4 mb-8" />
+    <div className="space-y-6">
+      {/* Header with lesson info */}
+      <div className="flex justify-between items-start mb-6">
+        <div>
+          <p className="text-sm text-muted-foreground mb-1">
+            Lesson {getCurrentLessonNumber()} of {getTotalLessons()}
+          </p>
+          <h1 className="text-3xl font-bold">{selected}</h1>
+        </div>
+      </div>
 
-      <div className="space-y-6">
+      {/* Content generation indicator */}
+      <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6 text-center">
+        <div className="flex items-center justify-center mb-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+          <div className="text-blue-700 dark:text-blue-300">
+            <h3 className="font-semibold text-lg">Generating Content...</h3>
+            <p className="text-sm opacity-80">
+              Our AI is creating personalized content for "{selected}"
+            </p>
+          </div>
+        </div>
+        
+        <div className="space-y-2">
+          <div className="flex items-center justify-center text-sm text-blue-600 dark:text-blue-400">
+            <div className="flex space-x-1">
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+            </div>
+            <span className="ml-2">This usually takes 10-30 seconds</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Content skeleton */}
+      <div className="space-y-6 animate-pulse">
         <div>
           <Skeleton className="h-7 w-1/2 mb-4" />
           <Skeleton className="h-5 w-full mb-2" />
@@ -218,7 +340,9 @@ const CoursePage = () => {
 
   const storeLocal = useCallback(async (messages) => {
     try {
-      localStorage.setItem(mainTopic, JSON.stringify(messages));
+      if (mainTopic) {
+        localStorage.setItem(mainTopic, JSON.stringify(messages));
+      }
     } catch (error) {
       console.error(error);
     }
@@ -226,16 +350,18 @@ const CoursePage = () => {
 
   const loadMessages = useCallback(async () => {
     try {
-      const jsonValue = localStorage.getItem(mainTopic);
-      if (jsonValue !== null) {
-        setMessages(JSON.parse(jsonValue));
-      } else {
-        const newMessages = [
-          ...messages,
-          { text: defaultMessage, sender: "bot" },
-        ];
-        setMessages(newMessages);
-        await storeLocal(newMessages);
+      if (mainTopic) {
+        const jsonValue = localStorage.getItem(mainTopic);
+        if (jsonValue !== null) {
+          setMessages(JSON.parse(jsonValue));
+        } else {
+          const newMessages = [
+            ...messages,
+            { text: defaultMessage, sender: "bot" },
+          ];
+          setMessages(newMessages);
+          await storeLocal(newMessages);
+        }
       }
     } catch (error) {
       console.error(error);
@@ -247,15 +373,19 @@ const CoursePage = () => {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    loadMessages();
-    getNotes();
+    if (mainTopic) {
+      loadMessages();
+    }
+    if (courseId) {
+      getNotes();
+    }
 
     // Ensure the page starts at the top when loaded
     if (mainContentRef.current) {
       mainContentRef.current.scrollTop = 0;
     }
     window.scrollTo(0, 0);
-  }, [loadMessages, getNotes]);
+  }, [loadMessages, getNotes, mainTopic, courseId]);
 
   // Mobile effect
   useEffect(() => {
@@ -269,6 +399,8 @@ const CoursePage = () => {
     const fetchCourseData = async () => {
       // Skip if we already have mainTopic from state
       if (mainTopic) {
+        // Load course hierarchy for new architecture courses
+        await loadCourseHierarchy();
         setIsLoading(false);
         return;
       }
@@ -299,11 +431,6 @@ const CoursePage = () => {
             setCourseData(course);
             console.log("Course data fetched:", course);
             
-            // Parse the content JSON
-            const parsedContent = JSON.parse(course.content);
-            localStorage.setItem('jsonData', JSON.stringify(parsedContent));
-            localStorage.setItem('courseId', course._id);
-            
             // Set all course state
             setMainTopic(course.mainTopic);
             setType(course.type);
@@ -314,6 +441,9 @@ const CoursePage = () => {
             
             // Check if course is completed
             setIsCompleted(course.completed || false);
+            
+            // Load course hierarchy for new architecture
+            await loadCourseHierarchy();
             
             setIsLoading(false);
           } else {
@@ -362,7 +492,7 @@ const CoursePage = () => {
     };
 
     fetchCourseData();
-  }, [mainTopic, urlSlug, navigate, toast]);
+  }, [mainTopic, urlSlug, navigate, toast, loadCourseHierarchy]);
 
   // Main topic validation effect - only redirect if we're not fetching course data
   useEffect(() => {
@@ -376,11 +506,12 @@ const CoursePage = () => {
 
   // Data processing effect - runs when jsonData changes initially
   useEffect(() => {
-    if (!mainTopic || !jsonData || !jsonData[mainTopic.toLowerCase()]) {
+    const currentJsonData = getJsonData();
+    if (!mainTopic || !currentJsonData || !currentJsonData[mainTopic.toLowerCase()]) {
       return;
     }
 
-    const mainTopicData = jsonData[mainTopic.toLowerCase()][0];
+    const mainTopicData = currentJsonData[mainTopic.toLowerCase()][0];
     if (!mainTopicData || !mainTopicData.subtopics || mainTopicData.subtopics.length === 0) {
       return;
     }
@@ -409,12 +540,13 @@ const CoursePage = () => {
     }
 
     setIsLoading(false);
-    localStorage.setItem("jsonData", JSON.stringify(jsonData));
-  }, [jsonData, mainTopic, type, selected]);
+    localStorage.setItem("jsonData", JSON.stringify(currentJsonData));
+  }, [jsonData, mainTopic, type, selected, getJsonData]);
 
   // Separate effect for counting done topics
   useEffect(() => {
-    if (!mainTopic || !jsonData || !jsonData[mainTopic.toLowerCase()]) {
+    const currentJsonData = getJsonData();
+    if (!mainTopic || !currentJsonData || !currentJsonData[mainTopic.toLowerCase()]) {
       return;
     }
 
@@ -422,7 +554,7 @@ const CoursePage = () => {
       let doneCount = 0;
       let totalTopics = 0;
 
-      jsonData[mainTopic.toLowerCase()].forEach((topic) => {
+      currentJsonData[mainTopic.toLowerCase()].forEach((topic) => {
         topic.subtopics.forEach((subtopic) => {
           if (subtopic.done) {
             doneCount++;
@@ -444,7 +576,7 @@ const CoursePage = () => {
     };
 
     CountDoneTopics();
-  }, [jsonData, mainTopic, pass]);
+  }, [getJsonData, mainTopic, pass]);
 
   // Completion check effect
   useEffect(() => {
@@ -453,14 +585,20 @@ const CoursePage = () => {
     }
   }, [percentage]);
 
-  const toggleDoneState = (done) => {
-    const { currentTopicIndex, currentSubtopicIndex } =
-      findCurrentLessonPosition();
-    if (currentTopicIndex !== -1 && currentSubtopicIndex !== -1) {
-      jsonData[mainTopic.toLowerCase()][currentTopicIndex].subtopics[
-        currentSubtopicIndex
-      ].done = done;
-      updateCourse();
+  const toggleDoneState = async (done) => {
+    if (courseHierarchy && currentSection) {
+      // For new architecture, update section completion
+      await updateSectionCompletion(currentSection._id, done);
+    } else {
+      // Fallback to legacy format
+      const { currentTopicIndex, currentSubtopicIndex } =
+        findCurrentLessonPosition();
+      if (currentTopicIndex !== -1 && currentSubtopicIndex !== -1) {
+        jsonData[mainTopic.toLowerCase()][currentTopicIndex].subtopics[
+          currentSubtopicIndex
+        ].done = done;
+        updateCourse();
+      }
     }
   };
 
@@ -505,10 +643,6 @@ const CoursePage = () => {
       setEditingSubtopic(null);
     }
   };
-
-
-
-
 
   const sendMessage = async () => {
     if (newMessage.trim() === "") return;
@@ -558,14 +692,17 @@ const CoursePage = () => {
     let totalTopics = 0;
 
     // Count completed lessons
-    jsonData[mainTopic.toLowerCase()].forEach((topic) => {
-      topic.subtopics.forEach((subtopic) => {
-        if (subtopic.done) {
-          doneCount++;
-        }
-        totalTopics++;
+    const currentJsonData = getJsonData();
+    if (currentJsonData[mainTopic.toLowerCase()]) {
+      currentJsonData[mainTopic.toLowerCase()].forEach((topic) => {
+        topic.subtopics.forEach((subtopic) => {
+          if (subtopic.done) {
+            doneCount++;
+          }
+          totalTopics++;
+        });
       });
-    });
+    }
 
     // Add quiz to total count
     totalTopics = totalTopics + 1;
@@ -701,47 +838,173 @@ const CoursePage = () => {
     window.scrollTo(0, 0);
   };
 
-  const handleSelect = (topics, sub) => {
+  const handleSelect = async (topics, sub) => {
     setActiveAccordionItem(topics);
+    
+    // Create a unique key for this content
+    const contentKey = `${topics}-${sub}`;
+    
+    // Check if content generation is already in progress
+    if (generatingContent.has(contentKey)) {
+      console.log('⏳ Content generation already in progress for:', contentKey);
+      return;
+    }
+    
     if (!isLoading) {
-      const mTopic = jsonData[mainTopic.toLowerCase()].find(
-        (topic) => topic.title === topics
-      );
-      const mSubTopic = mTopic?.subtopics.find(
-        (subtopic) => subtopic.title === sub
-      );
-
-      if (
-        mSubTopic.theory === "" ||
-        mSubTopic.theory === undefined ||
-        mSubTopic.theory === null
-      ) {
-        if (type === "video & text course") {
-          const query = `${mSubTopic.title} ${mainTopic} in english`;
-          setIsLoading(true);
-          sendVideo(query, topics, sub, mSubTopic.title);
+      // For new architecture, find the section by title
+      if (courseHierarchy && courseHierarchy.hierarchy) {
+        const section = courseHierarchy.hierarchy
+          .find(s => s.title === topics)
+          ?.children?.find(c => c.title === sub);
+        
+        if (section) {
+          // Debug logging for content detection
+          console.log('🔍 Content Detection Debug:', {
+            sectionId: section._id,
+            sectionTitle: section.title,
+            topicTitle: topics,
+            subtopicTitle: sub,
+            contentStructure: section.content,
+            hasMarkdown: !!section.content?.markdown?.text,
+            hasHtml: !!section.content?.html?.text,
+            hasLexical: !!section.content?.lexical?.editorState,
+            markdownLength: section.content?.markdown?.text?.length || 0,
+            htmlLength: section.content?.html?.text?.length || 0,
+            metadata: section.content?.metadata
+          });
+          
+          // Always navigate to the selected subtopic first
+          setSelected(sub);
+          setCurrentSection(section);
+          
+          // Check if section has content
+          const hasContent = section.content?.markdown?.text || 
+                           section.content?.html?.text || 
+                           section.content?.lexical?.editorState;
+          
+          console.log('📊 Content Check Result:', {
+            hasContent,
+            willGenerate: !hasContent,
+            contentSource: section.content?.markdown?.text ? 'markdown' : 
+                          section.content?.html?.text ? 'html' : 
+                          section.content?.lexical?.editorState ? 'lexical' : 'none'
+          });
+          
+          if (!hasContent) {
+            console.log('🚀 Starting content generation for:', sub);
+            
+            // Add to generation lock
+            setGeneratingContent(prev => new Set(prev).add(contentKey));
+            
+            // Show loading state immediately for content generation
+            setIsLoading(true);
+            setTheory(""); // Clear previous content
+            setMedia(""); // Clear previous media
+            
+            try {
+              // Generate content for this section
+              if (type === "video & text course") {
+                const query = `${sub} ${mainTopic} in english`;
+                await generateVideoContent(section._id, query, sub);
+              } else {
+                const prompt = `Strictly in ${lang}, Explain me about this subtopic of ${mainTopic} with examples :- ${sub}. Please Strictly Don't Give Additional Resources And Images.`;
+                await generateTextContent(section._id, prompt, sub);
+              }
+            } catch (error) {
+              console.error('❌ Content generation failed:', error);
+              toast({
+                title: "Error",
+                description: "Failed to generate content",
+              });
+              setIsLoading(false);
+            } finally {
+              // Remove from generation lock
+              setGeneratingContent(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(contentKey);
+                return newSet;
+              });
+            }
+          } else {
+            console.log('✅ Loading existing content for:', sub);
+            // Content already exists, display it immediately
+            const content = section.content.markdown?.text || 
+                          section.content.html?.text || '';
+            const contentType = section.content.primaryFormat || 'markdown';
+            
+            console.log('📄 Content Details:', {
+              contentLength: content.length,
+              contentType,
+              primaryFormat: section.content.primaryFormat,
+              hasMetadata: !!section.content.metadata
+            });
+            
+            // Prepare content properly before setting
+            const prepared = prepareContentForRendering(content, contentType);
+            
+            setTheory(prepared.content);
+            setContentType(prepared.type);
+            setSectionContent(content);
+            setSectionContentType(contentType);
+            
+            // Set media based on metadata
+            if (type === "video & text course") {
+              setMedia(section.content.metadata?.youtube || '');
+            } else {
+              setMedia(section.content.metadata?.image || '');
+            }
+          }
         } else {
-          const prompt = `Strictly in ${lang}, Explain me about this subtopic of ${mainTopic} with examples :- ${mSubTopic.title}. Please Strictly Don't Give Additional Resources And Images.`;
-          const promptImage = `Example of ${mSubTopic.title} in ${mainTopic}`;
-          setIsLoading(true);
-          sendPrompt(prompt, promptImage, topics, sub);
+          console.warn('⚠️ Section not found:', { topics, sub });
         }
       } else {
-        setSelected(mSubTopic.title);
-
-        // Prepare content properly before setting
-        const prepared = prepareContentForRendering(
-          mSubTopic.theory,
-          mSubTopic.contentType
+        // Fallback to legacy format if hierarchy not available
+        const mTopic = jsonData[mainTopic.toLowerCase()].find(
+          (topic) => topic.title === topics
+        );
+        const mSubTopic = mTopic?.subtopics.find(
+          (subtopic) => subtopic.title === sub
         );
 
-        setTheory(prepared.content);
-        setContentType(prepared.type);
+        if (mSubTopic) {
+          // Always navigate to the selected subtopic first
+          setSelected(mSubTopic.title);
 
-        if (type === "video & text course") {
-          setMedia(mSubTopic.youtube);
-        } else {
-          setMedia(mSubTopic.image);
+          if (
+            mSubTopic.theory === "" ||
+            mSubTopic.theory === undefined ||
+            mSubTopic.theory === null
+          ) {
+            // Show loading state immediately for content generation
+            setIsLoading(true);
+            setTheory(""); // Clear previous content
+            setMedia(""); // Clear previous media
+            
+            if (type === "video & text course") {
+              const query = `${mSubTopic.title} ${mainTopic} in english`;
+              sendVideo(query, topics, sub, mSubTopic.title);
+            } else {
+              const prompt = `Strictly in ${lang}, Explain me about this subtopic of ${mainTopic} with examples :- ${mSubTopic.title}. Please Strictly Don't Give Additional Resources And Images.`;
+              const promptImage = `Example of ${mSubTopic.title} in ${mainTopic}`;
+              sendPrompt(prompt, promptImage, topics, sub);
+            }
+          } else {
+            // Content already exists, display it immediately
+            // Prepare content properly before setting
+            const prepared = prepareContentForRendering(
+              mSubTopic.theory,
+              mSubTopic.contentType
+            );
+
+            setTheory(prepared.content);
+            setContentType(prepared.type);
+
+            if (type === "video & text course") {
+              setMedia(mSubTopic.youtube);
+            } else {
+              setMedia(mSubTopic.image);
+            }
+          }
         }
       }
     }
@@ -883,23 +1146,251 @@ const CoursePage = () => {
     updateCourse();
   }
 
-  async function updateCourse() {
-    CountDoneTopics();
-    localStorage.setItem("jsonData", JSON.stringify(jsonData));
-    const dataToSend = {
-      content: JSON.stringify(jsonData),
-      courseId: courseId,
-    };
+  async function updateSectionContent(sectionId: string, content: string, contentType: string = "markdown") {
     try {
-      const postURL = serverURL + "/api/update";
-      await axios.post(postURL, dataToSend);
-    } catch (error) {
-      console.error(error);
-      toast({
-        title: "Error",
-        description: "Internal Server Error",
+      const response = await fetch(`${serverURL}/api/sections/${sectionId}/content`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ content, contentType })
       });
+      
+      const data = await response.json();
+      if (data.success) {
+        console.log('✅ Section content updated successfully');
+        // Reload hierarchy to get updated content
+        await loadCourseHierarchy();
+      } else {
+        console.error('❌ Failed to update section content:', data);
+        throw new Error(data.message || 'Failed to update section content');
+      }
+    } catch (error) {
+      console.error('❌ Error updating section content:', error);
+      throw error;
+    }
+  }
+
+  // New content generation functions for Section-based architecture
+  async function generateTextContent(sectionId: string, prompt: string, subtopicTitle: string) {
+    console.log('🎯 Starting text content generation:', {
+      sectionId,
+      subtopicTitle,
+      promptLength: prompt.length
+    });
+    
+    try {
+      const preferences = getProviderPreferencesWithFallback('course');
+      const dataToSend = {
+        prompt: prompt,
+        provider: preferences.provider,
+        model: preferences.model,
+        temperature: 0.7
+      };
+      
+      console.log('📡 Calling /api/generate with:', {
+        provider: preferences.provider,
+        model: preferences.model
+      });
+      
+      const postURL = serverURL + "/api/generate";
+      const res = await axios.post(postURL, dataToSend, {
+        withCredentials: true
+      });
+      
+      const generatedText = res.data.text;
+      const contentType = res.data.contentType || "markdown";
+      
+      console.log('✅ Content generated successfully:', {
+        contentLength: generatedText.length,
+        contentType
+      });
+      
+      // Generate image for the content
+      const promptImage = `Example of ${subtopicTitle} in ${mainTopic}`;
+      const imageRes = await axios.post(serverURL + "/api/image", {
+        prompt: promptImage
+      });
+      
+      const imageUrl = imageRes.data.url;
+      
+      console.log('🖼️ Image generated:', imageUrl);
+      
+      // Update section content with generated text and image metadata
+      await updateSectionContentWithMedia(sectionId, generatedText, contentType, imageUrl, null);
+      
+    } catch (error) {
+      console.error('❌ Text content generation failed:', error);
+      throw error;
+    }
+  }
+
+  async function generateVideoContent(sectionId: string, query: string, subtopicTitle: string) {
+    try {
+      // Get YouTube video
+      const videoRes = await axios.post(serverURL + "/api/yt", {
+        prompt: query
+      });
+      
+      const videoId = videoRes.data.url;
+      
+      // Get transcript
+      const transcriptRes = await axios.post(serverURL + "/api/transcript", {
+        prompt: videoId
+      });
+      
+      let transcriptText = '';
+      try {
+        const transcriptData = transcriptRes.data.url;
+        const allText = transcriptData.map((item) => item.text);
+        transcriptText = allText.join(" ");
+      } catch (transcriptError) {
+        console.warn('Transcript extraction failed, using fallback');
+        transcriptText = `Content about ${subtopicTitle} in ${mainTopic}`;
+      }
+      
+      // Generate summary from transcript
+      const preferences = getProviderPreferencesWithFallback('course');
+      const summaryPrompt = `Strictly in ${lang}, Summarize this theory in a teaching way :- ${transcriptText}.`;
+      const summaryRes = await axios.post(serverURL + "/api/generate", {
+        prompt: summaryPrompt,
+        provider: preferences.provider,
+        model: preferences.model,
+        temperature: 0.7
+      }, {
+        withCredentials: true
+      });
+      
+      const generatedText = summaryRes.data.text;
+      const contentType = summaryRes.data.contentType || "markdown";
+      
+      // Update section content with generated text and video metadata
+      await updateSectionContentWithMedia(sectionId, generatedText, contentType, null, videoId);
+      
+    } catch (error) {
+      console.error('Video content generation failed:', error);
+      throw error;
+    }
+  }
+
+  async function updateSectionContentWithMedia(sectionId: string, content: string, contentType: string, imageUrl: string | null, videoId: string | null) {
+    console.log('💾 Saving content to section:', {
+      sectionId,
+      contentLength: content.length,
+      contentType,
+      hasImage: !!imageUrl,
+      hasVideo: !!videoId
+    });
+    
+    try {
+      // Create enhanced content with metadata
+      const enhancedContent = content;
+        
+      const requestBody = {
+        content: enhancedContent,
+        contentType,
+        metadata: {
+          image: imageUrl,
+          youtube: videoId,
+          done: false
+        }
+      };
+        
+      console.log('📤 Sending request to section API:', {
+        url: `${serverURL}/api/sections/${sectionId}/content`,
+        bodySize: JSON.stringify(requestBody).length,
+        requestBody: requestBody
+      });
+        
+      const response = await fetch(`${serverURL}/api/sections/${sectionId}/content`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(requestBody)
+      });
+        
+      const data = await response.json();
+        
+      console.log('📥 Section API response:', {
+        success: data.success,
+        status: response.status,
+        message: data.message,
+        fullResponse: data
+      });
+        
+      if (data.success) {
+        console.log('✅ Section content updated with media');
+          
+        // Update UI immediately
+        const prepared = prepareContentForRendering(enhancedContent, contentType);
+        setTheory(prepared.content);
+        setContentType(prepared.type);
+        setSectionContent(enhancedContent);
+        setSectionContentType(contentType);
+          
+        if (type === "video & text course") {
+          setMedia(videoId || '');
+        } else {
+          setMedia(imageUrl || '');
+        }
+          
+        setIsLoading(false);
+          
+        console.log('🔄 Reloading course hierarchy...');
+        // Reload hierarchy to get updated content
+        await loadCourseHierarchy();
+      } else {
+        console.error('❌ Failed to update section content with media:', data);
+        throw new Error(data.message || 'Failed to update section content');
+      }
+    } catch (error) {
+      console.error('❌ Error updating section content with media:', error);
       setIsLoading(false);
+      throw error;
+    }
+  }
+
+  async function updateCourse() {
+    // For new architecture, we don't need to update the course document
+    // Content is stored in individual Section documents
+    CountDoneTopics();
+    
+    // Update localStorage for compatibility (if needed)
+    if (courseHierarchy) {
+      const legacyFormat = convertHierarchyToLegacyFormat(courseHierarchy, mainTopic);
+      localStorage.setItem("jsonData", JSON.stringify(legacyFormat));
+    }
+  }
+
+  // Update section completion status
+  async function updateSectionCompletion(sectionId: string, completed: boolean) {
+    try {
+      const response = await fetch(`${serverURL}/api/sections/${sectionId}/content`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          metadata: {
+            done: completed
+          }
+        })
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        console.log('✅ Section completion status updated');
+        // Reload hierarchy to get updated status
+        await loadCourseHierarchy();
+      } else {
+        console.error('❌ Failed to update section completion:', data);
+      }
+    } catch (error) {
+      console.error('❌ Error updating section completion:', error);
     }
   }
 
@@ -952,7 +1443,6 @@ const CoursePage = () => {
         sendSummery(prompt, url, mTopic, mSubTopic);
       }
     } catch (error) {
-      console.error(error);
       const prompt = `Strictly in ${lang}, Explain me about this subtopic of ${mainTopic} with examples :- ${subtop}.  Please Strictly Don't Give Additional Resources And Images.`;
       sendSummery(prompt, url, mTopic, mSubTopic);
     }
@@ -1337,7 +1827,7 @@ const CoursePage = () => {
                    <div id="__react-email-preview" style="display:none;overflow:hidden;line-height:1px;opacity:0;max-height:0;max-width:0;">Certificate<div>&nbsp;</div>
                    </div>
                   
-                    <body style="padding:20px; margin-left:auto;margin-right:auto;margin-top:auto;margin-bottom:auto;background-color:#f6f9fc;font-family:ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, &quot;Helvetica Neue&quot;, Arial, &quot;Noto Sans&quot;, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;, &quot;Segoe UI Symbol&quot;, &quot;Noto Color Emoji&quot;">
+                    <body style="padding:20px; margin-left:auto;margin-right:auto;margin-top:auto;margin-bottom:auto;background-color:#f6f9fc;font-family:ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe Symbol", "Noto Color Emoji"">
                       <table align="center" role="presentation" cellSpacing="0" cellPadding="0" border="0" height="80%" width="100%" style="max-width:37.5em;max-height:80%; margin-left:auto;margin-right:auto;margin-top:80px;margin-bottom:80px;width:465px;border-radius:0.25rem;border-width:1px;background-color:#fff;padding:20px">
                         <tr style="width:100%">
                           <td>

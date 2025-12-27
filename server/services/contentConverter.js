@@ -312,6 +312,102 @@ class ContentConverter {
         
         throw new Error(`Conversion from ${fromFormat} to ${toFormat} not supported`);
     }
+    
+    /**
+     * Convert content to multi-format structure for section-based architecture
+     * This creates a structure with markdown, html, and lexical formats
+     */
+    convertToMultiFormat(content, contentType = 'markdown') {
+        if (!content || typeof content !== 'string') {
+            return {
+                markdown: { text: '' },
+                html: { text: '' },
+                lexical: { editorState: null },
+                primaryFormat: contentType,
+                metadata: {}
+            };
+        }
+        
+        try {
+            let markdownText = content;
+            let htmlText = content;
+            let lexicalState = null;
+            
+            // Convert content based on the input type
+            switch (contentType.toLowerCase()) {
+                case 'markdown':
+                    markdownText = content;
+                    htmlText = this.markdownToHtml(content);
+                    lexicalState = this.markdownToLexical(content);
+                    break;
+                    
+                case 'html':
+                    htmlText = content;
+                    markdownText = this.htmlToMarkdown(content);
+                    lexicalState = this.htmlToLexical(content);
+                    break;
+                    
+                case 'lexical':
+                    if (typeof content === 'object') {
+                        lexicalState = content;
+                        htmlText = this.lexicalToHtml(content);
+                        markdownText = this.lexicalToMarkdown(content);
+                    } else {
+                        // Fallback: treat as markdown
+                        markdownText = content;
+                        htmlText = this.markdownToHtml(content);
+                        lexicalState = this.markdownToLexical(content);
+                    }
+                    break;
+                    
+                default:
+                    // Default to markdown
+                    markdownText = content;
+                    htmlText = this.markdownToHtml(content);
+                    lexicalState = this.markdownToLexical(content);
+                    contentType = 'markdown';
+            }
+            
+            return {
+                markdown: {
+                    text: markdownText,
+                    wordCount: this.calculateWordCount(markdownText, 'markdown'),
+                    readTime: this.calculateReadTime(this.calculateWordCount(markdownText, 'markdown'))
+                },
+                html: {
+                    text: htmlText,
+                    wordCount: this.calculateWordCount(htmlText, 'html'),
+                    readTime: this.calculateReadTime(this.calculateWordCount(htmlText, 'html'))
+                },
+                lexical: {
+                    editorState: lexicalState,
+                    wordCount: lexicalState ? this.calculateWordCount(JSON.stringify(lexicalState), 'lexical') : 0,
+                    readTime: lexicalState ? this.calculateReadTime(this.calculateWordCount(JSON.stringify(lexicalState), 'lexical')) : 0
+                },
+                primaryFormat: contentType,
+                metadata: {
+                    convertedAt: new Date().toISOString(),
+                    originalLength: content.length
+                }
+            };
+            
+        } catch (error) {
+            console.error('Error converting content to multi-format:', error);
+            
+            // Return fallback structure
+            return {
+                markdown: { text: content },
+                html: { text: content },
+                lexical: { editorState: null },
+                primaryFormat: contentType,
+                metadata: {
+                    convertedAt: new Date().toISOString(),
+                    error: error.message,
+                    originalLength: content?.length || 0
+                }
+            };
+        }
+    }
 }
 
 export default new ContentConverter();

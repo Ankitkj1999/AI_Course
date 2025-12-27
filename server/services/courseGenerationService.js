@@ -28,14 +28,13 @@ class CourseGenerationService {
             // Parse the legacy content structure
             const parsedContent = this.parseLegacyContent(content);
             
-            // Create the course using CourseService (without legacy content)
+            // Create the course using CourseService (pure section-based architecture - NO legacy content)
             const course = await CourseService.createCourse({
                 title: parsedContent.title || mainTopic,
                 type: this.mapTypeToEnum(type),
                 mainTopic,
                 photo,
-                // Don't store content in legacy field for new courses
-                content: null,
+                // NO legacy content field - pure section-based architecture
                 settings: {
                     maxNestingDepth: 3,
                     allowComments: true,
@@ -86,7 +85,17 @@ class CourseGenerationService {
             let parsedContent;
             
             if (typeof content === 'string') {
-                parsedContent = JSON.parse(content);
+                // Handle markdown-wrapped JSON (```json ... ```)
+                let cleanContent = content.trim();
+                
+                // Remove markdown code block wrapper if present
+                if (cleanContent.startsWith('```json') && cleanContent.endsWith('```')) {
+                    cleanContent = cleanContent.slice(7, -3).trim(); // Remove ```json and ```
+                } else if (cleanContent.startsWith('```') && cleanContent.endsWith('```')) {
+                    cleanContent = cleanContent.slice(3, -3).trim(); // Remove ``` and ```
+                }
+                
+                parsedContent = JSON.parse(cleanContent);
             } else {
                 parsedContent = content;
             }
@@ -103,6 +112,7 @@ class CourseGenerationService {
             
         } catch (error) {
             logger.error('Failed to parse legacy content:', error);
+            logger.error('Content preview:', typeof content === 'string' ? content.substring(0, 200) : content);
             throw new Error('Invalid content format');
         }
     }

@@ -76,6 +76,9 @@ class SectionService {
             
             // Update content
             Object.assign(section.content, updateData.content);
+            
+            // CRITICAL: Mark content as modified for Mongoose to detect changes
+            section.markModified('content');
         }
         
         // Update other fields
@@ -548,6 +551,17 @@ class SectionService {
         }
         
         return { results, errors };
+    }
+    
+    /**
+     * Get section by ID
+     */
+    static async getSection(sectionId) {
+        const section = await Section.findById(sectionId);
+        if (!section) {
+            return null;
+        }
+        return section;
     }
     
     /**
