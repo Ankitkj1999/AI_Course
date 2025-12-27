@@ -1,7 +1,5 @@
 // Enhanced StyledText Component
 import React, { useEffect, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { CodeBlock } from './CodeBlock';
 import { type BundledLanguage } from 'shiki';
 import {
@@ -63,59 +61,12 @@ const StyledText: React.FC<StyledTextProps> = ({
       );
 
     case 'markdown':
-    case 'text': // Treat 'text' as markdown to correctly render inline code
+    case 'text': // Treat markdown and text as HTML since backend converts markdown to HTML
       return (
-        <div className={`prose prose-lg dark:prose-invert max-w-none prose-code:bg-transparent prose-code:p-0 prose-code:before:content-none prose-code:after:content-none ${className}`}>
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              // This renderer now correctly handles fenced code blocks *within* a larger markdown document
-              code({ node, inline, className, children, ...props }: {
-                node?: any;
-                inline?: boolean;
-                className?: string;
-                children: React.ReactNode;
-                [key: string]: any;
-              }) {
-                const codeContent = String(children);
-                
-                // Check if this is truly inline code (no newlines, short content)
-                const isReallyInline = inline || (!className && !codeContent.includes('\n') && codeContent.length < 100);
-                
-                if (isReallyInline) {
-                  return (
-                    <code
-                      className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-1 py-0.5 rounded text-sm font-mono"
-                      style={{ display: 'inline' }}
-                      {...props}
-                    >
-                      {children}
-                    </code>
-                  );
-                }
-
-                // Only render as CodeBlock if it's a proper fenced code block with language
-                const match = /language-(\w+)/.exec(className || '');
-                if (match) {
-                  const language = match[1] as BundledLanguage;
-                  const code = codeContent.replace(/\n$/, '');
-                  return <CodeBlock code={code} language={language} />;
-                }
-
-                // Fallback for code blocks without language - render as simple pre/code
-                return (
-                  <pre className="bg-muted p-3 rounded-md overflow-x-auto">
-                    <code className="text-sm font-mono" {...props}>
-                      {children}
-                    </code>
-                  </pre>
-                );
-              },
-            }}
-          >
-            {preparedContent.content}
-          </ReactMarkdown>
-        </div>
+        <div
+          className={`prose prose-lg dark:prose-invert max-w-none ${className}`}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(preparedContent.content) }}
+        />
       );
 
     case 'json':

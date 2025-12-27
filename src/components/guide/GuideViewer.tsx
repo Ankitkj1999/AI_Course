@@ -20,9 +20,9 @@ import { ForkButton } from '@/components/ForkButton';
 import { ContentAttribution } from '@/components/ContentAttribution';
 import { guideService } from '@/services/guideService';
 import { Guide } from '@/types/guide';
-import ReactMarkdown from 'react-markdown';
+
 import { CodeBlock } from '@/components/CodeBlock';
-import { formatCodeBlocks } from '@/utils/contentHandler';
+import { formatCodeBlocks, sanitizeHtml } from '@/utils/contentHandler';
 
 const GuideViewer: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -38,8 +38,8 @@ const GuideViewer: React.FC = () => {
   const [activeSection, setActiveSection] = useState<string>('');
   const [isOwner, setIsOwner] = useState(false);
 
-  // Process markdown content to handle escaped characters and format code blocks
-  const processMarkdownContent = (content: string): string => {
+  // Process HTML content to handle escaped characters, format code blocks, and sanitize
+  const processHtmlContent = (content: string): string => {
     if (!content) return '';
 
     // If content looks like escaped JSON, try to unescape it
@@ -54,10 +54,11 @@ const GuideViewer: React.FC = () => {
       // Format code blocks for better parsing
       processed = formatCodeBlocks(processed);
 
-      return processed;
+      // Sanitize HTML to prevent XSS
+      return sanitizeHtml(processed);
     } catch (error) {
-      console.warn('Failed to process markdown content:', error);
-      return content;
+      console.warn('Failed to process HTML content:', error);
+      return sanitizeHtml(content);
     }
   };
 
@@ -298,46 +299,10 @@ const GuideViewer: React.FC = () => {
             {/* Guide Content */}
             <Card id="content" className="bg-white dark:bg-gray-800">
               <CardContent className="p-8">
-                <div className="prose prose-lg dark:prose-invert max-w-none">
-                  <ReactMarkdown
-                    components={{
-                      code({ node, className, children, ...props }: any) {
-                        // Check if this is inline code (no language class and single line)
-                        const isInline = !className && !String(children).includes('\n');
-                        
-                        // For inline code, render simple styled span
-                        if (isInline) {
-                          return (
-                            <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">
-                              {String(children)}
-                            </code>
-                          );
-                        }
-                        
-                        // Extract language from className (e.g., "language-javascript" -> "javascript")
-                        const extractLanguage = (className: string): string => {
-                          const match = /language-(\w+)/.exec(className || '');
-                          return match ? match[1] : 'plaintext';
-                        };
-                        
-                        const language = extractLanguage(className);
-                        const code = String(children).replace(/\n$/, ''); // Remove trailing newline
-                        
-                        return (
-                          <CodeBlock
-                            code={code}
-                            language={language as any}
-                          />
-                        );
-                      },
-                      pre({ children }) {
-                        return <>{children}</>;
-                      },
-                    }}
-                  >
-                    {processMarkdownContent(guide.content)}
-                  </ReactMarkdown>
-                </div>
+                <div 
+                  className="prose prose-lg dark:prose-invert max-w-none"
+                  dangerouslySetInnerHTML={{ __html: processHtmlContent(guide.content) }}
+                />
               </CardContent>
             </Card>
 

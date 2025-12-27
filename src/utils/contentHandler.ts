@@ -52,51 +52,17 @@ export const safeJsonParse = (content: string): unknown => {
 };
 
 /**
- * Detects content type, now correctly ignoring inline code for markdown detection.
+ * Detects content type. Since backend converts markdown to HTML, 
+ * we treat all non-JSON content as HTML for consistent rendering.
  */
 export const detectContentType = (content: string): 'html' | 'markdown' | 'json' | 'text' => {
   if (!content) return 'text';
 
   if (safeJsonParse(content)) return 'json';
   
-  // Enhanced HTML detection for TipTap editor output
-  const htmlTagPatterns = [
-    /<\/?[a-z][a-z0-9]*[^<>]*>/i,  // Standard HTML tags
-    /<p[^>]*>/i,                    // Paragraph tags (common in TipTap)
-    /<div[^>]*>/i,                  // Div tags
-    /<h[1-6][^>]*>/i,              // Heading tags
-    /<strong[^>]*>/i,              // Strong tags
-    /<em[^>]*>/i,                  // Emphasis tags
-    /<ul[^>]*>/i,                  // Unordered list
-    /<ol[^>]*>/i,                  // Ordered list
-    /<li[^>]*>/i,                  // List items
-    /<br\s*\/?>/i,                 // Line breaks
-    /<a[^>]*>/i,                   // Links
-  ];
-  
-  const hasHtmlTags = htmlTagPatterns.some(pattern => pattern.test(content));
-
-  // If we detect HTML tags, prioritize HTML over markdown
-  if (hasHtmlTags) {
-    return 'html';
-  }
-
-  // Check for markdown patterns only if no HTML detected
-  const markdownPatterns = [
-    { pattern: /^#{1,6}\s+/m, name: 'Header' },
-    { pattern: /\*\*.*?\*\*|\*.*?\*/, name: 'Bold/Italic' },
-    { pattern: /```[\s\S]*?```/, name: 'Code Block' },
-    { pattern: /^\s*[-*+]\s+/m, name: 'List' },
-    { pattern: /^\s*\d+\.\s+/m, name: 'Numbered List' },
-  ];
-  
-  for (const { pattern } of markdownPatterns) {
-    if (pattern.test(content)) {
-      return 'markdown';
-    }
-  }
-  
-  return 'text';
+  // Since backend converts markdown to HTML using Showdown,
+  // treat all content as HTML for consistent rendering
+  return 'html';
 };
 
 
@@ -104,7 +70,7 @@ export const detectContentType = (content: string): 'html' | 'markdown' | 'json'
  * Main function to prepare content for rendering, now with dedicated code block extraction.
  */
 export const prepareContentForRendering = (content: string, contentType?: string): {
-  type: 'codeblock' | 'html' | 'markdown' | 'json' | 'text';
+  type: 'codeblock' | 'html' | 'json' | 'text';
   content: string;
   language?: string;
   code?: string;
@@ -141,7 +107,7 @@ export const prepareContentForRendering = (content: string, contentType?: string
   }
 
   return {
-    type: detectedType as 'html' | 'markdown' | 'text',
+    type: detectedType as 'html' | 'text',
     content: preprocessedContent,
   };
 };
