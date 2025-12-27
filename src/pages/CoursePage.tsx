@@ -1186,12 +1186,14 @@ const CoursePage = () => {
         prompt: prompt,
         provider: preferences.provider,
         model: preferences.model,
-        temperature: 0.7
+        temperature: 0.7,
+        sectionId: sectionId  // ✨ NEW: Pass sectionId for direct save
       };
       
-      console.log('📡 Calling /api/generate with:', {
+      console.log('📡 Calling /api/generate with sectionId:', {
         provider: preferences.provider,
-        model: preferences.model
+        model: preferences.model,
+        sectionId
       });
       
       const postURL = serverURL + "/api/generate";
@@ -1201,10 +1203,13 @@ const CoursePage = () => {
       
       const generatedText = res.data.text;
       const contentType = res.data.contentType || "markdown";
+      const savedToSection = res.data.metadata?.savedToSection || false;
       
-      console.log('✅ Content generated successfully:', {
+      console.log('✅ Content generated and saved:', {
         contentLength: generatedText.length,
-        contentType
+        contentType,
+        savedToSection,
+        sectionData: res.data.section
       });
       
       // Generate image for the content
@@ -1217,8 +1222,13 @@ const CoursePage = () => {
       
       console.log('🖼️ Image generated:', imageUrl);
       
-      // Update section content with generated text and image metadata
-      await updateSectionContentWithMedia(sectionId, generatedText, contentType, imageUrl, null);
+      // Update section metadata (image) only - content already saved by /api/generate
+      if (savedToSection) {
+        await updateSectionMetadata(sectionId, imageUrl, null);
+      } else {
+        // Fallback: save everything if direct save failed
+        await updateSectionContentWithMedia(sectionId, generatedText, contentType, imageUrl, null);
+      }
       
     } catch (error) {
       console.error('❌ Text content generation failed:', error);
@@ -1250,26 +1260,87 @@ const CoursePage = () => {
         transcriptText = `Content about ${subtopicTitle} in ${mainTopic}`;
       }
       
-      // Generate summary from transcript
+      // Generate summary from transcript with direct section save
       const preferences = getProviderPreferencesWithFallback('course');
       const summaryPrompt = `Strictly in ${lang}, Summarize this theory in a teaching way :- ${transcriptText}.`;
       const summaryRes = await axios.post(serverURL + "/api/generate", {
         prompt: summaryPrompt,
         provider: preferences.provider,
         model: preferences.model,
-        temperature: 0.7
+        temperature: 0.7,
+        sectionId: sectionId  // ✨ NEW: Pass sectionId for direct save
       }, {
         withCredentials: true
       });
       
       const generatedText = summaryRes.data.text;
       const contentType = summaryRes.data.contentType || "markdown";
+      const savedToSection = summaryRes.data.metadata?.savedToSection || false;
       
-      // Update section content with generated text and video metadata
-      await updateSectionContentWithMedia(sectionId, generatedText, contentType, null, videoId);
+      console.log('✅ Video content generated and saved:', {
+        contentLength: generatedText.length,
+        savedToSection,
+        videoId
+      });
+      
+      // Update section metadata (video) only - content already saved by /api/generate
+      if (savedToSection) {
+        await updateSectionMetadata(sectionId, null, videoId);
+      } else {
+        // Fallback: save everything if direct save failed
+        await updateSectionContentWithMedia(sectionId, generatedText, contentType, null, videoId);
+      }
       
     } catch (error) {
       console.error('Video content generation failed:', error);
+      throw error;
+    }
+  }
+
+  async function updateSectionMetadata(sectionId: string, imageUrl: string | null, videoId: string | null) {
+    console.log('🏷️ Updating section metadata only:', {
+      sectionId,
+      hasImage: !!imageUrl,
+      hasVideo: !!videoId
+    });
+    
+    try {
+      const requestBody = {
+        metadata: {
+          image: imageUrl,
+          youtube: videoId
+        }
+      };
+      
+      const response = await fetch(`${serverURL}/api/sections/${sectionId}/content`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(requestBody)
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        console.log('✅ Section metadata updated');
+        
+        // Update UI with media
+        if (type === "video & text course") {
+          setMedia(videoId || '');
+        } else {
+          setMedia(imageUrl || '');
+        }
+        
+        // Reload hierarchy to get updated metadata
+        await loadCourseHierarchy();
+      } else {
+        console.error('❌ Failed to update section metadata:', data);
+        throw new Error(data.message || 'Failed to update section metadata');
+      }
+    } catch (error) {
+      console.error('❌ Error updating section metadata:', error);
       throw error;
     }
   }

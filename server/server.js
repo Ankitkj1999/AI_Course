@@ -1104,11 +1104,11 @@ app.get("/api/llm/health", async (req, res) => {
   }
 });
 
-//GET GENERATE THEORY (Enhanced with multi-LLM support)
+//GET GENERATE THEORY (Enhanced with multi-LLM support and direct section save)
 app.post("/api/generate", requireAuth, async (req, res) => {
   const receivedData = req.body;
   const promptString = receivedData.prompt;
-  const { provider, model, temperature } = receivedData;
+  const { provider, model, temperature, sectionId } = receivedData;
 
   // Generate request ID for logging correlation
   const requestId = logger.llm.generateRequestId();
@@ -1123,6 +1123,7 @@ app.post("/api/generate", requireAuth, async (req, res) => {
       provider,
       model,
       temperature,
+      sectionId: sectionId || 'none',
     },
     req.user?.id,
     provider
@@ -1148,13 +1149,99 @@ app.post("/api/generate", requireAuth, async (req, res) => {
             contentLength: result.data.content?.length,
             provider: result.data.provider,
             model: result.data.model,
+            sectionId: sectionId || 'none',
           },
           duration,
           req.user?.id,
           result.data.provider
         );
 
-        // Maintain backward compatibility with existing response format
+        // If sectionId is provided, save content directly to section
+        if (sectionId) {
+          try {
+            const { default: SectionService } = await import('./services/sectionService.js');
+            const { default: ContentConverter } = await import('./services/contentConverter.js');
+            
+            // Verify section exists and user has access
+            const section = await SectionService.getSection(sectionId);
+            if (!section) {
+              return res.status(404).json({ 
+                success: false, 
+                message: "Section not found" 
+              });
+            }
+            
+            // Verify user owns the course
+            const Course = (await import('./models/Course.js')).default;
+            const course = await Course.findById(section.courseId);
+            if (!course || course.user !== req.user._id.toString()) {
+              return res.status(403).json({ 
+                success: false, 
+                message: "Access denied" 
+              });
+            }
+            
+            // Convert content to multi-format
+            const convertedContent = await ContentConverter.convertToMultiFormat(
+              result.data.content, 
+              'markdown'
+            );
+            
+            // Update section with generated content
+            const updatedSection = await SectionService.updateSection(sectionId, {
+              content: convertedContent,
+              userId: req.user._id.toString()
+            });
+            
+            console.log('✅ Content generated and saved to section:', {
+              sectionId: updatedSection._id,
+              title: updatedSection.title,
+              wordCount: updatedSection.wordCount,
+              hasContent: updatedSection.hasContent
+            });
+            
+            // Return enhanced response with section data
+            return res.status(200).json({
+              success: true,
+              text: result.data.content,
+              contentType: "markdown",
+              section: {
+                id: updatedSection._id,
+                title: updatedSection.title,
+                wordCount: updatedSection.wordCount,
+                hasContent: updatedSection.hasContent,
+                readTime: updatedSection.readTime
+              },
+              metadata: {
+                provider: result.data.provider,
+                providerName: result.data.providerName,
+                model: result.data.model,
+                responseTime: result.data.responseTime,
+                timestamp: result.timestamp,
+                savedToSection: true
+              },
+            });
+          } catch (saveError) {
+            console.error('❌ Error saving content to section:', saveError);
+            // Still return the generated content even if save fails
+            return res.status(200).json({
+              success: true,
+              text: result.data.content,
+              contentType: "markdown",
+              metadata: {
+                provider: result.data.provider,
+                providerName: result.data.providerName,
+                model: result.data.model,
+                responseTime: result.data.responseTime,
+                timestamp: result.timestamp,
+                savedToSection: false,
+                saveError: saveError.message
+              },
+            });
+          }
+        }
+
+        // Maintain backward compatibility with existing response format (no sectionId)
         res.status(200).json({
           text: result.data.content,
           contentType: "markdown",
