@@ -54,6 +54,89 @@ class SectionService {
     }
     
     /**
+     * Batch create multiple sections efficiently (for course generation)
+     * Skips some validation and uses insertMany for performance
+     */
+    static async batchCreateSections(courseId, sectionsData) {
+        try {
+            const course = await Course.findById(courseId);
+            if (!course) {
+                throw new Error('Course not found');
+            }
+            
+            console.log(`⚡ Batch creating ${sectionsData.length} sections for course ${courseId}`);
+            const startTime = Date.now();
+            
+            // Prepare all section documents
+            const sections = sectionsData.map((data, index) => {
+                const section = {
+                    courseId,
+                    parentId: data.parentId || null,
+                    title: data.title,
+                    slug: this.generateSlug(data.title),
+                    content: data.content || {},
+                    settings: data.settings || { order: index },
+                    order: data.order !== undefined ? data.order : index,
+                    level: data.level || 1,
+                    path: data.path || index.toString(),
+                    children: [],
+                    hasContent: false,
+                    hasChildren: false,
+                    wordCount: 0,
+                    readTime: 0,
+                    versions: []
+                };
+                return section;
+            });
+            
+            // Bulk insert all sections at once (bypasses pre-save hooks for speed)
+            const insertedSections = await Section.insertMany(sections, {
+                ordered: true,
+                lean: false
+            });
+            
+            console.log(`⚡ Batch insert completed in ${Date.now() - startTime}ms`);
+            
+            // Collect section IDs for course update
+            const sectionIds = insertedSections.map(s => s._id);
+            
+            // Single course update with all section IDs
+            await Course.findByIdAndUpdate(courseId, {
+                $push: { sections: { $each: sectionIds } }
+            });
+            
+            // Build parent-child relationships in batches
+            const parentUpdates = new Map();
+            sectionsData.forEach((data, index) => {
+                if (data.parentId) {
+                    if (!parentUpdates.has(data.parentId.toString())) {
+                        parentUpdates.set(data.parentId.toString(), []);
+                    }
+                    parentUpdates.get(data.parentId.toString()).push(insertedSections[index]._id);
+                }
+            });
+            
+            // Batch update all parents
+            const parentUpdatePromises = Array.from(parentUpdates.entries()).map(([parentId, childIds]) =>
+                Section.findByIdAndUpdate(parentId, {
+                    $push: { children: { $each: childIds } },
+                    hasChildren: true
+                })
+            );
+            
+            await Promise.all(parentUpdatePromises);
+            
+            console.log(`⚡ Batch creation total time: ${Date.now() - startTime}ms`);
+            
+            return insertedSections;
+            
+        } catch (error) {
+            console.error('Batch create sections error:', error);
+            throw error;
+        }
+    }
+    
+    /**
      * Update section content and metadata
      */
     static async updateSection(sectionId, updateData) {

@@ -39,265 +39,235 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
     const { toast } = useToast();
 
     function handleCreateCourse() {
-
-        const mainTopicData = topics[courseName.toLowerCase()][0];
-
-        const firstSubtopic = mainTopicData.subtopics[0];
-
-        if (type === 'Video & Text Course') {
-
-            const query = `${firstSubtopic.title} ${courseName} in english`;
-            sendVideo(query, firstSubtopic.title);
-            setIsLoadingCourse(true);
-
-        } else {
-
-            const prompt = `Strictly in ${lang}, Explain me about this subtopic of ${courseName} with examples :- ${firstSubtopic.title}. Please Strictly Don't Give Additional Resources And Images.`;
-            const promptImage = `Example of ${firstSubtopic.title} in ${courseName}`;
-            setIsLoadingCourse(true);
-            sendPrompt(prompt, promptImage);
-
-        }
-
+        setIsLoadingCourse(true);
+        
+        // Create course structure first, then generate content for first section
+        createCourseStructure();
     }
 
-    async function sendPrompt(prompt, promptImage) {
-        const dataToSend = {
-            prompt: prompt,
-            provider: selectedProvider,
-            model: selectedModel,
-            temperature: 0.7
-        };
+    async function createCourseStructure() {
         try {
-            const postURL = serverURL + '/api/generate';
-            const res = await axios.post(postURL, dataToSend, {
+            const user = localStorage.getItem('uid');
+            
+            // 🔍 DIAGNOSTIC: Check if topics already have content
+            console.log('🔍 DIAGNOSTIC - Topics structure before /api/course call:', {
+                topicsKeys: Object.keys(topics),
+                firstTopic: topics[courseName.toLowerCase()]?.[0],
+                firstSubtopic: topics[courseName.toLowerCase()]?.[0]?.subtopics?.[0],
+                hasTheory: !!topics[courseName.toLowerCase()]?.[0]?.subtopics?.[0]?.theory,
+                theoryLength: topics[courseName.toLowerCase()]?.[0]?.subtopics?.[0]?.theory?.length || 0,
+                theoryPreview: topics[courseName.toLowerCase()]?.[0]?.subtopics?.[0]?.theory?.substring(0, 100)
+            });
+            
+            const content = JSON.stringify(topics);
+            console.log('🔍 DIAGNOSTIC - Content string length being sent to /api/course:', content.length);
+            
+            const postURL = serverURL + '/api/course';
+            
+            // Create course with empty content
+            const response = await axios.post(postURL, {
+                user,
+                content,
+                type,
+                mainTopic: courseName,
+                lang,
+                isPublic
+            }, {
                 withCredentials: true
             });
-            const generatedText = res.data.text;
-            const htmlContent = generatedText;
 
-            try {
-                const parsedJson = htmlContent;
-                sendImage(parsedJson, promptImage);
-            } catch (error) {
+            if (response.data.success) {
+                const courseId = response.data.courseId;
+                const courseSlug = response.data.slug;
+                
+                // Store course info
+                localStorage.setItem('courseId', courseId);
+                localStorage.setItem('first', response.data.completed);
+                localStorage.setItem('jsonData', JSON.stringify(topics));
+                
+                // Now generate content for the first section
+                await generateFirstSectionContent(courseId, courseSlug);
+            } else {
                 setIsLoadingCourse(false);
-                console.error(error);
                 toast({
                     title: "Error",
-                    description: "Internal Server Error",
+                    description: "Failed to create course structure",
                 });
             }
-
         } catch (error) {
             setIsLoadingCourse(false);
-            console.error(error);
+            console.error('Course creation error:', error);
             toast({
                 title: "Error",
-                description: "Internal Server Error",
+                description: "Failed to create course",
             });
         }
     }
 
-    async function sendImage(parsedJson, promptImage) {
-        const dataToSend = {
-            prompt: promptImage,
-        };
+    async function generateFirstSectionContent(courseId: string, courseSlug: string) {
         try {
-            const postURL = serverURL + '/api/image';
-            const res = await axios.post(postURL, dataToSend);
-            try {
-                const generatedText = res.data.url;
-                sendData(generatedText, parsedJson);
-                setIsLoadingCourse(false);
-            } catch (error) {
-                setIsLoadingCourse(false);
-                console.error(error);
-                toast({
-                    title: "Error",
-                    description: "Internal Server Error",
-                });
+            // Get course hierarchy to find first section ID
+            const hierarchyResponse = await axios.get(
+                `${serverURL}/api/v2/courses/${courseId}/hierarchy?includeContent=false`,
+                { withCredentials: true }
+            );
+            
+            if (!hierarchyResponse.data.success || !hierarchyResponse.data.hierarchy) {
+                throw new Error('Failed to get course hierarchy');
             }
-
+            
+            // Find first section
+            const firstParent = hierarchyResponse.data.hierarchy[0];
+            const firstSection = firstParent?.children?.[0];
+            
+            if (!firstSection) {
+                throw new Error('No sections found in course');
+            }
+            
+            const sectionId = firstSection._id;
+            const subtopicTitle = firstSection.title;
+            
+            // Generate content based on course type
+            if (type === 'Video & Text Course') {
+                await generateVideoContentForSection(sectionId, subtopicTitle, courseSlug);
+            } else {
+                await generateTextContentForSection(sectionId, subtopicTitle, courseSlug);
+            }
+            
         } catch (error) {
             setIsLoadingCourse(false);
-            console.error(error);
+            console.error('First section generation error:', error);
             toast({
-                title: "Error",
-                description: "Internal Server Error",
+                title: "Warning",
+                description: "Course created but first section generation failed. You can generate it from the course page.",
             });
+            
+            // Navigate anyway - user can generate content from course page
+            navigateToCourse(courseSlug);
         }
     }
 
-    async function sendData(image, theory) {
-        topics[courseName.toLowerCase()][0].subtopics[0].theory = theory;
-        topics[courseName.toLowerCase()][0].subtopics[0].image = image;
-
-        const user = localStorage.getItem('uid');
-        const content = JSON.stringify(topics);
-        const postURL = serverURL + '/api/course';
-        const response = await axios.post(postURL, { user, content, type, mainTopic: courseName, lang, isPublic }, {
-            withCredentials: true
-        });
-
-        if (response.data.success) {
-            toast({
-                title: "Course Created!",
-                description: `Course has been created as ${isPublic ? 'public' : 'private'} content.`,
+    async function generateTextContentForSection(sectionId: string, subtopicTitle: string, courseSlug: string) {
+        try {
+            // Generate image first
+            const promptImage = `Example of ${subtopicTitle} in ${courseName}`;
+            const imageRes = await axios.post(serverURL + '/api/image', {
+                prompt: promptImage
             });
-            localStorage.setItem('courseId', response.data.courseId);
-            localStorage.setItem('first', response.data.completed);
-            localStorage.setItem('jsonData', JSON.stringify(topics));
-            navigate('/course/' + response.data.courseId, {
-                state: {
-                    jsonData: topics,
-                    mainTopic: courseName.toUpperCase(),
-                    type: type.toLowerCase(),
-                    courseId: response.data.courseId,
-                    end: '',
-                    pass: false,
-                    lang: lang
+            const imageUrl = imageRes.data.url;
+            
+            // Generate content with sectionId and metadata
+            const prompt = `Strictly in ${lang}, Explain me about this subtopic of ${courseName} with examples :- ${subtopicTitle}. Please Strictly Don't Give Additional Resources And Images.`;
+            const contentRes = await axios.post(serverURL + '/api/generate', {
+                prompt,
+                provider: selectedProvider,
+                model: selectedModel,
+                temperature: 0.7,
+                sectionId: sectionId,  // ✨ Content saved automatically
+                metadata: {
+                    image: imageUrl,
+                    youtube: null
                 }
-            });
-        } else {
-            setIsLoadingCourse(false);
-            toast({
-                title: "Error",
-                description: "Internal Server Error",
-            });
-        }
-
-    }
-
-    async function sendDataVideo(image, theory) {
-        topics[courseName.toLowerCase()][0].subtopics[0].theory = theory;
-        topics[courseName.toLowerCase()][0].subtopics[0].youtube = image;
-
-        const user = localStorage.getItem('uid');
-        const content = JSON.stringify(topics);
-        const postURL = serverURL + '/api/course';
-        const response = await axios.post(postURL, { user, content, type, mainTopic: courseName, lang, isPublic }, {
-            withCredentials: true
-        });
-
-        if (response.data.success) {
-            toast({
-                title: "Course Created!",
-                description: `Course has been created as ${isPublic ? 'public' : 'private'} content.`,
-            });
-            localStorage.setItem('courseId', response.data.courseId);
-            localStorage.setItem('first', response.data.completed);
-            localStorage.setItem('jsonData', JSON.stringify(topics));
-            navigate('/course/' + response.data.courseId, {
-                state: {
-                    jsonData: topics,
-                    mainTopic: courseName.toUpperCase(),
-                    type: type.toLowerCase(),
-                    courseId: response.data.courseId,
-                    end: '',
-                    pass: false,
-                    lang: lang
-                }
-            });
-        } else {
-            setIsLoadingCourse(false);
-            toast({
-                title: "Error",
-                description: "Internal Server Error",
-            });
-        }
-
-    }
-
-    async function sendVideo(query, subtopic) {
-        const dataToSend = {
-            prompt: query,
-        };
-        try {
-            const postURL = serverURL + '/api/yt';
-            const res = await axios.post(postURL, dataToSend);
-            try {
-                const generatedText = res.data.url;
-                sendTranscript(generatedText, subtopic);
-            } catch (error) {
-                setIsLoadingCourse(false);
-                console.error(error);
-                toast({
-                    title: "Error",
-                    description: "Internal Server Error",
-                });
-            }
-
-        } catch (error) {
-            setIsLoadingCourse(false);
-            console.error(error);
-            toast({
-                title: "Error",
-                description: "Internal Server Error",
-            });
-        }
-    }
-
-    async function sendTranscript(url, subtopic) {
-        const dataToSend = {
-            prompt: url,
-        };
-        try {
-            const postURL = serverURL + '/api/transcript';
-            const res = await axios.post(postURL, dataToSend);
-
-            try {
-                const generatedText = res.data.url;
-                const allText = generatedText.map(item => item.text);
-                const concatenatedText = allText.join(' ');
-                const prompt = `Strictly in ${lang}, Summarize this theory in a teaching way and :- ${concatenatedText}.`;
-                sendSummery(prompt, url);
-            } catch (error) {
-                const prompt = `Strictly in ${lang}, Explain me about this subtopic of ${courseName} with examples :- ${subtopic}. Please Strictly Don't Give Additional Resources And Images.`;
-                sendSummery(prompt, url);
-            }
-
-        } catch (error) {
-            const prompt = `Strictly in ${lang}, Explain me about this subtopic of ${courseName} with examples :- ${subtopic}. Please Strictly Don't Give Additional Resources And Images.`;
-            sendSummery(prompt, url);
-        }
-    }
-
-    async function sendSummery(prompt, url) {
-        const dataToSend = {
-            prompt: prompt,
-            provider: selectedProvider,
-            model: selectedModel,
-            temperature: 0.7
-        };
-        try {
-            const postURL = serverURL + '/api/generate';
-            const res = await axios.post(postURL, dataToSend, {
+            }, {
                 withCredentials: true
             });
-            const generatedText = res.data.text;
-            const htmlContent = generatedText;
-
-            try {
-                const parsedJson = htmlContent;
+            
+            if (contentRes.data.metadata?.savedToSection) {
+                console.log('✅ First section content generated and saved');
                 setIsLoadingCourse(false);
-                sendDataVideo(url, parsedJson);
-            } catch (error) {
-                setIsLoadingCourse(false);
-                console.error(error);
                 toast({
-                    title: "Error",
-                    description: "Internal Server Error",
+                    title: "Course Created!",
+                    description: `Course has been created as ${isPublic ? 'public' : 'private'} content with first lesson ready.`,
                 });
+                navigateToCourse(courseSlug);
+            } else {
+                throw new Error('Content generation succeeded but save failed');
             }
-
+            
         } catch (error) {
             setIsLoadingCourse(false);
-            console.error(error);
+            console.error('Text content generation error:', error);
             toast({
-                title: "Error",
-                description: "Internal Server Error",
+                title: "Warning",
+                description: "Course created but content generation failed. You can generate it from the course page.",
             });
+            navigateToCourse(courseSlug);
         }
+    }
+
+    async function generateVideoContentForSection(sectionId: string, subtopicTitle: string, courseSlug: string) {
+        try {
+            // Get video first
+            const query = `${subtopicTitle} ${courseName} in english`;
+            const videoRes = await axios.post(serverURL + '/api/yt', {
+                prompt: query
+            });
+            const videoId = videoRes.data.url;
+            
+            // Get transcript
+            let transcriptText = '';
+            try {
+                const transcriptRes = await axios.post(serverURL + '/api/transcript', {
+                    prompt: videoId
+                });
+                const allText = transcriptRes.data.url.map(item => item.text);
+                transcriptText = allText.join(' ');
+            } catch (error) {
+                console.warn('Transcript failed, using fallback');
+                transcriptText = `Content about ${subtopicTitle} in ${courseName}`;
+            }
+            
+            // Generate summary with sectionId and metadata
+            const prompt = `Strictly in ${lang}, Summarize this theory in a teaching way :- ${transcriptText}.`;
+            const contentRes = await axios.post(serverURL + '/api/generate', {
+                prompt,
+                provider: selectedProvider,
+                model: selectedModel,
+                temperature: 0.7,
+                sectionId: sectionId,  // ✨ Content saved automatically
+                metadata: {
+                    image: null,
+                    youtube: videoId
+                }
+            }, {
+                withCredentials: true
+            });
+            
+            if (contentRes.data.metadata?.savedToSection) {
+                console.log('✅ First section video content generated and saved');
+                setIsLoadingCourse(false);
+                toast({
+                    title: "Course Created!",
+                    description: `Course has been created as ${isPublic ? 'public' : 'private'} content with first lesson ready.`,
+                });
+                navigateToCourse(courseSlug);
+            } else {
+                throw new Error('Content generation succeeded but save failed');
+            }
+            
+        } catch (error) {
+            setIsLoadingCourse(false);
+            console.error('Video content generation error:', error);
+            toast({
+                title: "Warning",
+                description: "Course created but content generation failed. You can generate it from the course page.",
+            });
+            navigateToCourse(courseSlug);
+        }
+    }
+
+    function navigateToCourse(courseSlug: string) {
+        navigate('/course/' + courseSlug, {
+            state: {
+                jsonData: topics,
+                mainTopic: courseName.toUpperCase(),
+                type: type.toLowerCase(),
+                courseId: localStorage.getItem('courseId'),
+                end: '',
+                pass: false,
+                lang: lang
+            }
+        });
     }
 
     if (isLoading) {
@@ -334,6 +304,15 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
     }
 
     const renderTopicsAndSubtopics = (topicss) => {
+        // Safety check for undefined or empty topics
+        if (!topicss || !Array.isArray(topicss) || topicss.length === 0) {
+            return (
+                <div className="text-center text-muted-foreground">
+                    No topics available
+                </div>
+            );
+        }
+        
         return (
             <>
                 {topicss.map((topic, index) => (
@@ -343,7 +322,7 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
                                 {topic.title}
                             </CardContent>
                         </Card>
-                        {topic.subtopics.map((subtopic, idx) => (
+                        {topic.subtopics && topic.subtopics.map((subtopic, idx) => (
                             <Card key={idx} className="border">
                                 <CardContent className="p-4">
                                     {subtopic.title}
@@ -370,7 +349,12 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
 
             <ScrollArea className="px-4">
                 <div className="space-y-6 max-w-3xl mx-auto pb-6">
-                    {topics && renderTopicsAndSubtopics(topics[courseName.toLowerCase()])}
+                    {topics && topics[courseName.toLowerCase()] && renderTopicsAndSubtopics(topics[courseName.toLowerCase()])}
+                    {topics && !topics[courseName.toLowerCase()] && (
+                        <div className="text-center text-muted-foreground">
+                            No course structure generated yet
+                        </div>
+                    )}
                 </div>
             </ScrollArea>
 
@@ -384,7 +368,7 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
                     Cancel
                 </Button>
                 <Button
-                    disabled={isLoadingCourse}
+                    disabled={isLoadingCourse || !topics || !topics[courseName.toLowerCase()]}
                     onClick={handleCreateCourse}
                     className="w-40"
                 >

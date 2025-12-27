@@ -1108,7 +1108,7 @@ app.get("/api/llm/health", async (req, res) => {
 app.post("/api/generate", requireAuth, async (req, res) => {
   const receivedData = req.body;
   const promptString = receivedData.prompt;
-  const { provider, model, temperature, sectionId } = receivedData;
+  const { provider, model, temperature, sectionId, metadata } = receivedData;
 
   // Generate request ID for logging correlation
   const requestId = logger.llm.generateRequestId();
@@ -1187,11 +1187,22 @@ app.post("/api/generate", requireAuth, async (req, res) => {
               'markdown'
             );
             
-            // Update section with generated content
-            const updatedSection = await SectionService.updateSection(sectionId, {
+            // Prepare update data with content
+            const updateData = {
               content: convertedContent,
               userId: req.user._id.toString()
-            });
+            };
+            
+            // If metadata is provided, merge it with existing metadata
+            if (metadata) {
+              updateData.content.metadata = {
+                ...convertedContent.metadata,
+                ...metadata
+              };
+            }
+            
+            // Update section with generated content and metadata
+            const updatedSection = await SectionService.updateSection(sectionId, updateData);
             
             console.log('✅ Content generated and saved to section:', {
               sectionId: updatedSection._id,
@@ -1204,7 +1215,7 @@ app.post("/api/generate", requireAuth, async (req, res) => {
             return res.status(200).json({
               success: true,
               text: result.data.content,
-              contentType: "markdown",
+              contentType: "html",
               section: {
                 id: updatedSection._id,
                 title: updatedSection.title,
@@ -1227,7 +1238,7 @@ app.post("/api/generate", requireAuth, async (req, res) => {
             return res.status(200).json({
               success: true,
               text: result.data.content,
-              contentType: "markdown",
+              contentType: "html",
               metadata: {
                 provider: result.data.provider,
                 providerName: result.data.providerName,
@@ -1244,7 +1255,7 @@ app.post("/api/generate", requireAuth, async (req, res) => {
         // Maintain backward compatibility with existing response format (no sectionId)
         res.status(200).json({
           text: result.data.content,
-          contentType: "markdown",
+          contentType: "html",
           // Add metadata for enhanced clients
           metadata: {
             provider: result.data.provider,
@@ -1331,7 +1342,7 @@ app.post("/api/generate", requireAuth, async (req, res) => {
 
       res.status(200).json({
         text: result.data.content,
-        contentType: "markdown",
+        contentType: "html",
         // Add metadata to indicate this used fallback path
         metadata: {
           provider: result.data.provider,
@@ -1431,6 +1442,37 @@ app.post("/api/transcript", async (req, res) => {
 app.post("/api/course", requireAuth, async (req, res) => {
   const { user, content, type, mainTopic, lang, isPublic } = req.body;
 
+  // 🔍 DIAGNOSTIC: Log what content is being received
+  console.log('🔍 DIAGNOSTIC - /api/course received:', {
+    user,
+    mainTopic,
+    type,
+    lang,
+    isPublic,
+    contentLength: content?.length,
+    contentPreview: content?.substring(0, 200)
+  });
+  
+  // Parse content to check if it has theory
+  try {
+    const parsedContent = JSON.parse(content);
+    const firstKey = Object.keys(parsedContent)[0];
+    const firstTopic = parsedContent[firstKey]?.[0];
+    const firstSubtopic = firstTopic?.subtopics?.[0];
+    
+    console.log('🔍 DIAGNOSTIC - Parsed content structure:', {
+      hasContent: !!parsedContent,
+      firstKey,
+      firstTopicTitle: firstTopic?.title,
+      firstSubtopicTitle: firstSubtopic?.title,
+      firstSubtopicHasTheory: !!firstSubtopic?.theory,
+      firstSubtopicTheoryLength: firstSubtopic?.theory?.length || 0,
+      firstSubtopicTheoryPreview: firstSubtopic?.theory?.substring(0, 100)
+    });
+  } catch (e) {
+    console.log('🔍 DIAGNOSTIC - Could not parse content:', e.message);
+  }
+
   // Generate request ID for logging correlation
   const requestId = logger.llm.generateRequestId();
   const startTime = Date.now();
@@ -1450,12 +1492,24 @@ app.post("/api/course", requireAuth, async (req, res) => {
   );
 
   try {
-    const result = await unsplash.search.getPhotos({
+    console.log('⏱️ TIMING - Starting Unsplash API call...');
+    const unsplashStartTime = Date.now();
+    
+    // Add timeout to Unsplash API call
+    const unsplashPromise = unsplash.search.getPhotos({
       query: mainTopic,
       page: 1,
       perPage: 1,
       orientation: "landscape",
     });
+    
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Unsplash timeout')), 5000)
+    );
+    
+    const result = await Promise.race([unsplashPromise, timeoutPromise]);
+    
+    console.log(`⏱️ TIMING - Unsplash API completed in ${Date.now() - unsplashStartTime}ms`);
 
     // Safely access Unsplash response with fallback
     const photos = safeGetArray(result, "response.results", []);
@@ -1481,6 +1535,9 @@ app.post("/api/course", requireAuth, async (req, res) => {
     }
 
     try {
+      console.log('⏱️ TIMING - Starting course generation service...');
+      const courseGenStartTime = Date.now();
+      
       // Import CourseGenerationService
       const { default: CourseGenerationService } = await import('./services/courseGenerationService.js');
       
@@ -1498,6 +1555,8 @@ app.post("/api/course", requireAuth, async (req, res) => {
           generatedAt: new Date()
         }
       }, user);
+      
+      console.log(`⏱️ TIMING - Course generation completed in ${Date.now() - courseGenStartTime}ms`);
       
       // Create language record with better error handling
       try {
@@ -1520,6 +1579,14 @@ app.post("/api/course", requireAuth, async (req, res) => {
       }
 
       const duration = Date.now() - startTime;
+      
+      console.log(`⏱️ TIMING - Total /api/course execution: ${duration}ms`);
+      console.log(`⏱️ BREAKDOWN:`, {
+        unsplashTime: 'see above',
+        courseGenerationTime: 'see above',
+        totalTime: `${duration}ms`,
+        sectionsCreated: newCourse.sections.length
+      });
 
       // Log successful course creation
       logger.llm.logRequestSuccess(
@@ -1532,7 +1599,8 @@ app.post("/api/course", requireAuth, async (req, res) => {
           mainTopic,
           isPublic: newCourse.isPublic,
           sectionsCreated: newCourse.sections.length,
-          newArchitecture: true
+          newArchitecture: true,
+          totalDuration: duration
         },
         duration,
         user,
@@ -1546,7 +1614,8 @@ app.post("/api/course", requireAuth, async (req, res) => {
         slug: newCourse.slug,
         isPublic: newCourse.isPublic,
         sectionsCreated: newCourse.sections.length,
-        architecture: 'section-based'
+        architecture: 'section-based',
+        performanceMs: duration
       });
     } catch (error) {
       // Log course creation error with context
@@ -4477,7 +4546,7 @@ app.post("/api/chat", requireAuth, async (req, res) => {
       // Maintain backward compatibility with existing response format
       res.status(200).json({
         text: result.data.content,
-        contentType: "markdown",
+        contentType: "html",
         // Add metadata for enhanced clients
         metadata: {
           provider: result.data.provider,

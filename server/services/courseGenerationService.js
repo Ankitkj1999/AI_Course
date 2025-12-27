@@ -121,64 +121,119 @@ class CourseGenerationService {
      * Create sections recursively from parsed content
      */
     static async createSectionsFromContent(courseId, sections, parentId = null, userId) {
-        const createdSectionIds = [];
+        console.log('⚡ OPTIMIZED - Batch creating sections:', {
+            courseId,
+            sectionsCount: sections.length,
+            parentId
+        });
         
-        for (let i = 0; i < sections.length; i++) {
-            const sectionData = sections[i];
+        const startTime = Date.now();
+        
+        try {
+            // Prepare all parent sections data
+            const parentSectionsData = sections.map((sectionData, i) => ({
+                courseId,
+                parentId,
+                title: sectionData.title,
+                content: this.createEmptyContent(),
+                settings: { order: i },
+                order: i,
+                level: parentId ? 2 : 1,
+                path: parentId ? `${parentId}.${i}` : i.toString()
+            }));
             
-            try {
-                // Create the main section
-                const section = await SectionService.createSection({
-                    courseId,
-                    parentId,
-                    title: sectionData.title,
-                    content: this.createEmptyContent(), // Start with empty content
-                    settings: {
-                        order: i
+            // Batch create all parent sections at once
+            const createdParentSections = await SectionService.batchCreateSections(courseId, parentSectionsData);
+            console.log(`⚡ Created ${createdParentSections.length} parent sections in ${Date.now() - startTime}ms`);
+            
+            // Now create all subsections for all parents (flatten and batch)
+            const allSubsectionsData = [];
+            const subsectionMapping = []; // Track which subsections belong to which parent
+            
+            sections.forEach((sectionData, parentIndex) => {
+                if (sectionData.subtopics && Array.isArray(sectionData.subtopics)) {
+                    const parentSectionId = createdParentSections[parentIndex]._id;
+                    
+                    sectionData.subtopics.forEach((subtopic, subIndex) => {
+                        const subsectionData = {
+                            courseId,
+                            parentId: parentSectionId,
+                            title: subtopic.title,
+                            content: this.prepareSubtopicContent(subtopic),
+                            settings: { order: subIndex },
+                            order: subIndex,
+                            level: (parentId ? 2 : 1) + 1,
+                            path: `${createdParentSections[parentIndex].path}.${subIndex}`
+                        };
+                        
+                        allSubsectionsData.push(subsectionData);
+                        subsectionMapping.push({
+                            parentIndex,
+                            parentSectionId,
+                            subsectionIndex: allSubsectionsData.length - 1
+                        });
+                    });
+                }
+            });
+            
+            // Batch create all subsections at once
+            if (allSubsectionsData.length > 0) {
+                console.log(`⚡ Batch creating ${allSubsectionsData.length} subsections...`);
+                const subsectionStartTime = Date.now();
+                
+                const createdSubsections = await SectionService.batchCreateSections(courseId, allSubsectionsData);
+                
+                console.log(`⚡ Created ${createdSubsections.length} subsections in ${Date.now() - subsectionStartTime}ms`);
+                
+                // Build parent-child relationship map
+                const parentChildrenMap = new Map();
+                subsectionMapping.forEach(({ parentSectionId, subsectionIndex }) => {
+                    if (!parentChildrenMap.has(parentSectionId.toString())) {
+                        parentChildrenMap.set(parentSectionId.toString(), []);
                     }
+                    parentChildrenMap.get(parentSectionId.toString()).push(createdSubsections[subsectionIndex]._id);
                 });
                 
-                createdSectionIds.push(section._id);
-                logger.info(`Created section: ${section.title} (${section._id})`);
+                // Batch update all parent sections with their children
+                const parentUpdatePromises = Array.from(parentChildrenMap.entries()).map(([parentId, childIds]) =>
+                    SectionService.updateSection(parentId, {
+                        children: childIds,
+                        hasChildren: true
+                    })
+                );
                 
-                // Create subsections if they exist
-                if (sectionData.subtopics && Array.isArray(sectionData.subtopics)) {
-                    const subsectionIds = await this.createSubsections(
-                        courseId,
-                        section._id,
-                        sectionData.subtopics,
-                        userId
-                    );
-                    
-                    // Update the parent section with children references
-                    section.children = subsectionIds;
-                    section.hasChildren = subsectionIds.length > 0;
-                    await section.save();
-                }
-                
-            } catch (error) {
-                logger.error(`Failed to create section ${sectionData.title}:`, error);
-                // Continue with other sections even if one fails
+                await Promise.all(parentUpdatePromises);
             }
+            
+            console.log(`⚡ Total section creation time: ${Date.now() - startTime}ms`);
+            logger.info(`Batch created ${createdParentSections.length} parent sections with subsections`);
+            
+            return createdParentSections.map(s => s._id);
+            
+        } catch (error) {
+            logger.error('Batch section creation failed:', error);
+            throw error;
         }
-        
-        return createdSectionIds;
     }
     
     /**
      * Create subsections from subtopics
      */
+    /**
+     * DEPRECATED: Use batch creation in createSectionsFromContent instead
+     * Kept for backward compatibility
+     */
     static async createSubsections(courseId, parentId, subtopics, userId) {
+        logger.warn('Using deprecated createSubsections - consider using batch creation');
+        
         const subsectionIds = [];
         
         for (let i = 0; i < subtopics.length; i++) {
             const subtopic = subtopics[i];
             
             try {
-                // Prepare content in multi-format structure
                 const content = this.prepareSubtopicContent(subtopic);
                 
-                // Create the subsection
                 const subsection = await SectionService.createSection({
                     courseId,
                     parentId,
@@ -194,7 +249,6 @@ class CourseGenerationService {
                 
             } catch (error) {
                 logger.error(`Failed to create subsection ${subtopic.title}:`, error);
-                // Continue with other subsections
             }
         }
         
@@ -208,23 +262,26 @@ class CourseGenerationService {
         const markdownContent = subtopic.theory || '';
         const hasContent = markdownContent.trim().length > 0;
         
-        // Convert markdown to HTML
-        const htmlContent = hasContent ? 
-            ContentConverter.markdownToHtml(markdownContent) : '';
+        // ⚡ OPTIMIZATION: Skip conversion for empty content
+        if (!hasContent) {
+            return this.createEmptyContent();
+        }
+        
+        // Convert markdown to HTML only if content exists
+        const htmlContent = ContentConverter.markdownToHtml(markdownContent);
         
         // Calculate word count and read time
-        const wordCount = hasContent ? 
-            ContentConverter.calculateWordCount(markdownContent, 'markdown') : 0;
+        const wordCount = ContentConverter.calculateWordCount(markdownContent, 'markdown');
         const readTime = ContentConverter.calculateReadTime(wordCount);
         
         return {
             markdown: {
                 text: markdownContent,
-                generatedAt: hasContent ? new Date() : null
+                generatedAt: new Date()
             },
             html: {
                 text: htmlContent,
-                generatedAt: hasContent ? new Date() : null
+                generatedAt: new Date()
             },
             lexical: {
                 editorState: null, // Will be populated when user edits in Lexical
@@ -234,7 +291,7 @@ class CourseGenerationService {
             metadata: {
                 wordCount,
                 readTime,
-                hasContent,
+                hasContent: true,
                 // Store additional metadata from the original structure
                 youtube: subtopic.youtube || '',
                 image: subtopic.image || '',

@@ -1192,19 +1192,24 @@ const CoursePage = () => {
       const imageUrl = imageRes.data.url;
       console.log('🖼️ Image generated:', imageUrl);
       
-      // Generate content with sectionId for direct save
+      // Generate content with sectionId and metadata for direct save
       const dataToSend = {
         prompt: prompt,
         provider: preferences.provider,
         model: preferences.model,
         temperature: 0.7,
-        sectionId: sectionId  // ✨ Content will be saved automatically
+        sectionId: sectionId,  // ✨ Content will be saved automatically
+        metadata: {
+          image: imageUrl,
+          youtube: null
+        }
       };
       
-      console.log('📡 Calling /api/generate with sectionId:', {
+      console.log('📡 Calling /api/generate with sectionId and metadata:', {
         provider: preferences.provider,
         model: preferences.model,
-        sectionId
+        sectionId,
+        hasImage: !!imageUrl
       });
       
       const postURL = serverURL + "/api/generate";
@@ -1216,7 +1221,7 @@ const CoursePage = () => {
       const contentType = res.data.contentType || "markdown";
       const savedToSection = res.data.metadata?.savedToSection || false;
       
-      console.log('✅ Content generated and saved:', {
+      console.log('✅ Content and metadata saved in single API call:', {
         contentLength: generatedText.length,
         contentType,
         savedToSection,
@@ -1232,19 +1237,8 @@ const CoursePage = () => {
       setMedia(imageUrl || '');
       setIsLoading(false);
       
-      // Only update metadata if we have image URL and content was saved
-      if (savedToSection && imageUrl) {
-        console.log('🏷️ Updating image metadata only (content already saved)');
-        await updateSectionMetadata(sectionId, imageUrl, null);
-      } else if (!savedToSection) {
-        // Fallback: save everything if direct save failed
-        console.warn('⚠️ Direct save failed, using fallback method');
-        await updateSectionContentWithMedia(sectionId, generatedText, contentType, imageUrl, null);
-      } else {
-        // Content saved but no metadata to update - just reload hierarchy
-        console.log('✅ Content saved, no metadata to update, reloading hierarchy');
-        await loadCourseHierarchy();
-      }
+      // Reload hierarchy to get updated data
+      await loadCourseHierarchy();
       
     } catch (error) {
       console.error('❌ Text content generation failed:', error);
@@ -1254,7 +1248,7 @@ const CoursePage = () => {
 
   async function generateVideoContent(sectionId: string, query: string, subtopicTitle: string) {
     try {
-      // Get YouTube video
+      // Get YouTube video first
       const videoRes = await axios.post(serverURL + "/api/yt", {
         prompt: query
       });
@@ -1277,7 +1271,7 @@ const CoursePage = () => {
         transcriptText = `Content about ${subtopicTitle} in ${mainTopic}`;
       }
       
-      // Generate summary from transcript with direct section save
+      // Generate summary from transcript with direct section save and metadata
       const preferences = getProviderPreferencesWithFallback('course');
       const summaryPrompt = `Strictly in ${lang}, Summarize this theory in a teaching way :- ${transcriptText}.`;
       const summaryRes = await axios.post(serverURL + "/api/generate", {
@@ -1285,7 +1279,11 @@ const CoursePage = () => {
         provider: preferences.provider,
         model: preferences.model,
         temperature: 0.7,
-        sectionId: sectionId  // ✨ Content will be saved automatically
+        sectionId: sectionId,  // ✨ Content will be saved automatically
+        metadata: {
+          image: null,
+          youtube: videoId
+        }
       }, {
         withCredentials: true
       });
@@ -1294,7 +1292,7 @@ const CoursePage = () => {
       const contentType = summaryRes.data.contentType || "markdown";
       const savedToSection = summaryRes.data.metadata?.savedToSection || false;
       
-      console.log('✅ Video content generated and saved:', {
+      console.log('✅ Video content and metadata saved in single API call:', {
         contentLength: generatedText.length,
         savedToSection,
         videoId
@@ -1309,19 +1307,8 @@ const CoursePage = () => {
       setMedia(videoId || '');
       setIsLoading(false);
       
-      // Only update metadata if we have video ID and content was saved
-      if (savedToSection && videoId) {
-        console.log('🏷️ Updating video metadata only (content already saved)');
-        await updateSectionMetadata(sectionId, null, videoId);
-      } else if (!savedToSection) {
-        // Fallback: save everything if direct save failed
-        console.warn('⚠️ Direct save failed, using fallback method');
-        await updateSectionContentWithMedia(sectionId, generatedText, contentType, null, videoId);
-      } else {
-        // Content saved but no metadata to update - just reload hierarchy
-        console.log('✅ Content saved, no metadata to update, reloading hierarchy');
-        await loadCourseHierarchy();
-      }
+      // Reload hierarchy to get updated data
+      await loadCourseHierarchy();
       
     } catch (error) {
       console.error('❌ Video content generation failed:', error);
