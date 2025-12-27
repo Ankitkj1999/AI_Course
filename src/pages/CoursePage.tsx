@@ -67,8 +67,8 @@ const convertHierarchyToLegacyFormat = (hierarchy: any, mainTopic: string) => {
       title: section.title,
       subtopics: section.children ? section.children.map((child: any) => ({
         title: child.title,
-        theory: child.content?.markdown?.text || child.content?.html?.text || "",
-        contentType: child.content?.primaryFormat || "markdown",
+        theory: child.content?.html?.text || child.content?.markdown?.text || "",
+        contentType: 'html', // Always use HTML since backend converts markdown to HTML
         done: child.content?.metadata?.done || false,
         image: child.content?.metadata?.image || "",
         youtube: child.content?.metadata?.youtube || "",
@@ -928,9 +928,9 @@ const CoursePage = () => {
           } else {
             console.log('✅ Loading existing content for:', sub);
             // Content already exists, display it immediately
-            const content = section.content.markdown?.text || 
-                          section.content.html?.text || '';
-            const contentType = section.content.primaryFormat || 'markdown';
+            const content = section.content.html?.text || 
+                          section.content.markdown?.text || '';
+            const contentType = 'html'; // Always use HTML since we have converted content
             
             console.log('📄 Content Details:', {
               contentLength: content.length,
