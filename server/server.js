@@ -30,7 +30,21 @@ import {
 } from "./utils/slugify.js";
 import Settings from "./models/Settings.js";
 import DocumentProcessing from "./models/DocumentProcessing.js";
-import { Course, Section, Notes, Exam, Language } from "./models/index.js";
+import {
+  Course,
+  Section,
+  Notes,
+  Exam,
+  Language,
+  User,
+  Admin,
+  Subscription,
+  Contact,
+  Blog,
+  Quiz,
+  Flashcard,
+  Guide
+} from "./models/index.js";
 import settingsCache from "./services/settingsCache.js";
 import { generateCourseSEO } from "./utils/seo.js";
 import { getServerPort, getServerURL, validateConfig } from "./utils/config.js";
@@ -198,230 +212,8 @@ const getAI = async () => {
 };
 const unsplash = createApi({ accessKey: process.env.UNSPLASH_ACCESS_KEY });
 
-//SCHEMA
-const adminSchema = new mongoose.Schema({
-  email: { type: String, unique: true, required: true },
-  mName: String,
-  type: { type: String, required: true },
-  total: { type: Number, default: 0 },
-  terms: { type: String, default: "" },
-  privacy: { type: String, default: "" },
-  cancel: { type: String, default: "" },
-  refund: { type: String, default: "" },
-  billing: { type: String, default: "" },
-});
-const userSchema = new mongoose.Schema({
-  email: { type: String, unique: true, required: true },
-  mName: String,
-  password: String,
-  type: String,
-  isAdmin: { type: Boolean, default: false },
-  resetPasswordToken: { type: String, default: null },
-  resetPasswordExpires: { type: Date, default: null },
-});
-// Course schema is now defined in models/Course.js
-
-const subscriptionSchema = new mongoose.Schema({
-  user: String,
-  subscription: String,
-  subscriberId: String,
-  plan: String,
-  method: String,
-  date: { type: Date, default: Date.now },
-  active: { type: Boolean, default: true },
-});
-const contactShema = new mongoose.Schema({
-  fname: String,
-  lname: String,
-  email: String,
-  phone: Number,
-  msg: String,
-  date: { type: Date, default: Date.now },
-});
-
-// Legacy schemas removed - now using enhanced models from models/index.js
-// Notes, Exam, and Language models are imported and provide enhanced functionality
-
-const blogSchema = new mongoose.Schema({
-  title: { type: String, unique: true, required: true },
-  excerpt: String,
-  category: String,
-  tags: String,
-  content: String,
-  image: {
-    type: Buffer,
-    required: true,
-  },
-  popular: { type: Boolean, default: false },
-  featured: { type: Boolean, default: false },
-  date: { type: Date, default: Date.now },
-});
-
-const quizSchema = new mongoose.Schema({
-  userId: { type: String, required: true, index: true },
-  keyword: { type: String, required: true },
-  title: { type: String, required: true },
-  slug: { type: String, unique: true, index: true },
-  format: { type: String, default: "mixed" },
-  content: { type: String, required: true }, // Quiz questions in markdown format
-  tokens: {
-    prompt: { type: Number, default: 0 },
-    completion: { type: Number, default: 0 },
-    total: { type: Number, default: 0 },
-  },
-  viewCount: { type: Number, default: 0 },
-  lastVisitedAt: { type: Date, default: Date.now },
-  questionAndAnswers: [
-    {
-      // Pre-quiz questions for customization
-      role: { type: String, enum: ["assistant", "user"] },
-      question: String,
-      answer: String,
-      possibleAnswers: [String],
-    },
-  ],
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-  // Visibility and fork fields
-  isPublic: { type: Boolean, default: false, index: true },
-  forkCount: { type: Number, default: 0 },
-  forkedFrom: {
-    contentId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Quiz",
-      default: null,
-    },
-    originalOwnerId: { type: String, default: null },
-    originalOwnerName: { type: String, default: null },
-    forkedAt: { type: Date, default: null },
-  },
-  ownerName: { type: String, default: "" },
-  // Document source tracking
-  sourceDocument: {
-    processingId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "DocumentProcessing",
-    },
-    filename: { type: String },
-    extractedFrom: { type: String, enum: ["pdf", "docx", "txt", "url"] },
-  },
-});
-
-// Create compound index for efficient public content queries
-quizSchema.index({ isPublic: 1, createdAt: -1 });
-
-const flashcardSchema = new mongoose.Schema({
-  userId: { type: String, required: true, index: true },
-  keyword: { type: String, required: true },
-  title: { type: String, required: true },
-  slug: { type: String, unique: true, index: true },
-  content: { type: String, required: true }, // Flashcards in markdown format
-  cards: [
-    {
-      front: { type: String, required: true },
-      back: { type: String, required: true },
-      difficulty: {
-        type: String,
-        enum: ["easy", "medium", "hard"],
-        default: "medium",
-      },
-      tags: [String],
-    },
-  ],
-  tokens: {
-    prompt: { type: Number, default: 0 },
-    completion: { type: Number, default: 0 },
-    total: { type: Number, default: 0 },
-  },
-  viewCount: { type: Number, default: 0 },
-  lastVisitedAt: { type: Date, default: Date.now },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-  // Visibility and fork fields
-  isPublic: { type: Boolean, default: false, index: true },
-  forkCount: { type: Number, default: 0 },
-  forkedFrom: {
-    contentId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Flashcard",
-      default: null,
-    },
-    originalOwnerId: { type: String, default: null },
-    originalOwnerName: { type: String, default: null },
-    forkedAt: { type: Date, default: null },
-  },
-  ownerName: { type: String, default: "" },
-  // Document source tracking
-  sourceDocument: {
-    processingId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "DocumentProcessing",
-    },
-    filename: { type: String },
-    extractedFrom: { type: String, enum: ["pdf", "docx", "txt", "url"] },
-  },
-});
-
-// Create compound index for efficient public content queries
-flashcardSchema.index({ isPublic: 1, createdAt: -1 });
-
-const guideSchema = new mongoose.Schema({
-  userId: { type: String, required: true, index: true },
-  keyword: { type: String, required: true },
-  title: { type: String, required: true },
-  slug: { type: String, unique: true, index: true },
-  content: { type: String, required: true }, // Guide content in markdown format
-  relatedTopics: [String], // Array of related topic suggestions
-  deepDiveTopics: [String], // Array of advanced topics for further study
-  questions: [String], // Array of study questions
-  tokens: {
-    prompt: { type: Number, default: 0 },
-    completion: { type: Number, default: 0 },
-    total: { type: Number, default: 0 },
-  },
-  viewCount: { type: Number, default: 0 },
-  lastVisitedAt: { type: Date, default: Date.now },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-  // Visibility and fork fields
-  isPublic: { type: Boolean, default: false, index: true },
-  forkCount: { type: Number, default: 0 },
-  forkedFrom: {
-    contentId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Guide",
-      default: null,
-    },
-    originalOwnerId: { type: String, default: null },
-    originalOwnerName: { type: String, default: null },
-    forkedAt: { type: Date, default: null },
-  },
-  ownerName: { type: String, default: "" },
-  // Document source tracking
-  sourceDocument: {
-    processingId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "DocumentProcessing",
-    },
-    filename: { type: String },
-    extractedFrom: { type: String, enum: ["pdf", "docx", "txt", "url"] },
-  },
-});
-
-// Create compound index for efficient public content queries
-guideSchema.index({ isPublic: 1, createdAt: -1 });
-
-//MODEL
-const User = mongoose.model("User", userSchema);
-// Course model is imported from models/Course.js
-const Subscription = mongoose.model("Subscription", subscriptionSchema);
-const Contact = mongoose.model("Contact", contactShema);
-const Admin = mongoose.model("Admin", adminSchema);
-// Enhanced models imported from models/index.js - Notes, Exam, Language
-const BlogSchema = mongoose.model("Blog", blogSchema);
-const Quiz = mongoose.model("Quiz", quizSchema);
-const Flashcard = mongoose.model("Flashcard", flashcardSchema);
-const Guide = mongoose.model("Guide", guideSchema);
+// All Mongoose schemas are now defined in separate model files in the models/ directory
+// Models are imported from models/index.js at the top of this file
 
 // MIDDLEWARE DEFINITIONS
 
@@ -4609,7 +4401,7 @@ app.post("/api/flutterdetails", async (req, res) => {
 app.post("/api/getnotes", async (req, res) => {
   const { course } = req.body;
   try {
-    const existingNotes = await NotesSchema.findOne({ course: course });
+    const existingNotes = await Notes.findOne({ course: course });
     if (existingNotes) {
       res.json({ success: true, message: existingNotes.notes });
     } else {
@@ -4625,16 +4417,16 @@ app.post("/api/getnotes", async (req, res) => {
 app.post("/api/savenotes", async (req, res) => {
   const { course, notes } = req.body;
   try {
-    const existingNotes = await NotesSchema.findOne({ course: course });
+    const existingNotes = await Notes.findOne({ course: course });
 
     if (existingNotes) {
-      await NotesSchema.findOneAndUpdate(
+      await Notes.findOneAndUpdate(
         { course: course },
         { $set: { notes: notes } }
       );
       res.json({ success: true, message: "Notes updated successfully" });
     } else {
-      const newNotes = new NotesSchema({ course: course, notes: notes });
+      const newNotes = new Notes({ course: course, notes: notes });
       await newNotes.save();
       res.json({ success: true, message: "Notes created successfully" });
     }
@@ -4648,7 +4440,7 @@ app.post("/api/savenotes", async (req, res) => {
 app.post("/api/aiexam", requireAuth, async (req, res) => {
   const { courseId, mainTopic, subtopicsString, lang } = req.body;
 
-  const existingNotes = await ExamSchema.findOne({ course: courseId });
+  const existingNotes = await Exam.findOne({ course: courseId });
   if (existingNotes) {
     res.json({ success: true, message: existingNotes.exam });
   } else {
@@ -4725,7 +4517,7 @@ app.post("/api/aiexam", requireAuth, async (req, res) => {
         const txt = response.text();
         let output = txt.slice(7, txt.length - 4);
 
-        const newNotes = new ExamSchema({
+        const newNotes = new Exam({
           course: courseId,
           exam: output,
           marks: "0",
@@ -4745,7 +4537,7 @@ app.post("/api/aiexam", requireAuth, async (req, res) => {
 app.post("/api/updateresult", async (req, res) => {
   const { courseId, marksString } = req.body;
   try {
-    await ExamSchema.findOneAndUpdate({ course: courseId }, [
+    await Exam.findOneAndUpdate({ course: courseId }, [
       { $set: { marks: marksString, passed: true } },
     ])
       .then((result) => {
@@ -4922,7 +4714,7 @@ app.post("/api/createblog", requireAdmin, async (req, res) => {
       featured,
     } = req.body;
     const buffer = Buffer.from(image.split(",")[1], "base64");
-    const blogs = new BlogSchema({
+    const blogs = new Blog({
       title,
       excerpt,
       content,
@@ -4944,7 +4736,7 @@ app.post("/api/createblog", requireAdmin, async (req, res) => {
 app.post("/api/deleteblogs", requireAdmin, async (req, res) => {
   try {
     const { id } = req.body;
-    await BlogSchema.findOneAndDelete({ _id: id });
+    await Blog.findOneAndDelete({ _id: id });
     res.json({ success: true, message: "Blog deleted successfully" });
   } catch (error) {
     console.log(error);
@@ -4958,12 +4750,12 @@ app.post("/api/updateblogs", requireAdmin, async (req, res) => {
     const { id, type, value } = req.body;
     const booleanValue = value === "true" ? true : false;
     if (type === "popular") {
-      await BlogSchema.findOneAndUpdate(
+      await Blog.findOneAndUpdate(
         { _id: id },
         { $set: { popular: booleanValue } }
       );
     } else {
-      await BlogSchema.findOneAndUpdate(
+      await Blog.findOneAndUpdate(
         { _id: id },
         { $set: { featured: booleanValue } }
       );
@@ -4993,12 +4785,12 @@ app.get("/api/getblogs", async (req, res) => {
         }
       : {};
 
-    const blogs = await BlogSchema.find(searchQuery)
+    const blogs = await Blog.find(searchQuery)
       .skip(parseInt(skip))
       .limit(parseInt(limit))
       .sort({ date: -1 });
 
-    const total = await BlogSchema.countDocuments(searchQuery);
+    const total = await Blog.countDocuments(searchQuery);
     const totalPages = Math.ceil(total / limit);
 
     res.json({
@@ -5021,7 +4813,7 @@ app.get("/api/getblogs", async (req, res) => {
 //GET ALL BLOGS (Public - no pagination)
 app.get("/api/blogs/public", async (req, res) => {
   try {
-    const blogs = await BlogSchema.find({}).sort({ date: -1 });
+    const blogs = await Blog.find({}).sort({ date: -1 });
 
     res.json(blogs);
   } catch (error) {
@@ -6672,7 +6464,7 @@ Format the response in markdown.`;
 
     // Save language
     if (lang) {
-      const newLang = new LangSchema({ course: newCourse._id, lang });
+      const newLang = new Language({ course: newCourse._id, lang });
       await newLang.save();
     }
 
