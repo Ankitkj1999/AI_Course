@@ -1,0 +1,1279 @@
+
+import express from 'express';
+import { Quiz, Flashcard, Guide, Exam, Notes } from '../models/index.js';
+import { requireAuth } from '../middleware/authMiddleware.js';
+import llmService from '../services/llmService.js';
+import logger from '../utils/logger.js';
+import { generateSlug, generateUniqueSlug } from '../utils/slugify.js';
+
+const router = express.Router();
+
+/**
+ * AI Content Generation Routes
+ * All routes require authentication and interact with LLM services
+ * Supports: Quiz, Flashcard, Guide, Exam, Notes generation
+ */
+
+// ============================================================================
+// QUIZ GENERATION ENDPOINTS
+// ============================================================================
+
+/**
+ * POST /api/quiz/create - Create AI-generated quiz
+ * @auth Required
+ * @body {string} userId - User ID
+ * @body {string} keyword - Quiz topic/keyword
+ * @body {string} title - Quiz title
+ * @body {string} format - Quiz format (optional)
+ * @body {string} provider - LLM provider (optional)
+ * @body {string} model - LLM model (optional)
+ * @body {Array} questionAndAnswers - Q&A pairs (optional)
+ * @body {boolean} isPublic - Public visibility (optional, defaults to false)
+ */
+router.post('/quiz/create', requireAuth, async (req, res) => {
+    const requestId = logger.llm.generateRequestId();
+    const startTime = Date.now();
+
+    try {
+        const {
+            userId,
+            keyword,
+            title,
+            format,
+            provider,
+            model,
+            questionAndAnswers,
+            isPublic,
+        } = req.body;
+
+        logger.llm.logRequestStart(
+            requestId,
+            '/api/quiz/create',
+            { keyword, title, format, provider, model },
+            userId,
+            provider
+        );
+
+        if (!userId || !keyword || !title) {
+            return res.status(400).json({
+                success: false,
+                message: 'userId, keyword, and title are required',
+            });
+        }
+
+        // Generate quiz content using AI
+        const quizPrompt = `Create a comprehensive quiz about "${keyword}" with the title "${title}". 
+        Format: ${format || 'mixed'}
+        
+        Generate 15-20 multiple choice questions in this markdown format:
+        # Question text here?
+        - Wrong answer option
+        -* Correct answer option (marked with *)
+        - Wrong answer option
+        - Wrong answer option
+        ## Explanation of the correct answer here
+        
+        Make the questions challenging and cover various aspects of the topic.`;
+
+        const result = await llmService.generateContent(quizPrompt, {
+            provider: provider,
+            model: model,
+        });
+
+        if (!result.success) {
+            logger.llm.logRequestError(
+                requestId,
+                '/api/quiz/create',
+                new Error(result.error || 'Failed to generate quiz content'),
+                { userId, keyword, title, provider, model }
+            );
+            throw new Error(result.error || 'Failed to generate quiz content');
+        }
+
+        const quizContent = result.data.content;
+        const baseSlug = generateSlug(`${title}-${Date.now()}`);
+        const slug = await generateUniqueSlug(baseSlug, Quiz);
+
+        const newQuiz = new Quiz({
+            userId,
+            keyword,
+            title,
+            slug,
+            format: format || 'mixed',
+            content: quizContent,
+            tokens: {
+                prompt: quizPrompt.length,
+                completion: quizContent.length,
+                total: quizPrompt.length + quizContent.length,
+            },
+            questionAndAnswers: questionAndAnswers || [],
+            viewCount: 0,
+            lastVisitedAt: new Date(),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            isPublic: isPublic ?? false,
+        });
+
+        await newQuiz.save();
+
+        const duration = Date.now() - startTime;
+
+        logger.llm.logRequestSuccess(
+            requestId,
+            '/api/quiz/create',
+            {
+                quizId: newQuiz._id,
+                slug,
+                keyword,
+                title,
+                contentLength: quizContent?.length,
+                provider: result.data.provider,
+            },
+            duration,
+            userId,
+            result.data.provider
+        );
+
+        res.json({
+            success: true,
+            message: 'Quiz created successfully',
+            quiz: {
+                _id: newQuiz._id,
+                slug: newQuiz.slug,
+                title: newQuiz.title,
+                keyword: newQuiz.keyword,
+                isPublic: newQuiz.isPublic,
+            },
+        });
+    } catch (error) {
+        logger.llm.logRequestError(requestId, '/api/quiz/create', error, {
+            userId: req.body.userId,
+            keyword: req.body.keyword,
+            title: req.body.title,
+            provider: req.body.provider,
+            model: req.body.model,
+            duration: Date.now() - startTime,
+        });
+
+        res.status(500).json({
+            success: false,
+            message: 'Failed to create quiz',
+        });
+    }
+});
+
+/**
+ * POST /api/quiz/from-document - Generate quiz from document
+ * @auth Required
+ * @body {string} processingId - Document processing ID (optional)
+ * @body {string} text - Direct text content (optional)
+ * @body {string} title - Quiz title
+ * @body {string} keyword - Quiz keyword
+ */
+router.post('/quiz/from-document', requireAuth, async (req, res) => {
+    const { processingId, text, title, keyword } = req.body;
+    const userId = req.user._id.toString();
+
+    const requestId = logger.llm.generateRequestId();
+    const startTime = Date.now();
+
+    logger.llm.logRequestStart(
+        requestId,
+        '/api/quiz/from-document',
+        { hasProcessingId: !!processingId, hasDirectText: !!text, title, keyword },
+        userId,
+        'document-generation'
+    );
+
+    try {
+        let extractedText = text;
+        let sourceDocument = null;
+
+        // Retrieve extracted text from document processing if processingId provided
+        if (processingId && !text) {
+            const { default: DocumentProcessing } = await import('../models/DocumentProcessing.js');
+            const processing = await DocumentProcessing.findById(processingId);
+
+            if (!processing) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Processing record not found',
+                });
+            }
+
+            if (processing.userId !== userId) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Unauthorized access to processing record',
+                });
+            }
+
+            if (processing.extractionStatus !== 'completed') {
+                return res.status(400).json({
+                    success: false,
+                    message: `Extraction not complete. Current status: ${processing.extractionStatus}`,
+                });
+            }
+
+            extractedText = processing.extractedText;
+            sourceDocument = {
+                processingId: processing._id,
+                filename: processing.filename,
+                extractedFrom: processing.fileType,
+            };
+        }
+
+        if (!extractedText) {
+            return res.status(400).json({
+                success: false,
+                message: 'Either processingId or text must be provided',
+            });
+        }
+
+        if (extractedText.length < 100) {
+            return res.status(422).json({
+                success: false,
+                message: 'Insufficient content for quiz generation. Please provide more detailed content.',
+            });
+        }
+
+        // Generate quiz using LLM
+        const prompt = `Create a multiple-choice quiz based on the following content.
+
+Title: ${title || 'Quiz'}
+Topic: ${keyword || 'General'}
+
+Content:
+${extractedText}
+
+Generate 5-10 multiple-choice questions with:
+- Clear question text
+- 4 answer options (A, B, C, D)
+- One correct answer
+- Brief explanation for the correct answer
+
+Format as JSON array with structure:
+[
+  {
+    "question": "Question text",
+    "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
+    "correctAnswer": "A",
+    "explanation": "Why this is correct"
+  }
+]`;
+
+        const result = await llmService.generateContent(prompt, { temperature: 0.7 });
+
+        if (!result.success) {
+            logger.llm.logRequestError(
+                requestId,
+                '/api/quiz/from-document',
+                new Error(result.error.message),
+                { userId, title, hasSourceDocument: !!sourceDocument }
+            );
+
+            return res.status(500).json({
+                success: false,
+                message: result.error.message || 'Failed to generate quiz',
+            });
+        }
+
+        // Parse quiz content
+        let quizData;
+        try {
+            const content = result.data.content;
+            const jsonMatch =
+                content.match(/```json\s*([\s\S]*?)\s*```/) ||
+                content.match(/\[[\s\S]*\]/);
+            const jsonString = jsonMatch ? jsonMatch[1] || jsonMatch[0] : content;
+            quizData = JSON.parse(jsonString);
+        } catch (parseError) {
+            logger.error(`Failed to parse quiz JSON: ${parseError.message}`);
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to parse generated quiz content',
+            });
+        }
+
+        const slug = await generateUniqueSlug(title || 'Quiz', Quiz);
+
+        const newQuiz = new Quiz({
+            userId,
+            title: title || 'Quiz',
+            keyword: keyword || 'General',
+            slug,
+            questions: quizData,
+            sourceDocument,
+        });
+
+        await newQuiz.save();
+
+        const duration = Date.now() - startTime;
+
+        logger.llm.logRequestSuccess(
+            requestId,
+            '/api/quiz/from-document',
+            {
+                quizId: newQuiz._id,
+                slug,
+                questionCount: quizData.length,
+                hasSourceDocument: !!sourceDocument,
+                provider: result.data.provider,
+            },
+            duration,
+            userId,
+            result.data.provider
+        );
+
+        res.json({
+            success: true,
+            message: 'Quiz created successfully from document',
+            quizId: newQuiz._id,
+            slug,
+        });
+    } catch (error) {
+        logger.llm.logRequestError(requestId, '/api/quiz/from-document', error, {
+            userId,
+            title,
+            hasProcessingId: !!processingId,
+            hasText: !!text,
+        });
+
+        res.status(500).json({
+            success: false,
+            message: 'Failed to create quiz from document',
+        });
+    }
+});
+
+// ============================================================================
+// FLASHCARD GENERATION ENDPOINTS
+// ============================================================================
+
+/**
+ * POST /api/flashcard/create - Create AI-generated flashcards
+ * @auth Required
+ * @body {string} userId - User ID
+ * @body {string} keyword - Flashcard topic/keyword
+ * @body {string} title - Flashcard set title
+ * @body {string} provider - LLM provider (optional)
+ * @body {string} model - LLM model (optional)
+ * @body {boolean} isPublic - Public visibility (optional, defaults to false)
+ */
+router.post('/flashcard/create', requireAuth, async (req, res) => {
+    const requestId = logger.llm.generateRequestId();
+    const startTime = Date.now();
+
+    try {
+        const { userId, keyword, title, provider, model, isPublic } = req.body;
+
+        logger.llm.logRequestStart(
+            requestId,
+            '/api/flashcard/create',
+            { keyword, title, provider, model },
+            userId,
+            provider
+        );
+
+        if (!userId || !keyword || !title) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required fields: userId, keyword, title',
+            });
+        }
+
+        const prompt = `Create a comprehensive set of flashcards for the topic: "${keyword}". 
+        
+        Generate 15-20 flashcards that cover the key concepts, definitions, and important facts about this topic.
+        
+        Format your response as a JSON array where each flashcard has:
+        - "front": The question or term (keep it concise)
+        - "back": The answer or definition (detailed but clear)
+        - "difficulty": "easy", "medium", or "hard"
+        - "tags": Array of relevant tags for categorization
+        
+        Make sure the flashcards are educational, accurate, and cover different aspects of the topic.
+        
+        Example format:
+        [
+          {
+            "front": "What is photosynthesis?",
+            "back": "The process by which plants use sunlight, water, and carbon dioxide to produce glucose and oxygen.",
+            "difficulty": "medium",
+            "tags": ["biology", "plants", "energy"]
+          }
+        ]
+        
+        Return only the JSON array, no additional text.`;
+
+        const result = await llmService.generateContent(prompt, {
+            provider: provider,
+            model: model,
+        });
+
+        if (!result.success) {
+            logger.llm.logRequestError(
+                requestId,
+                '/api/flashcard/create',
+                new Error(result.error || 'Failed to generate flashcard content'),
+                { userId, keyword, title, provider, model }
+            );
+            throw new Error(result.error || 'Failed to generate flashcard content');
+        }
+
+        const generatedText = result.data.content;
+
+        let cards = [];
+        try {
+            const jsonMatch = generatedText.match(/\[[\s\S]*\]/);
+            if (jsonMatch) {
+                cards = JSON.parse(jsonMatch[0]);
+            } else {
+                throw new Error('No valid JSON found in response');
+            }
+        } catch (parseError) {
+            logger.llm.logRequestError(
+                requestId,
+                '/api/flashcard/create',
+                parseError,
+                {
+                    userId,
+                    keyword,
+                    title,
+                    provider,
+                    model,
+                    step: 'json_parsing',
+                    generatedText: generatedText?.substring(0, 200),
+                }
+            );
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to parse generated flashcards',
+            });
+        }
+
+        const slug = await generateUniqueSlug(title, Flashcard);
+
+        const newFlashcard = new Flashcard({
+            userId,
+            keyword,
+            title,
+            slug,
+            content: generatedText,
+            cards,
+            tokens: {
+                prompt: prompt.length,
+                completion: generatedText.length,
+                total: prompt.length + generatedText.length,
+            },
+            isPublic: isPublic ?? false,
+        });
+
+        await newFlashcard.save();
+
+        const duration = Date.now() - startTime;
+
+        logger.llm.logRequestSuccess(
+            requestId,
+            '/api/flashcard/create',
+            {
+                flashcardId: newFlashcard._id,
+                slug,
+                keyword,
+                title,
+                cardsCount: cards.length,
+                contentLength: generatedText?.length,
+                provider: result.data.provider,
+            },
+            duration,
+            userId,
+            result.data.provider
+        );
+
+        res.json({
+            success: true,
+            message: 'Flashcard set created successfully',
+            flashcardId: newFlashcard._id,
+            slug: slug,
+            cards: cards,
+            isPublic: newFlashcard.isPublic,
+        });
+    } catch (error) {
+        logger.llm.logRequestError(requestId, '/api/flashcard/create', error, {
+            userId: req.body.userId,
+            keyword: req.body.keyword,
+            title: req.body.title,
+            provider: req.body.provider,
+            model: req.body.model,
+            duration: Date.now() - startTime,
+        });
+
+        res.status(500).json({
+            success: false,
+            message: 'Failed to create flashcard set',
+        });
+    }
+});
+
+/**
+ * POST /api/flashcard/from-document - Generate flashcards from document
+ * @auth Required
+ * @body {string} processingId - Document processing ID (optional)
+ * @body {string} text - Direct text content (optional)
+ * @body {string} title - Flashcard set title
+ * @body {string} keyword - Flashcard keyword
+ */
+router.post('/flashcard/from-document', requireAuth, async (req, res) => {
+    const { processingId, text, title, keyword } = req.body;
+    const userId = req.user._id.toString();
+
+    const requestId = logger.llm.generateRequestId();
+    const startTime = Date.now();
+
+    logger.llm.logRequestStart(
+        requestId,
+        '/api/flashcard/from-document',
+        { hasProcessingId: !!processingId, hasDirectText: !!text, title, keyword },
+        userId,
+        'document-generation'
+    );
+
+    try {
+        let extractedText = text;
+        let sourceDocument = null;
+
+        if (processingId && !text) {
+            const { default: DocumentProcessing } = await import('../models/DocumentProcessing.js');
+            const processing = await DocumentProcessing.findById(processingId);
+
+            if (!processing) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Processing record not found',
+                });
+            }
+
+            if (processing.userId !== userId) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Unauthorized access to processing record',
+                });
+            }
+
+            if (processing.extractionStatus !== 'completed') {
+                return res.status(400).json({
+                    success: false,
+                    message: `Extraction not complete. Current status: ${processing.extractionStatus}`,
+                });
+            }
+
+            extractedText = processing.extractedText;
+            sourceDocument = {
+                processingId: processing._id,
+                filename: processing.filename,
+                extractedFrom: processing.fileType,
+            };
+        }
+
+        if (!extractedText) {
+            return res.status(400).json({
+                success: false,
+                message: 'Either processingId or text must be provided',
+            });
+        }
+
+        const prompt = `Create educational flashcards based on the following content.
+
+Title: ${title || 'Flashcards'}
+Topic: ${keyword || 'General'}
+
+Content:
+${extractedText}
+
+Generate 10-15 flashcard pairs with:
+- Front: A clear question or term
+- Back: A concise answer or definition
+
+Focus on key concepts, important terms, and essential information.
+
+Format as JSON array with structure:
+[
+  {
+    "front": "Question or term",
+    "back": "Answer or definition"
+  }
+]`;
+
+        const result = await llmService.generateContent(prompt, { temperature: 0.7 });
+
+        if (!result.success) {
+            logger.llm.logRequestError(
+                requestId,
+                '/api/flashcard/from-document',
+                new Error(result.error.message),
+                { userId, title, hasSourceDocument: !!sourceDocument }
+            );
+
+            return res.status(500).json({
+                success: false,
+                message: result.error.message || 'Failed to generate flashcards',
+            });
+        }
+
+        let flashcardData;
+        try {
+            const content = result.data.content;
+            const jsonMatch =
+                content.match(/```json\s*([\s\S]*?)\s*```/) ||
+                content.match(/\[[\s\S]*\]/);
+            const jsonString = jsonMatch ? jsonMatch[1] || jsonMatch[0] : content;
+            flashcardData = JSON.parse(jsonString);
+        } catch (parseError) {
+            logger.error(`Failed to parse flashcard JSON: ${parseError.message}`);
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to parse generated flashcard content',
+            });
+        }
+
+        const slug = await generateUniqueSlug(title || 'Flashcards', Flashcard);
+
+        const newFlashcard = new Flashcard({
+            userId,
+            title: title || 'Flashcards',
+            keyword: keyword || 'General',
+            slug,
+            cards: flashcardData,
+            sourceDocument,
+        });
+
+        await newFlashcard.save();
+
+        const duration = Date.now() - startTime;
+
+        logger.llm.logRequestSuccess(
+            requestId,
+            '/api/flashcard/from-document',
+            {
+                flashcardId: newFlashcard._id,
+                slug,
+                cardCount: flashcardData.length,
+                hasSourceDocument: !!sourceDocument,
+                provider: result.data.provider,
+            },
+            duration,
+            userId,
+            result.data.provider
+        );
+
+        res.json({
+            success: true,
+            message: 'Flashcards created successfully from document',
+            flashcardId: newFlashcard._id,
+            slug,
+        });
+    } catch (error) {
+        logger.llm.logRequestError(
+            requestId,
+            '/api/flashcard/from-document',
+            error,
+            {
+                userId,
+                title,
+                hasProcessingId: !!processingId,
+                hasText: !!text,
+            }
+        );
+
+        res.status(500).json({
+            success: false,
+            message: 'Failed to create flashcards from document',
+        });
+    }
+});
+
+// ============================================================================
+// GUIDE GENERATION ENDPOINTS
+// ============================================================================
+
+/**
+ * POST /api/guide/create - Create AI-generated study guide
+ * @auth Required
+ * @body {string} userId - User ID
+ * @body {string} keyword - Guide topic/keyword
+ * @body {string} title - Guide title
+ * @body {string} customization - Additional requirements (optional)
+ * @body {string} provider - LLM provider (optional)
+ * @body {string} model - LLM model (optional)
+ * @body {boolean} isPublic - Public visibility (optional, defaults to false)
+ */
+router.post('/guide/create', requireAuth, async (req, res) => {
+    const requestId = logger.llm.generateRequestId();
+    const startTime = Date.now();
+
+    try {
+        const { userId, keyword, title, customization, provider, model, isPublic } = req.body;
+
+        logger.llm.logRequestStart(
+            requestId,
+            '/api/guide/create',
+            { keyword, title, customization, provider, model },
+            userId,
+            provider
+        );
+
+        if (!userId || !keyword || !title) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required fields: userId, keyword, title',
+            });
+        }
+
+        const prompt = `Create a comprehensive study guide for the topic: "${keyword}".
+
+Title: ${title}
+
+${customization ? `Additional requirements: ${customization}` : ''}
+
+Create a detailed study guide with the following structure:
+
+# ${title}
+
+[Write comprehensive content here with sections, examples, and explanations]
+
+## Related Topics
+- Topic 1
+- Topic 2  
+- Topic 3
+- Topic 4
+
+## Deep Dive Topics
+- Advanced Topic 1
+- Advanced Topic 2
+- Advanced Topic 3
+
+## Study Questions
+1. Question 1?
+2. Question 2?
+3. Question 3?
+4. Question 4?
+5. Question 5?
+
+Guidelines:
+- Content should be comprehensive but concise (single-page format)
+- Use markdown formatting with headers, lists, code blocks, and emphasis
+- Include practical examples and real-world applications
+- Make it suitable for quick reference and study
+- Related topics should be closely connected concepts (3-5 topics)
+- Deep dive topics should be advanced/specialized areas for further study (3-4 topics)
+- Questions should test understanding of key concepts (5-8 questions)
+- Aim for 2000-4000 words in the main content section
+
+Write the complete guide following this exact structure.`;
+
+        const result = await llmService.generateContent(prompt, {
+            provider: provider,
+            model: model,
+        });
+
+        if (!result.success) {
+            logger.llm.logRequestError(
+                requestId,
+                '/api/guide/create',
+                new Error(result.error || 'Failed to generate guide content'),
+                { userId, keyword, title, provider, model }
+            );
+            throw new Error(result.error || 'Failed to generate guide content');
+        }
+
+        const generatedText = result.data.content;
+
+        logger.info(`AI Response preview: ${generatedText.substring(0, 500)}...`);
+
+        let guideData = {};
+        try {
+            const relatedTopicsIndex = generatedText.indexOf('## Related Topics');
+            let mainContent =
+                relatedTopicsIndex > -1
+                    ? generatedText.substring(0, relatedTopicsIndex).trim()
+                    : generatedText;
+
+            let relatedTopics = [];
+            const relatedMatch = generatedText.match(
+                /## Related Topics\s*([\s\S]*?)(?=## |$)/
+            );
+            if (relatedMatch) {
+                const relatedSection = relatedMatch[1];
+                relatedTopics = relatedSection
+                    .split('\n')
+                    .filter((line) => line.trim().startsWith('-'))
+                    .map((line) => line.replace(/^-\s*/, '').trim())
+                    .filter((topic) => topic.length > 0);
+            }
+
+            let deepDiveTopics = [];
+            const deepDiveMatch = generatedText.match(
+                /## Deep Dive Topics\s*([\s\S]*?)(?=## |$)/
+            );
+            if (deepDiveMatch) {
+                const deepDiveSection = deepDiveMatch[1];
+                deepDiveTopics = deepDiveSection
+                    .split('\n')
+                    .filter((line) => line.trim().startsWith('-'))
+                    .map((line) => line.replace(/^-\s*/, '').trim())
+                    .filter((topic) => topic.length > 0);
+            }
+
+            let questions = [];
+            const questionsMatch = generatedText.match(
+                /## Study Questions\s*([\s\S]*?)(?=## |$)/
+            );
+            if (questionsMatch) {
+                const questionsSection = questionsMatch[1];
+                questions = questionsSection
+                    .split('\n')
+                    .filter((line) => line.trim().match(/^\d+\./))
+                    .map((line) => line.replace(/^\d+\.\s*/, '').trim())
+                    .filter((question) => question.length > 0);
+            }
+
+            guideData = {
+                content: mainContent,
+                relatedTopics: relatedTopics,
+                deepDiveTopics: deepDiveTopics,
+                questions: questions,
+            };
+
+            logger.info(
+                `Successfully parsed guide: ${relatedTopics.length} related topics, ${deepDiveTopics.length} deep dive topics, ${questions.length} questions`
+            );
+        } catch (parseError) {
+            logger.error(`Guide parsing error: ${parseError.message}`);
+            logger.info('Using fallback parsing method');
+
+            guideData = {
+                content: generatedText,
+                relatedTopics: [],
+                deepDiveTopics: [],
+                questions: [],
+            };
+
+            const questionMatches = generatedText.match(/\d+\.\s+([^?\n]*\?)/g);
+            if (questionMatches) {
+                guideData.questions = questionMatches
+                    .slice(0, 10)
+                    .map((q) => q.replace(/^\d+\.\s*/, ''));
+            }
+        }
+
+        if (!guideData || typeof guideData !== 'object') {
+            logger.warn('Guide data is invalid, creating minimal structure');
+            guideData = {
+                content:
+                    generatedText ||
+                    `# ${title}\n\nGuide content could not be parsed properly.`,
+                relatedTopics: [],
+                deepDiveTopics: [],
+                questions: [],
+            };
+        }
+
+        logger.info('Generating unique slug for guide');
+        const slug = await generateUniqueSlug(title, Guide);
+        logger.info(`Generated slug: ${slug}`);
+
+        logger.info('Creating new guide document');
+        const newGuide = new Guide({
+            userId,
+            keyword,
+            title,
+            slug,
+            content: guideData.content || generatedText,
+            relatedTopics: guideData.relatedTopics || [],
+            deepDiveTopics: guideData.deepDiveTopics || [],
+            questions: guideData.questions || [],
+            tokens: {
+                prompt: prompt.length,
+                completion: generatedText.length,
+                total: prompt.length + generatedText.length,
+            },
+            isPublic: isPublic ?? false,
+        });
+
+        await newGuide.save();
+
+        const duration = Date.now() - startTime;
+
+        logger.llm.logRequestSuccess(
+            requestId,
+            '/api/guide/create',
+            {
+                guideId: newGuide._id,
+                slug,
+                keyword,
+                title,
+                contentLength: generatedText?.length,
+                relatedTopicsCount: guideData.relatedTopics?.length || 0,
+                deepDiveTopicsCount: guideData.deepDiveTopics?.length || 0,
+                questionsCount: guideData.questions?.length || 0,
+                provider: result.data.provider,
+            },
+            duration,
+            userId,
+            result.data.provider
+        );
+
+        res.json({
+            success: true,
+            message: 'Guide created successfully',
+            guideId: newGuide._id,
+            slug: slug,
+            guide: {
+                title: newGuide.title,
+                keyword: newGuide.keyword,
+                relatedTopics: newGuide.relatedTopics,
+                deepDiveTopics: newGuide.deepDiveTopics,
+                questions: newGuide.questions,
+                isPublic: newGuide.isPublic,
+            },
+        });
+    } catch (error) {
+        logger.llm.logRequestError(requestId, '/api/guide/create', error, {
+            userId: req.body.userId,
+            keyword: req.body.keyword,
+            title: req.body.title,
+            provider: req.body.provider,
+            model: req.body.model,
+            duration: Date.now() - startTime,
+        });
+
+        res.status(500).json({
+            success: false,
+            message: `Failed to create guide: ${error.message}`,
+        });
+    }
+});
+
+/**
+ * POST /api/guide/from-document - Generate study guide from document
+ * @auth Required
+ * @body {string} processingId - Document processing ID (optional)
+ * @body {string} text - Direct text content (optional)
+ * @body {string} title - Guide title
+ * @body {string} keyword - Guide keyword
+ */
+router.post('/guide/from-document', requireAuth, async (req, res) => {
+    const { processingId, text, title, keyword } = req.body;
+    const userId = req.user._id.toString();
+
+    const requestId = logger.llm.generateRequestId();
+    const startTime = Date.now();
+
+    logger.llm.logRequestStart(
+        requestId,
+        '/api/guide/from-document',
+        { hasProcessingId: !!processingId, hasDirectText: !!text, title, keyword },
+        userId,
+        'document-generation'
+    );
+
+    try {
+        let extractedText = text;
+        let sourceDocument = null;
+
+        if (processingId && !text) {
+            const { default: DocumentProcessing } = await import('../models/DocumentProcessing.js');
+            const processing = await DocumentProcessing.findById(processingId);
+
+            if (!processing) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Processing record not found',
+                });
+            }
+
+            if (processing.userId !== userId) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Unauthorized access to processing record',
+                });
+            }
+
+            if (processing.extractionStatus !== 'completed') {
+                return res.status(400).json({
+                    success: false,
+                    message: `Extraction not complete. Current status: ${processing.extractionStatus}`,
+                });
+            }
+
+            extractedText = processing.extractedText;
+            sourceDocument = {
+                processingId: processing._id,
+                filename: processing.filename,
+                extractedFrom: processing.fileType,
+            };
+        }
+
+        if (!extractedText) {
+            return res.status(400).json({
+                success: false,
+                message: 'Either processingId or text must be provided',
+            });
+        }
+
+        const prompt = `Create a comprehensive study guide based on the following content.
+
+Title: ${title || 'Study Guide'}
+Topic: ${keyword || 'General'}
+
+Content:
+${extractedText}
+
+Create a well-structured guide with:
+- Overview/Introduction
+- Key concepts and definitions
+- Detailed explanations
+- Important points to remember
+- Summary
+
+Format the response in markdown with clear headings and sections.`;
+
+        const result = await llmService.generateContent(prompt, { temperature: 0.7 });
+
+        if (!result.success) {
+            logger.llm.logRequestError(
+                requestId,
+                '/api/guide/from-document',
+                new Error(result.error.message),
+                { userId, title, hasSourceDocument: !!sourceDocument }
+            );
+
+            return res.status(500).json({
+                success: false,
+                message: result.error.message || 'Failed to generate guide',
+            });
+        }
+
+        const guideContent = result.data.content;
+        const slug = await generateUniqueSlug(title || 'Guide', Guide);
+
+        const newGuide = new Guide({
+            userId,
+            title: title || 'Guide',
+            keyword: keyword || 'General',
+            slug,
+            content: guideContent,
+            sourceDocument,
+        });
+
+        await newGuide.save();
+
+        const duration = Date.now() - startTime;
+
+        logger.llm.logRequestSuccess(
+            requestId,
+            '/api/guide/from-document',
+            {
+                guideId: newGuide._id,
+                slug,
+                hasSourceDocument: !!sourceDocument,
+                provider: result.data.provider,
+            },
+            duration,
+            userId,
+            result.data.provider
+        );
+
+        res.json({
+            success: true,
+            message: 'Guide created successfully from document',
+            guideId: newGuide._id,
+            slug,
+        });
+    } catch (error) {
+        logger.llm.logRequestError(requestId, '/api/guide/from-document', error, {
+            userId,
+            title,
+            hasProcessingId: !!processingId,
+            hasText: !!text,
+        });
+
+        res.status(500).json({
+            success: false,
+            message: 'Failed to create guide from document',
+        });
+    }
+});
+
+// ============================================================================
+// EXAM GENERATION ENDPOINTS
+// ============================================================================
+
+/**
+ * POST /api/exam/generate - Generate AI exam/assessment
+ * @auth Required
+ * @body {string} courseId - Course ID
+ * @body {string} mainTopic - Main topic/title
+ * @body {string} subtopicsString - Comma-separated subtopics
+ * @body {string} lang - Language for exam
+ */
+router.post('/exam/generate', requireAuth, async (req, res) => {
+    const { courseId, mainTopic, subtopicsString, lang } = req.body;
+
+    try {
+        const existingExam = await Exam.findOne({ course: courseId });
+        if (existingExam) {
+            return res.json({ success: true, message: existingExam.exam });
+        }
+
+        const prompt = `Strictly in ${lang},
+        generate a strictly 10 question MCQ quiz on title ${mainTopic} based on each topics :- ${subtopicsString}, Atleast One question per topic. Add options A, B, C, D and only one correct answer. Give your response Strictly in JSON format like this :-
+        {
+          "${mainTopic}": [
+            {
+              "topic": "topic title",
+              "question": "",
+              "options": [
+               "",
+               "",
+               "",
+               ""
+              ],
+              "answer": "correct option like A, B, C, D"
+            },
+            {
+              "topic": "topic title",
+              "question": "",
+              "options": [
+               "",
+               "",
+               "",
+               ""
+              ],
+              "answer": "correct option like A, B, C, D"
+            },
+            {
+              "topic": "topic title",
+              "question": "",
+              "options": [
+               "",
+               "",
+               "",
+               ""
+              ],
+              "answer": "correct option like A, B, C, D"
+            }
+          ]
+        }
+        `;
+
+        const result = await llmService.generateContent(prompt, { temperature: 0.7 });
+
+        if (!result.success) {
+            return res.json({ success: false, message: 'Failed to generate exam' });
+        }
+
+        const txt = result.data.content;
+        let output = txt.slice(7, txt.length - 4);
+
+        const newExam = new Exam({
+            course: courseId,
+            exam: output,
+            marks: '0',
+            passed: false,
+        });
+        await newExam.save();
+
+        res.json({ success: true, message: output });
+    } catch (error) {
+        logger.error(`Exam generation error: ${error.message}`, {
+            error: error.stack,
+            courseId,
+            mainTopic,
+        });
+        res.json({ success: false, message: 'Failed to generate exam' });
+    }
+});
+
+/**
+ * POST /api/exam/update-result - Update exam results
+ * @auth Required
+ * @body {string} courseId - Course ID
+ * @body {string} marksString - Marks achieved
+ */
+router.post('/exam/update-result', requireAuth, async (req, res) => {
+    const { courseId, marksString } = req.body;
+    try {
+        await Exam.findOneAndUpdate(
+            { course: courseId },
+            { $set: { marks: marksString, passed: true } }
+        );
+        res.json({ success: true });
+    } catch (error) {
+        logger.error(`Update exam result error: ${error.message}`, {
+            error: error.stack,
+            courseId,
+        });
+        res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
+});
+
+// ============================================================================
+// NOTES GENERATION ENDPOINTS
+// ============================================================================
+
+/**
+ * GET /api/notes/:courseId - Get notes for a course
+ * @auth Required
+ * @param {string} courseId - Course ID
+ */
+router.get('/notes/:courseId', requireAuth, async (req, res) => {
+    const { courseId } = req.params;
+    try {
+        const existingNotes = await Notes.findOne({ course: courseId });
+        if (existingNotes) {
+            res.json({ success: true, message: existingNotes.notes });
+        } else {
+            res.json({ success: false, message: '' });
+        }
+    } catch (error) {
+        logger.error(`Get notes error: ${error.message}`, {
+            error: error.stack,
+            courseId,
+        });
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+/**
+ * POST /api/notes/save - Save or update notes
+ * @auth Required
+ * @body {string} course - Course ID
+ * @body {string} notes - Notes content
+ */
+router.post('/notes/save', requireAuth, async (req, res) => {
+    const { course, notes } = req.body;
+    try {
+        const existingNotes = await Notes.findOne({ course: course });
+
+        if (existingNotes) {
+            await Notes.findOneAndUpdate(
+                { course: course },
+                { $set: { notes: notes } }
+            );
+            res.json({ success: true, message: 'Notes updated successfully' });
+        } else {
+            const newNotes = new Notes({ course: course, notes: notes });
+            await newNotes.save();
+            res.json({ success: true, message: 'Notes created successfully' });
+        }
+    } catch (error) {
+        logger.error(`Save notes error: ${error.message}`, {
+            error: error.stack,
+            course,
+        });
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+export default router;

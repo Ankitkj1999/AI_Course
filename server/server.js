@@ -54,6 +54,9 @@ import {
 } from "./middleware/authMiddleware.js";
 import authRoutes from "./routes/authRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
+import contentGenerationRoutes from "./routes/contentGenerationRoutes.js";
 import { generateCourseSEO } from "./utils/seo.js";
 import { getServerPort, getServerURL, validateConfig } from "./utils/config.js";
 import llmService from "./services/llmService.js";
@@ -83,11 +86,33 @@ dotenv.config();
 validateConfig();
 
 // Initialize services that need config
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-const flw = new Flutterwave(
-  process.env.FLUTTERWAVE_PUBLIC_KEY,
-  process.env.FLUTTERWAVE_SECRET_KEY
-);
+let stripe = null;
+let flw = null;
+
+try {
+  if (process.env.STRIPE_SECRET_KEY) {
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    logger.info('✅ Stripe initialized');
+  } else {
+    logger.warn('⚠️  Stripe not configured - payment features will be limited');
+  }
+} catch (error) {
+  logger.error('❌ Stripe initialization failed:', error.message);
+}
+
+try {
+  if (process.env.FLUTTERWAVE_PUBLIC_KEY && process.env.FLUTTERWAVE_SECRET_KEY) {
+    flw = new Flutterwave(
+      process.env.FLUTTERWAVE_PUBLIC_KEY,
+      process.env.FLUTTERWAVE_SECRET_KEY
+    );
+    logger.info('✅ Flutterwave initialized');
+  } else {
+    logger.warn('⚠️  Flutterwave not configured - payment features will be limited');
+  }
+} catch (error) {
+  logger.error('❌ Flutterwave initialization failed:', error.message);
+}
 
 //INITIALIZE
 const app = express();
@@ -278,6 +303,15 @@ app.use('/api', authRoutes);
 
 // Mount admin routes
 app.use('/api', adminRoutes);
+
+// Mount payment routes
+app.use('/api', paymentRoutes);
+
+// Mount user profile routes
+app.use('/api', userRoutes);
+
+// Mount content generation routes
+app.use('/api', contentGenerationRoutes);
 
 //SEND MAIL
 app.post("/api/data", async (req, res) => {
@@ -2074,87 +2108,93 @@ app.post("/api/profile", async (req, res) => {
   }
 });
 
-//PAYPAL PAYMENT
-app.post("/api/paypal", async (req, res) => {
-  const {
-    planId,
-    email,
-    name,
-    lastName,
-    post,
-    address,
-    country,
-    brand,
-    admin,
-  } = req.body;
+// Payment routes are now in routes/paymentRoutes.js
+
+//CONTACT
+app.post("/api/contact", async (req, res) => {
+  const { fname, lname, email, phone, msg } = req.body;
   try {
-    const firstLine = address.split(",").slice(0, -1).join(",");
-    const secondLine = address.split(",").pop();
-
-    const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
-    const PAYPAL_APP_SECRET_KEY = process.env.PAYPAL_APP_SECRET_KEY;
-    const auth = Buffer.from(
-      PAYPAL_CLIENT_ID + ":" + PAYPAL_APP_SECRET_KEY
-    ).toString("base64");
-    const setSubscriptionPayload = (subscriptionPlanID) => {
-      let subscriptionPayload = {
-        plan_id: subscriptionPlanID,
-        subscriber: {
-          name: { given_name: name, surname: lastName },
-          email_address: email,
-          shipping_address: {
-            name: { full_name: name },
-            address: {
-              address_line_1: firstLine,
-              address_line_2: secondLine,
-              admin_area_2: admin,
-              admin_area_1: country,
-              postal_code: post,
-              country_code: country,
-            },
-          },
-        },
-        application_context: {
-          brand_name: process.env.COMPANY,
-          locale: "en-US",
-          shipping_preference: "SET_PROVIDED_ADDRESS",
-          user_action: "SUBSCRIBE_NOW",
-          payment_method: {
-            payer_selected: "PAYPAL",
-            payee_preferred: "IMMEDIATE_PAYMENT_REQUIRED",
-          },
-          return_url: `${process.env.WEBSITE_URL}/payment-success/${planId}`,
-          cancel_url: `${process.env.WEBSITE_URL}/payment-failed`,
-        },
-      };
-      return subscriptionPayload;
-    };
-
-    let subscriptionPlanID = planId;
-    const response = await fetch(
-      "https://api-m.paypal.com/v1/billing/subscriptions",
-      {
-        method: "POST",
-        body: JSON.stringify(setSubscriptionPayload(subscriptionPlanID)),
-        headers: {
-          Authorization: "Basic " + auth,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    const session = await response.json();
-    res.send(session);
+    const newContact = new Contact({ fname, lname, email, phone, msg });
+    await newContact.save();
+    res.json({ success: true, message: "Submitted" });
   } catch (error) {
     console.log("Error", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
 
-//GET SUBSCRIPTION DETAILS
-app.post("/api/subscriptiondetail", async (req, res) => {
-  try {
-    const { uid, email } = req.body;
+// Admin routes are now in routes/adminRoutes.js
 
-    const userDetails = await Subscription.findOne({ user: uid });
+//GET PUBLIC SETTINGS (for client-side use)
+app.get("/api/public/settings", async (req, res) => {
+  try {
+    const settings = await Settings.find({ isSecret: false });
+    const publicSettings = {};
+
+    settings.forEach((setting) => {
+      publicSettings[setting.key] = {
+        value: setting.value,
+        category: setting.category,
+        isSecret: setting.isSecret,
+      };
+    });
+
+    res.json(publicSettings);
+  } catch (error) {
+    console.error("Public settings fetch error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+//CHAT (Enhanced with multi-LLM support)
+app.post("/api/chat", requireAuth, async (req, res) => {
+  const receivedData = req.body;
+  const promptString = receivedData.prompt;
+  const { provider, model, temperature } = receivedData;
+
+  try {
+    // Use new LLM service with provider support
+    const result = await llmService.generateContent(promptString, {
+      provider,
+      model,
+      temperature: temperature || 0.7,
+    });
+
+    if (result.success) {
+      // Maintain backward compatibility with existing response format
+      res.status(200).json({
+        text: result.data.content,
+        contentType: "html",
+        // Add metadata for enhanced clients
+        metadata: {
+          provider: result.data.provider,
+          providerName: result.data.providerName,
+          model: result.data.model,
+          responseTime: result.data.responseTime,
+          timestamp: result.timestamp,
+        },
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: result.error.message || "Chat generation failed",
+      });
+    }
+  } catch (error) {
+    logger.error(`Chat generation error: ${error.message}`, {
+      error: error.stack,
+      prompt: promptString?.substring(0, 100),
+      provider,
+    });
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
+//GET NOTES
+app.post("/api/getnotes", async (req, res) => {
+  const { course } = req.body;
+  try {
+    const existingNotes = await Notes.findOne({ course: course });
     if (userDetails.method === "stripe") {
       const subscription = await stripe.subscriptions.retrieve(
         userDetails.subscriberId
@@ -2181,6 +2221,14 @@ app.post("/api/subscriptiondetail", async (req, res) => {
       res.json({ session: session, method: userDetails.method });
     } else if (userDetails.method === "flutterwave") {
       const payload = { email: email };
+      if (!flw) {
+        res.status(500).json({ success: false, message: "Flutterwave not configured" });
+        return;
+      }
+      if (!flw) {
+        res.status(500).json({ success: false, message: "Flutterwave not configured" });
+        return;
+      }
       const response = await flw.Subscription.get(payload);
       res.json({ session: response["data"][0], method: userDetails.method });
     } else if (userDetails.method === "paystack") {
@@ -2236,9 +2284,11 @@ app.post("/api/subscriptiondetail", async (req, res) => {
   }
 });
 
-//GET PAYPAL DETAILS
-app.post("/api/paypaldetails", async (req, res) => {
-  const { subscriberId, uid, plan } = req.body;
+//CHAT (Enhanced with multi-LLM support)
+app.post("/api/chat", requireAuth, async (req, res) => {
+  const receivedData = req.body;
+  const promptString = receivedData.prompt;
+  const { provider, model, temperature } = receivedData;
 
   let cost = 0;
   if (plan === process.env.MONTH_TYPE) {
@@ -3317,6 +3367,16 @@ app.post("/api/paystackcancel", async (req, res) => {
 app.post("/api/flutterwavecancel", async (req, res) => {
   const { code, token, email } = req.body;
 
+  if (!flw) {
+    res.status(500).json({ success: false, message: "Flutterwave not configured" });
+    return;
+  }
+
+  if (!flw) {
+    res.status(500).json({ success: false, message: "Flutterwave not configured" });
+    return;
+  }
+
   const payload = { id: code };
   const response = await flw.Subscription.cancel(payload);
   if (response) {
@@ -3452,6 +3512,14 @@ app.post("/api/flutterdetails", async (req, res) => {
     await User.findOneAndUpdate({ _id: uid }, { $set: { type: plan } })
       .then(async (result) => {
         const payload = { email: email };
+        if (!flw) {
+          res.status(500).json({ success: false, message: "Flutterwave not configured" });
+          return;
+        }
+        if (!flw) {
+          res.status(500).json({ success: false, message: "Flutterwave not configured" });
+          return;
+        }
         const response = await flw.Subscription.get(payload);
 
         res.send(response["data"][0]);
