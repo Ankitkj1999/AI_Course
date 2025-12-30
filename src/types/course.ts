@@ -106,9 +106,6 @@ export interface CourseContentResponse {
 }
 
 export interface CourseProgress {
-  hasExamResult: boolean;
-  examPassed: boolean;
-  examScore: number | null;
   completedAt: string | null;
 }
 
@@ -122,14 +119,6 @@ export interface CourseProgressResponse {
     slug: string;
     isPublic: boolean;
   };
-}
-
-// Legacy response type (deprecated)
-export interface LegacyCourseResultResponse {
-  success: boolean;
-  message: boolean; // Legacy field name for examPassed
-  lang: string;
-  _deprecated?: string;
 }
 
 export interface CreateCourseRequest {

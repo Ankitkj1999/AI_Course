@@ -1,6 +1,6 @@
 
 import express from 'express';
-import { Quiz, Flashcard, Exam } from '../models/index.js';
+import { Quiz, Flashcard } from '../models/index.js';
 import { requireAuth } from '../middleware/authMiddleware.js';
 import llmService from '../services/llmService.js';
 import logger from '../utils/logger.js';
@@ -11,7 +11,7 @@ const router = express.Router();
 /**
  * AI Content Generation Routes
  * All routes require authentication and interact with LLM services
- * Supports: Quiz, Flashcard, Exam generation
+ * Supports: Quiz, Flashcard generation
  */
 
 // ============================================================================
@@ -698,119 +698,5 @@ Format as JSON array with structure:
 
 
 
-
-
-// ============================================================================
-// EXAM GENERATION ENDPOINTS
-// ============================================================================
-
-/**
- * POST /api/exam/generate - Generate AI exam/assessment
- * @auth Required
- * @body {string} courseId - Course ID
- * @body {string} mainTopic - Main topic/title
- * @body {string} subtopicsString - Comma-separated subtopics
- * @body {string} lang - Language for exam
- */
-router.post('/exam/generate', requireAuth, async (req, res) => {
-    const { courseId, mainTopic, subtopicsString, lang } = req.body;
-
-    try {
-        const existingExam = await Exam.findOne({ course: courseId });
-        if (existingExam) {
-            return res.json({ success: true, message: existingExam.exam });
-        }
-
-        const prompt = `Strictly in ${lang},
-        generate a strictly 10 question MCQ quiz on title ${mainTopic} based on each topics :- ${subtopicsString}, Atleast One question per topic. Add options A, B, C, D and only one correct answer. Give your response Strictly in JSON format like this :-
-        {
-          "${mainTopic}": [
-            {
-              "topic": "topic title",
-              "question": "",
-              "options": [
-               "",
-               "",
-               "",
-               ""
-              ],
-              "answer": "correct option like A, B, C, D"
-            },
-            {
-              "topic": "topic title",
-              "question": "",
-              "options": [
-               "",
-               "",
-               "",
-               ""
-              ],
-              "answer": "correct option like A, B, C, D"
-            },
-            {
-              "topic": "topic title",
-              "question": "",
-              "options": [
-               "",
-               "",
-               "",
-               ""
-              ],
-              "answer": "correct option like A, B, C, D"
-            }
-          ]
-        }
-        `;
-
-        const result = await llmService.generateContent(prompt, { temperature: 0.7 });
-
-        if (!result.success) {
-            return res.json({ success: false, message: 'Failed to generate exam' });
-        }
-
-        const txt = result.data.content;
-        let output = txt.slice(7, txt.length - 4);
-
-        const newExam = new Exam({
-            course: courseId,
-            exam: output,
-            marks: '0',
-            passed: false,
-        });
-        await newExam.save();
-
-        res.json({ success: true, message: output });
-    } catch (error) {
-        logger.error(`Exam generation error: ${error.message}`, {
-            error: error.stack,
-            courseId,
-            mainTopic,
-        });
-        res.json({ success: false, message: 'Failed to generate exam' });
-    }
-});
-
-/**
- * POST /api/exam/update-result - Update exam results
- * @auth Required
- * @body {string} courseId - Course ID
- * @body {string} marksString - Marks achieved
- */
-router.post('/exam/update-result', requireAuth, async (req, res) => {
-    const { courseId, marksString } = req.body;
-    try {
-        await Exam.findOneAndUpdate(
-            { course: courseId },
-            { $set: { marks: marksString, passed: true } }
-        );
-        res.json({ success: true });
-    } catch (error) {
-        logger.error(`Update exam result error: ${error.message}`, {
-            error: error.stack,
-            courseId,
-        });
-        res.status(500).json({ success: false, message: 'Internal Server Error' });
-    }
-});
 
 export default router;

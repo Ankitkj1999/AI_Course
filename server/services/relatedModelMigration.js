@@ -1,10 +1,10 @@
 import mongoose from 'mongoose';
 import logger from '../utils/logger.js';
-import { Course, Section, Exam, Language } from '../models/index.js';
+import { Course, Section, Language } from '../models/index.js';
 
 /**
  * Related Model Migration Service
- * Handles migration of Exams and Language models to work with sections
+ * Handles migration of Language models to work with sections
  */
 class RelatedModelMigrationService {
     
@@ -17,15 +17,10 @@ class RelatedModelMigrationService {
         logger.info('🔄 Starting related model migration...');
         
         const results = {
-            exams: { migrated: 0, errors: 0 },
             languages: { migrated: 0, errors: 0 }
         };
         
         try {
-            // Migrate Exams
-            logger.info('📊 Migrating Exams...');
-            results.exams = await this.migrateExams({ dryRun, batchSize });
-            
             // Migrate Languages
             logger.info('🌐 Migrating Languages...');
             results.languages = await this.migrateLanguages({ dryRun, batchSize });
@@ -35,85 +30,6 @@ class RelatedModelMigrationService {
             
         } catch (error) {
             logger.error('❌ Related model migration failed:', error);
-            throw error;
-        }
-    }
-    
-    /**
-     * Migrate Exams from legacy schema to new schema
-     */
-    async migrateExams(options = {}) {
-        const { dryRun = false, batchSize = 100 } = options;
-        
-        try {
-            const legacyExams = await mongoose.connection.db.collection('exams').find({
-                courseId: { $exists: false }
-            }).toArray();
-            
-            logger.info(`Found ${legacyExams.length} legacy exams to migrate`);
-            
-            if (dryRun) {
-                return { migrated: legacyExams.length, errors: 0, dryRun: true };
-            }
-            
-            let migrated = 0;
-            let errors = 0;
-            
-            for (let i = 0; i < legacyExams.length; i += batchSize) {
-                const batch = legacyExams.slice(i, i + batchSize);
-                
-                for (const legacyExam of batch) {
-                    try {
-                        const course = await Course.findOne({ slug: legacyExam.course });
-                        if (!course) {
-                            logger.warn(`Course not found for legacy exam: ${legacyExam.course}`);
-                            errors++;
-                            continue;
-                        }
-                        
-                        const existingExam = await Exam.findOne({
-                            courseId: course._id,
-                            exam: legacyExam.exam,
-                            course: legacyExam.course
-                        });
-                        
-                        if (existingExam) {
-                            continue;
-                        }
-                        
-                        const scorePercentage = this.parseMarksToPercentage(legacyExam.marks);
-                        
-                        const newExam = new Exam({
-                            userId: 'migrated',
-                            courseId: course._id,
-                            sectionId: null,
-                            exam: legacyExam.exam,
-                            marks: legacyExam.marks,
-                            passed: legacyExam.passed || false,
-                            course: legacyExam.course,
-                            examType: 'quiz',
-                            scorePercentage,
-                            title: `Exam for ${course.title}`,
-                            passingScore: 70,
-                            attemptNumber: 1
-                        });
-                        
-                        await newExam.save();
-                        migrated++;
-                        
-                    } catch (error) {
-                        logger.error(`Failed to migrate exam for course ${legacyExam.course}:`, error);
-                        errors++;
-                    }
-                }
-                
-                logger.info(`Migrated exams batch ${Math.floor(i / batchSize) + 1}: ${migrated} migrated, ${errors} errors`);
-            }
-            
-            return { migrated, errors };
-            
-        } catch (error) {
-            logger.error('Failed to migrate exams:', error);
             throw error;
         }
     }
@@ -199,26 +115,10 @@ class RelatedModelMigrationService {
         logger.info('🔍 Performing data consistency checks...');
         
         const results = {
-            orphanedExams: 0,
             orphanedLanguages: 0
         };
         
         try {
-            const examsWithInvalidCourses = await Exam.aggregate([
-                {
-                    $lookup: {
-                        from: 'courses',
-                        localField: 'courseId',
-                        foreignField: '_id',
-                        as: 'course'
-                    }
-                },
-                {
-                    $match: { course: { $size: 0 } }
-                }
-            ]);
-            results.orphanedExams = examsWithInvalidCourses.length;
-            
             const languagesWithInvalidCourses = await Language.aggregate([
                 {
                     $lookup: {
@@ -252,7 +152,6 @@ class RelatedModelMigrationService {
         logger.info('🧹 Cleaning up orphaned data...');
         
         const results = {
-            deletedExams: 0,
             deletedLanguages: 0
         };
         
@@ -266,25 +165,6 @@ class RelatedModelMigrationService {
         }
         
         try {
-            const orphanedExams = await Exam.aggregate([
-                {
-                    $lookup: {
-                        from: 'courses',
-                        localField: 'courseId',
-                        foreignField: '_id',
-                        as: 'course'
-                    }
-                },
-                {
-                    $match: { course: { $size: 0 } }
-                }
-            ]);
-            
-            for (const exam of orphanedExams) {
-                await Exam.findByIdAndDelete(exam._id);
-                results.deletedExams++;
-            }
-            
             const orphanedLanguages = await Language.aggregate([
                 {
                     $lookup: {
@@ -310,30 +190,6 @@ class RelatedModelMigrationService {
         } catch (error) {
             logger.error('❌ Orphaned data cleanup failed:', error);
             throw error;
-        }
-    }
-    
-    /**
-     * Parse marks string to percentage
-     */
-    parseMarksToPercentage(marks) {
-        if (!marks) return 0;
-        
-        try {
-            if (typeof marks === 'number') return marks;
-            
-            if (marks.includes('/')) {
-                const [score, total] = marks.split('/').map(Number);
-                return total > 0 ? (score / total) * 100 : 0;
-            }
-            
-            if (marks.includes('%')) {
-                return parseFloat(marks.replace('%', ''));
-            }
-            
-            return parseFloat(marks) || 0;
-        } catch {
-            return 0;
         }
     }
 }

@@ -261,7 +261,6 @@ const Dashboard = () => {
           type: type.toLowerCase(),
           courseId,
           end: ending,
-          pass: progressResponse.progress.examPassed,
           lang: progressResponse.language
         };
         
