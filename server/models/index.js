@@ -2,7 +2,6 @@ import Course from './Course.js';
 import Section from './Section.js';
 import DocumentProcessing from './DocumentProcessing.js';
 import Settings from './Settings.js';
-import Notes from './Notes.js';
 import Exam from './Exam.js';
 import Language from './Language.js';
 import User from './User.js';
@@ -18,7 +17,6 @@ export {
     Section,
     DocumentProcessing,
     Settings,
-    Notes,
     Exam,
     Language,
     User,
@@ -35,7 +33,6 @@ export default {
     Section,
     DocumentProcessing,
     Settings,
-    Notes,
     Exam,
     Language,
     User,

@@ -1,6 +1,6 @@
 
 import express from 'express';
-import { Quiz, Flashcard, Exam, Notes } from '../models/index.js';
+import { Quiz, Flashcard, Exam } from '../models/index.js';
 import { requireAuth } from '../middleware/authMiddleware.js';
 import llmService from '../services/llmService.js';
 import logger from '../utils/logger.js';
@@ -11,7 +11,7 @@ const router = express.Router();
 /**
  * AI Content Generation Routes
  * All routes require authentication and interact with LLM services
- * Supports: Quiz, Flashcard, Exam, Notes generation
+ * Supports: Quiz, Flashcard, Exam generation
  */
 
 // ============================================================================
@@ -810,64 +810,6 @@ router.post('/exam/update-result', requireAuth, async (req, res) => {
             courseId,
         });
         res.status(500).json({ success: false, message: 'Internal Server Error' });
-    }
-});
-
-// ============================================================================
-// NOTES GENERATION ENDPOINTS
-// ============================================================================
-
-/**
- * GET /api/notes/:courseId - Get notes for a course
- * @auth Required
- * @param {string} courseId - Course ID
- */
-router.get('/notes/:courseId', requireAuth, async (req, res) => {
-    const { courseId } = req.params;
-    try {
-        const existingNotes = await Notes.findOne({ course: courseId });
-        if (existingNotes) {
-            res.json({ success: true, message: existingNotes.notes });
-        } else {
-            res.json({ success: false, message: '' });
-        }
-    } catch (error) {
-        logger.error(`Get notes error: ${error.message}`, {
-            error: error.stack,
-            courseId,
-        });
-        res.status(500).json({ success: false, message: 'Internal server error' });
-    }
-});
-
-/**
- * POST /api/notes/save - Save or update notes
- * @auth Required
- * @body {string} course - Course ID
- * @body {string} notes - Notes content
- */
-router.post('/notes/save', requireAuth, async (req, res) => {
-    const { course, notes } = req.body;
-    try {
-        const existingNotes = await Notes.findOne({ course: course });
-
-        if (existingNotes) {
-            await Notes.findOneAndUpdate(
-                { course: course },
-                { $set: { notes: notes } }
-            );
-            res.json({ success: true, message: 'Notes updated successfully' });
-        } else {
-            const newNotes = new Notes({ course: course, notes: notes });
-            await newNotes.save();
-            res.json({ success: true, message: 'Notes created successfully' });
-        }
-    } catch (error) {
-        logger.error(`Save notes error: ${error.message}`, {
-            error: error.stack,
-            course,
-        });
-        res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
 

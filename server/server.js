@@ -31,7 +31,6 @@ import DocumentProcessing from "./models/DocumentProcessing.js";
 import {
   Course,
   Section,
-  Notes,
   Exam,
   Language,
   User,
@@ -1723,7 +1722,7 @@ const initializeServer = async () => {
 
     // Perform consistency checks
     const consistencyResults = await relatedModelMigrationService.performConsistencyChecks();
-    if (consistencyResults.orphanedNotes > 0 || consistencyResults.orphanedExams > 0 || consistencyResults.orphanedLanguages > 0) {
+    if (consistencyResults.orphanedExams > 0 || consistencyResults.orphanedLanguages > 0) {
       logger.warn('⚠️ Found orphaned data:', consistencyResults);
     } else {
       logger.info('✅ Data consistency check passed');

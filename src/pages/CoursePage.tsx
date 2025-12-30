@@ -8,8 +8,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Content } from "@tiptap/react";
-import { MinimalTiptapEditor } from "../minimal-tiptap";
 import YouTube from "react-youtube";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +16,6 @@ import {
   Share,
   Download,
   MessageCircle,
-  ClipboardCheck,
   Menu,
   Award,
   ChevronLeft,
@@ -124,7 +121,6 @@ const CoursePage = () => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [exporting, setExporting] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingSubtopic, setEditingSubtopic] = useState<{ title: string; content: string } | null>(null);
 
@@ -133,7 +129,6 @@ const CoursePage = () => {
 
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(true);
-  const [isNotesOpen, setIsNotesOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const initializedRef = useRef(false);
   const { toast } = useToast();
@@ -191,7 +186,6 @@ const CoursePage = () => {
 
   const isMobile = useIsMobile();
   const mainContentRef = useRef<HTMLDivElement>(null);
-  const [value, setValue] = useState<Content>("");
   const [activeAccordionItem, setActiveAccordionItem] = useState("");
 
   const getTotalLessons = () => {
@@ -231,37 +225,6 @@ const CoursePage = () => {
     if (!topic?.subtopics?.length) return 0;
     const doneCount = topic.subtopics.filter((st) => st.done).length;
     return (doneCount / topic.subtopics.length) * 100;
-  };
-
-  const getNotes = useCallback(async () => {
-    try {
-      const postURL = serverURL + "/api/getnotes";
-      const response = await axios.post(postURL, { course: courseId });
-      if (response.data.success) {
-        setValue(response.data.message);
-      }
-    } catch (error) {
-      console.error(error);
-    }
-  }, [courseId]);
-
-  const handleSaveNote = async () => {
-    const postURL = serverURL + "/api/savenotes";
-    const response = await axios.post(postURL, {
-      course: courseId,
-      notes: value,
-    });
-    if (response.data.success) {
-      toast({
-        title: "Note saved",
-        description: "Your note has been saved successfully.",
-      });
-    } else {
-      toast({
-        title: "Error",
-        description: "Internal Server Error",
-      });
-    }
   };
 
   // Loading skeleton for course content
@@ -376,16 +339,13 @@ const CoursePage = () => {
     if (mainTopic) {
       loadMessages();
     }
-    if (courseId) {
-      getNotes();
-    }
 
     // Ensure the page starts at the top when loaded
     if (mainContentRef.current) {
       mainContentRef.current.scrollTop = 0;
     }
     window.scrollTo(0, 0);
-  }, [loadMessages, getNotes, mainTopic, courseId]);
+  }, [loadMessages, mainTopic, courseId]);
 
   // Mobile effect
   useEffect(() => {
@@ -2174,15 +2134,6 @@ const CoursePage = () => {
                 </TooltipTrigger>
                 <TooltipContent>Chat Assistant</TooltipContent>
               </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="sm" onClick={() => setIsNotesOpen(true)}>
-                    <ClipboardCheck className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Course Notes</TooltipContent>
-              </Tooltip>
             </TooltipProvider>
           </div>
 
@@ -2227,10 +2178,6 @@ const CoursePage = () => {
               <DropdownMenuItem className="md:hidden" onClick={() => setIsChatOpen(true)}>
                 <MessageCircle className="h-4 w-4 mr-2" />
                 Chat Assistant
-              </DropdownMenuItem>
-              <DropdownMenuItem className="md:hidden" onClick={() => setIsNotesOpen(true)}>
-                <ClipboardCheck className="h-4 w-4 mr-2" />
-                Course Notes
               </DropdownMenuItem>
               {!isComplete && (
                 <DropdownMenuItem className="md:hidden" onClick={certificateCheck}>
@@ -2528,9 +2475,6 @@ const CoursePage = () => {
           <Button variant="ghost" size="sm" onClick={() => setIsChatOpen(true)}>
             <MessageCircle className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => setIsNotesOpen(true)}>
-            <ClipboardCheck className="h-4 w-4" />
-          </Button>
         </div>
 
         {/* Right side - More actions */}
@@ -2635,72 +2579,6 @@ const CoursePage = () => {
             </div>
           </SheetContent>
         </Sheet>
-      )}
-
-      {isMobile ? (
-        <Sheet open={isNotesOpen} onOpenChange={setIsNotesOpen}>
-          <SheetContent side="bottom" className="h-[90vh] sm:max-w-full p-0">
-            <div className="flex flex-col h-full p-4">
-              <div className="py-2 px-4 border-b border-border mb-2">
-                <h2 className="text-lg font-semibold">Course Notes</h2>
-              </div>
-              <ScrollArea className="flex-1 pr-4 mb-4">
-                <div className="space-y-4 pt-2 px-4">
-                  <MinimalTiptapEditor
-                    value={value}
-                    onChange={setValue}
-                    className="w-full"
-                    editorContentClassName="p-5"
-                    output="html"
-                    placeholder="No notes yet. Start taking notes for this course."
-                    autofocus={true}
-                    editable={true}
-                    editorClassName="focus:outline-none"
-                  />
-                </div>
-              </ScrollArea>
-
-              <div className="p-4 border-t border-border">
-                <div className="flex justify-end">
-                  <Button disabled={saving} onClick={handleSaveNote}>
-                    {saving ? "Saving..." : "Save Note"}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </SheetContent>
-        </Sheet>
-      ) : (
-        <Dialog open={isNotesOpen} onOpenChange={setIsNotesOpen}>
-          <DialogContent className="sm:max-w-lg">
-            <DialogTitle>Course Notes</DialogTitle>
-            <div className="flex flex-col h-[60vh]">
-              <ScrollArea className="flex-1 pr-4 mb-4">
-                <div className="space-y-4 pt-2">
-                  <MinimalTiptapEditor
-                    value={value}
-                    onChange={setValue}
-                    className="w-full"
-                    editorContentClassName="p-5"
-                    output="html"
-                    placeholder="No notes yet. Start taking notes for this course."
-                    autofocus={true}
-                    editable={true}
-                    editorClassName="focus:outline-none"
-                  />
-                </div>
-              </ScrollArea>
-
-              <div>
-                <div className="flex justify-end">
-                  <Button disabled={saving} onClick={handleSaveNote}>
-                    {saving ? "Saving..." : "Save Note"}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
       )}
 
       {/* Subtopic Editor */}
