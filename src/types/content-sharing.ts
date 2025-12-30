@@ -1,13 +1,12 @@
 import { Course } from './course';
 import { Quiz } from './quiz';
 import { FlashcardSet } from './flashcard';
-import { Guide } from './guide';
 
 // Union type for all content types
-export type ContentItem = Course | Quiz | FlashcardSet | Guide;
+export type ContentItem = Course | Quiz | FlashcardSet;
 
 // Content type discriminator
-export type ContentType = 'course' | 'quiz' | 'flashcard' | 'guide';
+export type ContentType = 'course' | 'quiz' | 'flashcard';
 
 // Public content response for unified endpoint
 export interface PublicContentResponse {

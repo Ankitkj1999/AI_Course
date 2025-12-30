@@ -42,8 +42,8 @@ const steps = [
     icon: <CreditCard className="h-7 w-7" />,
     title: "Enhanced Learning Tools",
     description:
-      "Access advanced features like flashcards, study guides, and AI teacher chat for a complete learning experience.",
-    features: ["Smart flashcards", "Study guides", "AI teacher chat"],
+      "Access advanced features like flashcards and AI teacher chat for a complete learning experience.",
+    features: ["Smart flashcards", "AI teacher chat"],
     gradient: "from-orange-500/20 to-primary/10",
   },
   {

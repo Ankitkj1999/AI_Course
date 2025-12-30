@@ -8,7 +8,7 @@ import TextInput from '@/components/TextInput';
 import ExtractionPreview from '@/components/ExtractionPreview';
 
 interface DocumentBasedCreationProps {
-  onGenerateContent?: (contentType: 'course' | 'quiz' | 'flashcard' | 'guide', source: { processingId?: string; text?: string }) => void;
+  onGenerateContent?: (contentType: 'course' | 'quiz' | 'flashcard', source: { processingId?: string; text?: string }) => void;
 }
 
 const DocumentBasedCreation: React.FC<DocumentBasedCreationProps> = ({ onGenerateContent }) => {
@@ -26,13 +26,13 @@ const DocumentBasedCreation: React.FC<DocumentBasedCreationProps> = ({ onGenerat
     setDirectText(text);
   };
 
-  const handleGenerateContent = (contentType: 'course' | 'quiz' | 'flashcard' | 'guide', id: string) => {
+  const handleGenerateContent = (contentType: 'course' | 'quiz' | 'flashcard', id: string) => {
     if (onGenerateContent) {
       onGenerateContent(contentType, { processingId: id });
     }
   };
 
-  const handleGenerateFromText = (contentType: 'course' | 'quiz' | 'flashcard' | 'guide') => {
+  const handleGenerateFromText = (contentType: 'course' | 'quiz' | 'flashcard') => {
     if (onGenerateContent && directText) {
       onGenerateContent(contentType, { text: directText });
     }

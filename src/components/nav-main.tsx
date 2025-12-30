@@ -31,8 +31,8 @@ export function NavMain({ items }: NavMainProps) {
             return (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton asChild isActive={isActive}>
-                  <Link to={item.url} className={cn(isActive && 'text-primary')}>
-                    <item.icon />
+                  <Link to={item.url} className={cn(isActive && 'text-primary')} aria-label={item.title}>
+                    <item.icon aria-hidden="true" />
                     <span>{item.title}</span>
                   </Link>
                 </SidebarMenuButton>

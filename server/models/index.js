@@ -12,7 +12,6 @@ import Contact from './Contact.js';
 import Blog from './Blog.js';
 import Quiz from './Quiz.js';
 import Flashcard from './Flashcard.js';
-import Guide from './Guide.js';
 
 export {
     Course,
@@ -29,7 +28,6 @@ export {
     Blog,
     Quiz,
     Flashcard,
-    Guide
 };
 
 export default {
@@ -47,5 +45,4 @@ export default {
     Blog,
     Quiz,
     Flashcard,
-    Guide
 };

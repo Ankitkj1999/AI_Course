@@ -122,11 +122,7 @@ export const AppSidebar = ({
       url: '/dashboard/flashcards',
       icon: CreditCard,
     },
-    {
-      title: 'My Guides',
-      url: '/dashboard/guides',
-      icon: Layers,
-    },
+
   ];
 
   const navQuickCreate = [
@@ -148,12 +144,7 @@ export const AppSidebar = ({
       icon: CreditCard,
       tooltip: 'Create flashcards from topics or upload documents for automatic generation',
     },
-    {
-      title: 'Create Guide',
-      url: '/dashboard/create-guide',
-      icon: FileText,
-      tooltip: 'Build comprehensive guides from keywords or document content',
-    },
+
   ];
 
   const navDevTools = [

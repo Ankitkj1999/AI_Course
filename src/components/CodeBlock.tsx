@@ -58,11 +58,13 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
         <button
           onClick={() => copyText(code)}
           className="rounded-md p-1 text-gray-400 hover:bg-gray-700 hover:text-gray-200"
+          aria-label={isCopied ? "Code copied to clipboard" : "Copy code to clipboard"}
+          title={isCopied ? "Code copied" : "Copy code"}
         >
           {isCopied ? (
-            <CheckIcon className="h-4 w-4" />
+            <CheckIcon className="h-4 w-4" aria-hidden="true" />
           ) : (
-            <CopyIcon className="h-4 w-4" />
+            <CopyIcon className="h-4 w-4" aria-hidden="true" />
           )}
         </button>
       </div>

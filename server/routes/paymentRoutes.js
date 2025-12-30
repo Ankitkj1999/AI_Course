@@ -1,41 +1,14 @@
 import express from 'express';
 import nodemailer from 'nodemailer';
 import axios from 'axios';
-import Stripe from 'stripe';
-import Flutterwave from 'flutterwave-node-v3';
 import { User, Admin, Subscription } from '../models/index.js';
 import logger from '../utils/logger.js';
 
 const router = express.Router();
 
-// Initialize payment providers
-let stripe = null;
-let flw = null;
-
-try {
-    if (process.env.STRIPE_SECRET_KEY) {
-        stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-        logger.info('✅ Stripe initialized in payment routes');
-    } else {
-        logger.warn('⚠️ Stripe not configured - payment features will be limited');
-    }
-} catch (error) {
-    logger.error('❌ Stripe initialization failed in payment routes:', error.message);
-}
-
-try {
-    if (process.env.FLUTTERWAVE_PUBLIC_KEY && process.env.FLUTTERWAVE_SECRET_KEY) {
-        flw = new Flutterwave(
-            process.env.FLUTTERWAVE_PUBLIC_KEY,
-            process.env.FLUTTERWAVE_SECRET_KEY
-        );
-        logger.info('✅ Flutterwave initialized in payment routes');
-    } else {
-        logger.warn('⚠️ Flutterwave not configured - payment features will be limited');
-    }
-} catch (error) {
-    logger.error('❌ Flutterwave initialization failed in payment routes:', error.message);
-}
+/**
+ * Payment Routes - Razorpay and PayPal only
+ */
 
 // Helper function to get email transporter
 const getTransporter = () => {
@@ -55,8 +28,16 @@ const getTransporter = () => {
 async function sendRenewEmail(id) {
     try {
         const subscriptionDetails = await Subscription.findOne({ subscription: id });
+        if (!subscriptionDetails) {
+            logger.warn(`Subscription not found for renewal email: ${id}`);
+            return;
+        }
         const userId = subscriptionDetails.user;
         const userDetails = await User.findOne({ _id: userId });
+        if (!userDetails) {
+            logger.warn(`User not found for renewal email: ${userId}`);
+            return;
+        }
         const transporter = getTransporter();
 
         await transporter.sendMail({
@@ -65,15 +46,20 @@ async function sendRenewEmail(id) {
             subject: `${userDetails.mName} Your Subscription Plan Has Been Renewed`,
             html: `<p>${userDetails.mName}, your subscription plan has been Renewed.</p>`
         });
+        logger.info(`Renewal email sent to ${userDetails.email}`);
     } catch (error) {
         logger.error('Send renew email error:', error);
     }
 }
 
-// Helper: Update subscription
+// Helper: Update subscription status
 async function updateSubscription(id, subject) {
     try {
         const subscriptionDetails = await Subscription.findOne({ subscription: id });
+        if (!subscriptionDetails) {
+            logger.warn(`Subscription not found for update: ${id}`);
+            return;
+        }
         const userId = subscriptionDetails.user;
         await User.findOneAndUpdate({ _id: userId }, { $set: { type: 'free' } });
         const userDetails = await User.findOne({ _id: userId });
@@ -98,16 +84,20 @@ async function sendCancelEmail(email, name, subject) {
     });
 }
 
-// GET SUBSCRIPTION DETAILS (Multi-provider)
+// ============================================================================
+// SUBSCRIPTION DETAILS (Razorpay and PayPal only)
+// ============================================================================
+
 router.post('/subscriptiondetail', async (req, res) => {
     try {
-        const { uid, email } = req.body;
+        const { uid } = req.body;
         const userDetails = await Subscription.findOne({ user: uid });
 
-        if (userDetails.method === 'stripe') {
-            const subscription = await stripe.subscriptions.retrieve(userDetails.subscriberId);
-            res.json({ session: subscription, method: userDetails.method });
-        } else if (userDetails.method === 'paypal') {
+        if (!userDetails) {
+            return res.status(404).json({ error: 'Subscription not found' });
+        }
+
+        if (userDetails.method === 'paypal') {
             const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
             const PAYPAL_APP_SECRET_KEY = process.env.PAYPAL_APP_SECRET_KEY;
             const auth = Buffer.from(PAYPAL_CLIENT_ID + ':' + PAYPAL_APP_SECRET_KEY).toString('base64');
@@ -123,35 +113,8 @@ router.post('/subscriptiondetail', async (req, res) => {
             );
             const session = await response.json();
             res.json({ session: session, method: userDetails.method });
-        } else if (userDetails.method === 'flutterwave') {
-            if (!flw) {
-                res.status(500).json({ success: false, message: "Flutterwave not configured" });
-                return;
-            }
-            const payload = { email: email };
-            const response = await flw.Subscription.get(payload);
-            res.json({ session: response['data'][0], method: userDetails.method });
-        } else if (userDetails.method === 'paystack') {
-            const response = await axios.get(
-                `https://api.paystack.co/subscription/${userDetails.subscriberId}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`
-                    }
-                }
-            );
-            res.json({
-                session: {
-                    subscription_code: response.data.data.subscription_code,
-                    createdAt: response.data.data.createdAt,
-                    updatedAt: response.data.data.updatedAt,
-                    customer_code: userDetails.subscription,
-                    email_token: response.data.data.email_token
-                },
-                method: userDetails.method
-            });
         } else {
-            // Razorpay
+            // Razorpay (default)
             const config = {
                 headers: { 'Content-Type': 'application/json' },
                 auth: {
@@ -159,15 +122,11 @@ router.post('/subscriptiondetail', async (req, res) => {
                     password: process.env.RAZORPAY_KEY_SECRET
                 }
             };
-            axios
-                .get(`https://api.razorpay.com/v1/subscriptions/${userDetails.subscription}`, config)
-                .then((response) => {
-                    res.json({ session: response.data, method: userDetails.method });
-                })
-                .catch((error) => {
-                    logger.error('Razorpay get details error:', error);
-                    res.status(500).json({ error: 'Internal server error' });
-                });
+            const response = await axios.get(
+                `https://api.razorpay.com/v1/subscriptions/${userDetails.subscription}`,
+                config
+            );
+            res.json({ session: response.data, method: userDetails.method });
         }
     } catch (error) {
         logger.error('Get subscription details error:', error);
@@ -175,19 +134,20 @@ router.post('/subscriptiondetail', async (req, res) => {
     }
 });
 
-// DOWNLOAD RECEIPT
+// ============================================================================
+// RECEIPT ROUTES
+// ============================================================================
+
 router.post('/downloadreceipt', async (req, res) => {
     const { html, email } = req.body;
     const transporter = getTransporter();
 
-    const options = {
+    transporter.sendMail({
         from: process.env.EMAIL,
         to: email,
         subject: 'Subscription Receipt',
         html: html
-    };
-
-    transporter.sendMail(options, (error, info) => {
+    }, (error) => {
         if (error) {
             logger.error('Download receipt error:', error);
             res.status(500).json({ success: false, message: 'Failed to send receipt' });
@@ -197,7 +157,6 @@ router.post('/downloadreceipt', async (req, res) => {
     });
 });
 
-// SEND RECEIPT
 router.post('/sendreceipt', async (req, res) => {
     const { html, email, plan, subscriberId, user, method, subscription } = req.body;
     
@@ -220,7 +179,7 @@ router.post('/sendreceipt', async (req, res) => {
         to: email,
         subject: 'Subscription Payment',
         html: html
-    }, (error, info) => {
+    }, (error) => {
         if (error) {
             logger.error('Send receipt error:', error);
             res.status(500).json({ success: false, message: 'Failed to send receipt' });
@@ -230,7 +189,10 @@ router.post('/sendreceipt', async (req, res) => {
     });
 });
 
-// PAYPAL WEBHOOKS
+// ============================================================================
+// PAYPAL ROUTES
+// ============================================================================
+
 router.post('/paypalwebhooks', async (req, res) => {
     const body = req.body;
     const event_type = body.event_type;
@@ -257,9 +219,8 @@ router.post('/paypalwebhooks', async (req, res) => {
     res.sendStatus(200);
 });
 
-// PAYPAL PAYMENT
 router.post('/paypal', async (req, res) => {
-    const { planId, email, name, lastName, post, address, country, brand, admin } = req.body;
+    const { planId, email, name, lastName, post, address, country, admin } = req.body;
     
     try {
         const firstLine = address.split(',').slice(0, -1).join(',');
@@ -348,25 +309,27 @@ router.post('/paypalcancel', async (req, res) => {
         process.env.PAYPAL_CLIENT_ID + ':' + process.env.PAYPAL_APP_SECRET_KEY
     ).toString('base64');
     
-    await fetch(`https://api-m.paypal.com/v1/billing/subscriptions/${id}/cancel`, {
-        method: 'POST',
-        headers: { Authorization: 'Basic ' + auth, 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ reason: 'Not satisfied with the service' })
-    }).then(async () => {
-        try {
-            const subscriptionDetails = await Subscription.findOne({ subscriberId: email });
+    try {
+        await fetch(`https://api-m.paypal.com/v1/billing/subscriptions/${id}/cancel`, {
+            method: 'POST',
+            headers: { Authorization: 'Basic ' + auth, 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ reason: 'Not satisfied with the service' })
+        });
+        
+        const subscriptionDetails = await Subscription.findOne({ subscriberId: email });
+        if (subscriptionDetails) {
             const userId = subscriptionDetails.user;
             await User.findOneAndUpdate({ _id: userId }, { $set: { type: 'free' } });
             const userDetails = await User.findOne({ _id: userId });
             await Subscription.findOneAndDelete({ subscription: id });
             await sendCancelEmail(userDetails.email, userDetails.mName, 'Cancelled');
-            logger.info(`PayPal subscription cancelled for ${email}`);
-            res.json({ success: true, message: '' });
-        } catch (error) {
-            logger.error('PayPal cancel error:', error);
-            res.status(500).json({ success: false, message: 'Internal server error' });
         }
-    });
+        logger.info(`PayPal subscription cancelled for ${email}`);
+        res.json({ success: true, message: '' });
+    } catch (error) {
+        logger.error('PayPal cancel error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
 });
 
 router.post('/paypalupdate', async (req, res) => {
@@ -399,75 +362,28 @@ router.post('/paypalupdate', async (req, res) => {
 
 router.post('/paypalupdateuser', async (req, res) => {
     const { id, mName, email, user, plan } = req.body;
-    await Subscription.findOneAndUpdate({ subscription: id }, { $set: { plan: plan } }).then(async () => {
-        await User.findOneAndUpdate({ _id: user }, { $set: { type: plan } }).then(async () => {
-            const transporter = getTransporter();
-            await transporter.sendMail({
-                from: process.env.EMAIL,
-                to: email,
-                subject: `${mName} Your Subscription Plan Has Been Modified`,
-                html: `<p>${mName}, your subscription plan has been Modified.</p>`
-            });
-            logger.info(`PayPal subscription updated for ${email}`);
-        });
-    });
-});
-
-// STRIPE ROUTES
-router.post('/stripepayment', async (req, res) => {
-    const { planId } = req.body;
     try {
-        const session = await stripe.checkout.sessions.create({
-            success_url: `${process.env.WEBSITE_URL}/payment-success/${planId}`,
-            cancel_url: `${process.env.WEBSITE_URL}/payment-failed`,
-            line_items: [{ price: planId, quantity: 1 }],
-            mode: 'subscription'
+        await Subscription.findOneAndUpdate({ subscription: id }, { $set: { plan: plan } });
+        await User.findOneAndUpdate({ _id: user }, { $set: { type: plan } });
+        const transporter = getTransporter();
+        await transporter.sendMail({
+            from: process.env.EMAIL,
+            to: email,
+            subject: `${mName} Your Subscription Plan Has Been Modified`,
+            html: `<p>${mName}, your subscription plan has been Modified.</p>`
         });
-        logger.info(`Stripe checkout session created: ${session.id}`);
-        res.json({ url: session.url, id: session.id });
-    } catch (e) {
-        logger.error('Stripe payment error:', e);
-        res.status(500).json({ error: e.message });
-    }
-});
-
-router.post('/stripedetails', async (req, res) => {
-    const { subscriberId, uid, plan } = req.body;
-    let cost = 0;
-    if (plan === process.env.MONTH_TYPE) { cost = process.env.MONTH_COST; } 
-    else { cost = process.env.YEAR_COST; }
-    cost = cost / 4;
-    await Admin.findOneAndUpdate({ type: 'main' }, { $inc: { total: cost } });
-    await User.findOneAndUpdate({ _id: uid }, { $set: { type: plan } })
-        .then(async () => {
-            const session = await stripe.checkout.sessions.retrieve(subscriberId);
-            res.send(session);
-        })
-        .catch((error) => {
-            logger.error('Stripe details error:', error);
-            res.status(500).json({ success: false, message: 'Internal server error' });
-        });
-});
-
-router.post('/stripecancel', async (req, res) => {
-    const { id, email } = req.body;
-    await stripe.subscriptions.cancel(id);
-    try {
-        const subscriptionDetails = await Subscription.findOne({ subscriberId: email });
-        const userId = subscriptionDetails.user;
-        await User.findOneAndUpdate({ _id: userId }, { $set: { type: 'free' } });
-        const userDetails = await User.findOne({ _id: userId });
-        await Subscription.findOneAndDelete({ subscriberId: id });
-        await sendCancelEmail(userDetails.email, userDetails.mName, 'Cancelled');
-        logger.info(`Stripe subscription cancelled for ${email}`);
-        res.json({ success: true, message: '' });
+        logger.info(`PayPal subscription updated for ${email}`);
+        res.json({ success: true });
     } catch (error) {
-        logger.error('Stripe cancel error:', error);
+        logger.error('PayPal update user error:', error);
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
 
+// ============================================================================
 // RAZORPAY ROUTES
+// ============================================================================
+
 router.post('/razorpaycreate', async (req, res) => {
     const { plan, email, fullAddress } = req.body;
     try {
@@ -475,25 +391,19 @@ router.post('/razorpaycreate', async (req, res) => {
             headers: { 'Content-Type': 'application/json' },
             auth: { username: process.env.RAZORPAY_KEY_ID, password: process.env.RAZORPAY_KEY_SECRET }
         };
-        axios.post('https://api.razorpay.com/v1/subscriptions', JSON.stringify({
+        const response = await axios.post('https://api.razorpay.com/v1/subscriptions', {
             plan_id: plan,
             total_count: 12,
             quantity: 1,
             customer_notify: 1,
             notes: { notes_key_1: fullAddress },
             notify_info: { notify_email: email }
-        }), config)
-            .then((response) => {
-                logger.info(`Razorpay subscription created for ${email}`);
-                res.send(response.data);
-            })
-            .catch((error) => {
-                logger.error('Razorpay create error:', error);
-                res.status(500).json({ error: 'Internal server error' });
-            });
+        }, config);
+        logger.info(`Razorpay subscription created for ${email}`);
+        res.send(response.data);
     } catch (error) {
         logger.error('Razorpay create error:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -510,9 +420,8 @@ router.post('/razorapydetails', async (req, res) => {
                 headers: { 'Content-Type': 'application/json' },
                 auth: { username: process.env.RAZORPAY_KEY_ID, password: process.env.RAZORPAY_KEY_SECRET }
             };
-            axios.get(`https://api.razorpay.com/v1/subscriptions/${subscriberId}`, config)
-                .then((response) => res.send(response.data))
-                .catch((error) => logger.error('Razorpay get error:', error));
+            const response = await axios.get(`https://api.razorpay.com/v1/subscriptions/${subscriberId}`, config);
+            res.send(response.data);
         })
         .catch((error) => {
             logger.error('Razorpay details error:', error);
@@ -526,12 +435,13 @@ router.post('/razorapypending', async (req, res) => {
         headers: { 'Content-Type': 'application/json' },
         auth: { username: process.env.RAZORPAY_KEY_ID, password: process.env.RAZORPAY_KEY_SECRET }
     };
-    axios.get(`https://api.razorpay.com/v1/subscriptions/${sub}`, config)
-        .then((response) => res.send(response.data))
-        .catch((error) => {
-            logger.error('Razorpay pending error:', error);
-            res.status(500).json({ error: 'Internal server error' });
-        });
+    try {
+        const response = await axios.get(`https://api.razorpay.com/v1/subscriptions/${sub}`, config);
+        res.send(response.data);
+    } catch (error) {
+        logger.error('Razorpay pending error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
 });
 
 router.post('/razorpaycancel', async (req, res) => {
@@ -540,179 +450,21 @@ router.post('/razorpaycancel', async (req, res) => {
         headers: { 'Content-Type': 'application/json' },
         auth: { username: process.env.RAZORPAY_KEY_ID, password: process.env.RAZORPAY_KEY_SECRET }
     };
-    axios.post(`https://api.razorpay.com/v1/subscriptions/${id}/cancel`, { cancel_at_cycle_end: 0 }, config)
-        .then(async () => {
-            try {
-                const subscriptionDetails = await Subscription.findOne({ subscriberId: email });
-                const userId = subscriptionDetails.user;
-                await User.findOneAndUpdate({ _id: userId }, { $set: { type: 'free' } });
-                const userDetails = await User.findOne({ _id: userId });
-                await Subscription.findOneAndDelete({ subscription: id });
-                await sendCancelEmail(userDetails.email, userDetails.mName, 'Cancelled');
-                logger.info(`Razorpay subscription cancelled for ${email}`);
-                res.json({ success: true, message: '' });
-            } catch (error) {
-                logger.error('Razorpay cancel error:', error);
-                res.status(500).json({ success: false, message: 'Internal server error' });
-            }
-        })
-        .catch((error) => {
-            logger.error('Razorpay cancel API error:', error);
-            res.status(500).json({ error: 'Internal server error' });
-        });
-});
-
-// PAYSTACK ROUTES
-router.post('/paystackpayment', async (req, res) => {
-    const { planId, amountInZar, email } = req.body;
     try {
-        axios.post('https://api.paystack.co/transaction/initialize', {
-            email: email,
-            amount: amountInZar,
-            plan: planId
-        }, {
-            headers: {
-                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-                'Content-Type': 'application/json'
-            }
-        })
-            .then((response) => {
-                if (response.data.status) {
-                    logger.info(`Paystack transaction initialized for ${email}`);
-                    res.json({ url: response.data.data.authorization_url });
-                } else {
-                    res.status(500).json({ error: 'Internal Server Error' });
-                }
-            })
-            .catch((error) => {
-                logger.error('Paystack payment error:', error);
-                res.status(500).json({ error: 'Internal Server Error' });
-            });
-    } catch (e) {
-        logger.error('Paystack payment error:', e);
-        res.status(500).json({ error: e.message });
-    }
-});
-
-router.post('/paystackfetch', async (req, res) => {
-    const { email, uid, plan } = req.body;
-    try {
-        axios.get('https://api.paystack.co/subscription', {
-            headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` }
-        })
-            .then(async (response) => {
-                const jsonData = response.data;
-                let subscriptionDetails = null;
-                jsonData.data.forEach((subscription) => {
-                    if (subscription.customer.email === email) {
-                        subscriptionDetails = {
-                            subscription_code: subscription.subscription_code,
-                            createdAt: subscription.createdAt,
-                            updatedAt: subscription.updatedAt,
-                            customer_code: subscription.customer.customer_code
-                        };
-                    }
-                });
-                if (subscriptionDetails) {
-                    let cost = 0;
-                    if (plan === process.env.MONTH_TYPE) { cost = process.env.MONTH_COST; } 
-                    else { cost = process.env.YEAR_COST; }
-                    cost = cost / 4;
-                    await Admin.findOneAndUpdate({ type: 'main' }, { $inc: { total: cost } });
-                    await User.findOneAndUpdate({ _id: uid }, { $set: { type: plan } })
-                        .then(async () => res.json({ details: subscriptionDetails }))
-                        .catch((error) => {
-                            logger.error('Paystack fetch error:', error);
-                            res.status(500).json({ success: false, message: 'Internal server error' });
-                        });
-                } else {
-                    res.status(500).json({ error: 'Internal Server Error' });
-                }
-            })
-            .catch((error) => {
-                logger.error('Paystack fetch error:', error);
-                res.status(500).json({ error: 'Internal Server Error' });
-            });
-    } catch (e) {
-        logger.error('Paystack fetch error:', e);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
-
-router.post('/paystackcancel', async (req, res) => {
-    const { code, token, email } = req.body;
-    axios.post('https://api.paystack.co/subscription/disable', { code: code, token: token }, {
-        headers: {
-            Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-            'Content-Type': 'application/json'
-        }
-    })
-        .then(async () => {
-            const subscriptionDetails = await Subscription.findOne({ subscriberId: email });
+        await axios.post(`https://api.razorpay.com/v1/subscriptions/${id}/cancel`, { cancel_at_cycle_end: 0 }, config);
+        const subscriptionDetails = await Subscription.findOne({ subscriberId: email });
+        if (subscriptionDetails) {
             const userId = subscriptionDetails.user;
             await User.findOneAndUpdate({ _id: userId }, { $set: { type: 'free' } });
             const userDetails = await User.findOne({ _id: userId });
-            await Subscription.findOneAndDelete({ subscriberId: code });
-            await sendCancelEmail(email, userDetails.mName, 'Cancelled');
-            logger.info(`Paystack subscription cancelled for ${email}`);
-            res.json({ success: true, message: '' });
-        })
-        .catch((error) => {
-            logger.error('Paystack cancel error:', error);
-            res.status(500).json({ error: 'Internal server error' });
-        });
-});
-
-// FLUTTERWAVE ROUTES
-router.post('/flutterdetails', async (req, res) => {
-    const { email, uid, plan } = req.body;
-    try {
-        let cost = 0;
-        if (plan === process.env.MONTH_TYPE) { cost = process.env.MONTH_COST; } 
-        else { cost = process.env.YEAR_COST; }
-        cost = cost / 4;
-        await Admin.findOneAndUpdate({ type: 'main' }, { $inc: { total: cost } });
-        await User.findOneAndUpdate({ _id: uid }, { $set: { type: plan } })
-            .then(async () => {
-                if (!flw) {
-                    res.status(500).json({ success: false, message: "Flutterwave not configured" });
-                    return;
-                }
-                const payload = { email: email };
-                const response = await flw.Subscription.get(payload);
-                res.send(response['data'][0]);
-            })
-            .catch((error) => {
-                logger.error('Flutterwave details error:', error);
-                res.status(500).json({ success: false, message: 'Internal server error' });
-            });
-    } catch (error) {
-        logger.error('Flutterwave details error:', error);
-        res.status(500).json({ success: false, message: 'Internal server error' });
-    }
-});
-
-router.post('/flutterwavecancel', async (req, res) => {
-    const { code, token, email } = req.body;
-    
-    if (!flw) {
-        res.status(500).json({ success: false, message: "Flutterwave not configured" });
-        return;
-    }
-    
-    const payload = { id: code };
-    const response = await flw.Subscription.cancel(payload);
-    if (response) {
-        const subscriptionDetails = await Subscription.findOne({ subscriberId: email });
-        const userId = subscriptionDetails.user;
-        await User.findOneAndUpdate({ _id: userId }, { $set: { type: 'free' } });
-        const userDetails = await User.findOne({ _id: userId });
-        await Subscription.findOneAndDelete({ subscriberId: token });
-        await sendCancelEmail(email, userDetails.mName, 'Cancelled');
-        logger.info(`Flutterwave subscription cancelled for ${email}`);
+            await Subscription.findOneAndDelete({ subscription: id });
+            await sendCancelEmail(userDetails.email, userDetails.mName, 'Cancelled');
+        }
+        logger.info(`Razorpay subscription cancelled for ${email}`);
         res.json({ success: true, message: '' });
-    } else {
-        res.status(500).json({ success: false, message: 'Internal server error' });
+    } catch (error) {
+        logger.error('Razorpay cancel error:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 

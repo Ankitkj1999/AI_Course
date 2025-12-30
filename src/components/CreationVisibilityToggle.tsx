@@ -3,7 +3,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface CreationVisibilityToggleProps {
-  contentType: 'course' | 'quiz' | 'flashcard' | 'guide';
+  contentType: 'course' | 'quiz' | 'flashcard';
   isPublic: boolean;
   onChange: (isPublic: boolean) => void;
   className?: string;

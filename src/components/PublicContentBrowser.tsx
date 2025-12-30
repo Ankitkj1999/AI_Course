@@ -128,7 +128,7 @@ export const PublicContentBrowser: React.FC<PublicContentBrowserProps> = ({
     if ('questionAndAnswers' in content) return 'quiz';
     if ('cards' in content) return 'flashcard';
     if ('mainTopic' in content && 'type' in content) return 'course';
-    return 'guide';
+    return 'quiz'; // Default fallback
   };
 
   // Get display title for content item
@@ -136,7 +136,7 @@ export const PublicContentBrowser: React.FC<PublicContentBrowserProps> = ({
     if ('mainTopic' in content) {
       return content.mainTopic; // Course
     }
-    return content.title; // Quiz, Flashcard, Guide
+    return content.title; // Quiz, Flashcard
   };
 
   // Get display description for content item
@@ -156,8 +156,7 @@ export const PublicContentBrowser: React.FC<PublicContentBrowserProps> = ({
         return <Brain className="w-4 h-4" />;
       case 'flashcard':
         return <Layers className="w-4 h-4" />;
-      case 'guide':
-        return <FileText className="w-4 h-4" />;
+
     }
   };
 
@@ -170,8 +169,7 @@ export const PublicContentBrowser: React.FC<PublicContentBrowserProps> = ({
         return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
       case 'flashcard':
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'guide':
-        return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
+
     }
   };
 
@@ -226,7 +224,7 @@ export const PublicContentBrowser: React.FC<PublicContentBrowserProps> = ({
               <SelectItem value="course">Courses</SelectItem>
               <SelectItem value="quiz">Quizzes</SelectItem>
               <SelectItem value="flashcard">Flashcards</SelectItem>
-              <SelectItem value="guide">Guides</SelectItem>
+
             </SelectContent>
           </Select>
 

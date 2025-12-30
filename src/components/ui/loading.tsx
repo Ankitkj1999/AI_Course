@@ -46,9 +46,10 @@ export const LoadingButton = ({
         className
       )}
       disabled={loading || disabled}
+      aria-busy={loading}
       {...props}
     >
-      {loading && <Spinner size="sm" className="mr-2" />}
+      {loading && <Spinner size="sm" className="mr-2" aria-hidden="true" />}
       {children}
     </button>
   );

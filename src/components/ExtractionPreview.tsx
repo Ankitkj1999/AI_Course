@@ -18,7 +18,7 @@ import axios from 'axios';
 interface ExtractionPreviewProps {
   processingId: string;
   preview: string;
-  onGenerateContent?: (contentType: 'course' | 'quiz' | 'flashcard' | 'guide', processingId: string) => void;
+  onGenerateContent?: (contentType: 'course' | 'quiz' | 'flashcard', processingId: string) => void;
 }
 
 const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
@@ -59,7 +59,7 @@ const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
     }
   };
 
-  const handleGenerateContent = (contentType: 'course' | 'quiz' | 'flashcard' | 'guide') => {
+  const handleGenerateContent = (contentType: 'course' | 'quiz' | 'flashcard') => {
     if (onGenerateContent) {
       onGenerateContent(contentType, processingId);
     }
@@ -161,18 +161,7 @@ const ExtractionPreview: React.FC<ExtractionPreviewProps> = ({
               </div>
             </Button>
 
-            <Button
-              type="button"
-              variant="outline"
-              className="h-auto py-4 flex flex-col items-center gap-2"
-              onClick={() => handleGenerateContent('guide')}
-            >
-              <Sparkles className="h-6 w-6 text-orange-500" />
-              <div className="text-center">
-                <div className="font-semibold">Guide</div>
-                <div className="text-xs text-gray-500">Comprehensive study material</div>
-              </div>
-            </Button>
+
           </div>
         </CardContent>
       </Card>

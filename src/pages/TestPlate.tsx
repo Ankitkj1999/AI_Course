@@ -41,10 +41,10 @@ const TestPlate = () => {
   const aiModalRef = useRef(aiModal);
   aiModalRef.current = aiModal;
 
-  // Load guide content (you can fetch from API or pass as prop)
+  // Load initial content
   useEffect(() => {
-    // Example: Load from API
-    const loadGuideContent = async () => {
+    // Example: Load from API or use default content
+    const loadInitialContent = async () => {
       try {
         // Replace with your actual API call
         // const response = await fetch('/api/guide/your-slug');
@@ -78,11 +78,11 @@ Type \`/\` anywhere and look for the "✨ AI Commands" section:
 ## Test It Out
 Try both methods above, or use the manual test buttons below!`);
       } catch (error) {
-        console.error('Failed to load guide content:', error);
+        console.error('Failed to load content:', error);
       }
     };
 
-    loadGuideContent();
+    loadInitialContent();
   }, []);
 
   useEffect(() => {

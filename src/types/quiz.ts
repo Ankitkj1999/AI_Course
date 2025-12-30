@@ -1,9 +1,4 @@
-export interface ForkedFrom {
-  contentId: string | null;
-  originalOwnerId: string | null;
-  originalOwnerName: string | null;
-  forkedAt: string | null;
-}
+import { ForkedFrom } from './course';
 
 export interface Quiz {
   _id: string;

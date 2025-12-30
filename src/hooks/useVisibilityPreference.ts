@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-type ContentType = 'course' | 'quiz' | 'flashcard' | 'guide';
+type ContentType = 'course' | 'quiz' | 'flashcard';
 
 interface UseVisibilityPreferenceReturn {
   isPublic: boolean;
@@ -11,7 +11,7 @@ interface UseVisibilityPreferenceReturn {
  * Custom hook to manage visibility preferences for content creation.
  * Stores and retrieves preferences from local storage per content type.
  * 
- * @param contentType - The type of content (course, quiz, flashcard, guide)
+ * @param contentType - The type of content (course, quiz, flashcard)
  * @param defaultValue - Default visibility (true for public)
  * @returns Object with isPublic state and setter
  */

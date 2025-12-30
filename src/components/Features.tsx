@@ -31,12 +31,7 @@ const features = [
     description:
       "Auto-generate interactive flash cards from course content for effective memorization and review.",
   },
-  {
-    icon: <FileText className="h-6 w-6" />,
-    title: "Study Guides",
-    description:
-      "Create comprehensive study guides with key concepts, summaries, and learning objectives.",
-  },
+
   {
     icon: <PenLine className="h-6 w-6" />,
     title: "Interactive Quizzes",

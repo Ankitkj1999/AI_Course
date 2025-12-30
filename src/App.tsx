@@ -41,11 +41,7 @@ import FlashcardListPage from "./pages/FlashcardList";
 import CreateFlashcardPage from "./pages/CreateFlashcard";
 import FlashcardViewerPage from "./pages/FlashcardViewer";
 
-// Guide imports
-import GuideListPage from "./pages/GuideList";
-import CreateGuidePage from "./pages/CreateGuide";
-import GuideViewerPage from "./pages/GuideViewer";
-import GuideEditor from "./pages/GuideEditor";
+
 
 // Courses import
 import CoursesPage from "./pages/dashboard/Courses";
@@ -91,10 +87,7 @@ const RedirectToFlashcard = () => {
   return <Navigate to={`/flashcard/${slug}`} replace />;
 };
 
-const RedirectToGuide = () => {
-  const { slug } = useParams<{ slug: string }>();
-  return <Navigate to={`/guide/${slug}`} replace />;
-};
+
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -142,8 +135,7 @@ const App = () => {
                   <Route path="create-quiz" element={<DashboardCreateQuizPage />} />
                   <Route path="flashcards" element={<FlashcardListPage />} />
                   <Route path="create-flashcard" element={<CreateFlashcardPage />} />
-                  <Route path="guides" element={<GuideListPage />} />
-                  <Route path="create-guide" element={<CreateGuidePage />} />
+
                   <Route path="test-llm" element={<TestLLM />} />
                   <Route path="test-plate" element={<TestPlate />} />
                   <Route path="test-lexical" element={<TestLexical />} />
@@ -176,21 +168,11 @@ const App = () => {
                   </AppLayout>
                 } />
 
-                {/* Guide Routes */}
-                <Route path="/guide/:slug" element={
-                  <AppLayout mode="public">
-                    <GuideViewerPage />
-                  </AppLayout>
-                } />
-                <Route path="/guide/:slug/edit" element={
-                  <AppLayout mode="authenticated">
-                    <GuideEditor />
-                  </AppLayout>
-                } />
+
 
                 {/* Backward Compatibility Redirects */}
                 <Route path="/dashboard/flashcard/:slug" element={<RedirectToFlashcard />} />
-                <Route path="/dashboard/guide/:slug" element={<RedirectToGuide />} />
+
 
                 {/* Public Content Discovery */}
                 <Route path="/discover" element={

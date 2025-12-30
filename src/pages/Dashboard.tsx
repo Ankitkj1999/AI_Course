@@ -422,7 +422,7 @@ const Dashboard = () => {
                       onClick={() => setViewMode('grid')}
                       className="h-8 px-3"
                     >
-                      <Grid3X3 className="h-4 w-4" />
+                      <Grid3X3 className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -437,7 +437,7 @@ const Dashboard = () => {
                       onClick={() => setViewMode('list')}
                       className="h-8 px-3"
                     >
-                      <List className="h-4 w-4" />
+                      <List className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -446,9 +446,9 @@ const Dashboard = () => {
                 </Tooltip>
               </div>
             </TooltipProvider>
-            <Button size="lg" className="shadow-md hover:shadow-lg" onClick={() => redirectCreate()}>
-              <Sparkles className="mr-2 h-4 w-4" />
-              Generate New Course
+            <Button size="lg" className="shadow-md hover:shadow-lg" onClick={() => redirectCreate()} aria-label="Generate New Course">
+  <Sparkles className="mr-2 h-4 w-4" aria-hidden="true" />
+  Generate New Course
             </Button>
           </div>
         </div>

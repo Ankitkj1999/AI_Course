@@ -93,41 +93,41 @@ export function NavUser({ onLogout, userName, userEmail, userAvatar }: NavUserPr
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <Sparkles className="mr-2 h-4 w-4" />
+              <DropdownMenuItem aria-label="Upgrade to Pro">
+                <Sparkles className="mr-2 h-4 w-4" aria-hidden="true" />
                 Upgrade to Pro
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <BadgeCheck className="mr-2 h-4 w-4" />
+              <DropdownMenuItem aria-label="Account">
+                <BadgeCheck className="mr-2 h-4 w-4" aria-hidden="true" />
                 Account
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCard className="mr-2 h-4 w-4" />
+              <DropdownMenuItem aria-label="Billing">
+                <CreditCard className="mr-2 h-4 w-4" aria-hidden="true" />
                 Billing
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Bell className="mr-2 h-4 w-4" />
+              <DropdownMenuItem aria-label="Notifications">
+                <Bell className="mr-2 h-4 w-4" aria-hidden="true" />
                 Notifications
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  {theme === 'dark' ? <Moon className="mr-2 h-4 w-4" /> : <Sun className="mr-2 h-4 w-4" />}
+                <DropdownMenuSubTrigger aria-label="Theme">
+                  {theme === 'dark' ? <Moon className="mr-2 h-4 w-4" aria-hidden="true" /> : <Sun className="mr-2 h-4 w-4" aria-hidden="true" />}
                   <span>Theme</span>
                 </DropdownMenuSubTrigger>
                 <DropdownMenuPortal>
                   <DropdownMenuSubContent>
-                    <DropdownMenuItem onClick={() => setTheme("light")}>
-                      <Sun className="mr-2 h-4 w-4" />
+                    <DropdownMenuItem onClick={() => setTheme("light")} aria-label="Light theme">
+                      <Sun className="mr-2 h-4 w-4" aria-hidden="true" />
                       <span>Light</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setTheme("dark")}>
-                      <Moon className="mr-2 h-4 w-4" />
+                    <DropdownMenuItem onClick={() => setTheme("dark")} aria-label="Dark theme">
+                      <Moon className="mr-2 h-4 w-4" aria-hidden="true" />
                       <span>Dark</span>
                     </DropdownMenuItem>
                   </DropdownMenuSubContent>
@@ -135,8 +135,8 @@ export function NavUser({ onLogout, userName, userEmail, userAvatar }: NavUserPr
               </DropdownMenuSub>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onLogout}>
-              <LogOut className="mr-2 h-4 w-4" />
+            <DropdownMenuItem onClick={onLogout} aria-label="Log out">
+              <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
               Log out
             </DropdownMenuItem>
           </DropdownMenuContent>

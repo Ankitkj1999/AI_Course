@@ -1,15 +1,10 @@
+import { ForkedFrom } from './course';
+
 export interface FlashcardType {
   front: string;
   back: string;
   difficulty: 'easy' | 'medium' | 'hard';
   tags: string[];
-}
-
-export interface ForkedFrom {
-  contentId: string | null;
-  originalOwnerId: string | null;
-  originalOwnerName: string | null;
-  forkedAt: string | null;
 }
 
 export interface FlashcardSet {

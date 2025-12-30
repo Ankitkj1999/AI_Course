@@ -51,7 +51,7 @@ const TextInput: React.FC<TextInputProps> = ({ onTextReady, onError }) => {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-gray-500" />
+                <FileText className="h-4 w-4 text-gray-500" aria-hidden="true" />
                 <span className="text-sm font-medium">Direct Text Input</span>
               </div>
               <div className="flex items-center gap-2">
@@ -83,15 +83,15 @@ const TextInput: React.FC<TextInputProps> = ({ onTextReady, onError }) => {
           </div>
 
           {errorMessage && (
-            <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
-              <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md" role="alert">
+              <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" aria-hidden="true" />
               <p className="text-sm text-red-600 dark:text-red-400">{errorMessage}</p>
             </div>
           )}
 
           {isNearLimit && !isOverLimit && (
-            <div className="flex items-start gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
-              <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md" role="status">
+              <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" aria-hidden="true" />
               <p className="text-sm text-yellow-600 dark:text-yellow-400">
                 Approaching character limit. You have {(MAX_CHARACTERS - characterCount).toLocaleString()} characters remaining.
               </p>

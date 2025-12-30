@@ -68,13 +68,15 @@ export function ThemeColorPicker() {
                 : "border-muted-foreground/20"
             )}
             onClick={() => handleColorChange(color.value)}
+            aria-label={`Select ${color.name} theme color`}
             title={color.name}
           >
             <div
               className={cn("h-full w-full rounded-full", color.preview)}
+              aria-hidden="true"
             />
             {selectedColor === color.value && (
-              <Check className="absolute inset-0 h-3 w-3 m-auto text-white" />
+              <Check className="absolute inset-0 h-3 w-3 m-auto text-white" aria-hidden="true" />
             )}
           </Button>
         ))}
