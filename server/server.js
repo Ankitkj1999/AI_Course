@@ -171,7 +171,7 @@ mongoose.connect(process.env.MONGODB_URI, {
 // MongoDB connection event handlers
 mongoose.connection.on("connected", async () => {
   logger.info("MongoDB connected successfully");
-  
+
   // Temporarily disable startup functions to isolate the issue
   /*
   try {
@@ -307,92 +307,10 @@ app.post("/api/getnotes", async (req, res) => {
   const { course } = req.body;
   try {
     const existingNotes = await Notes.findOne({ course: course });
-    if (userDetails.method === "stripe") {
-      const subscription = await stripe.subscriptions.retrieve(
-        userDetails.subscriberId
-      );
-
-      res.json({ session: subscription, method: userDetails.method });
-    } else if (userDetails.method === "paypal") {
-      const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
-      const PAYPAL_APP_SECRET_KEY = process.env.PAYPAL_APP_SECRET_KEY;
-      const auth = Buffer.from(
-        PAYPAL_CLIENT_ID + ":" + PAYPAL_APP_SECRET_KEY
-      ).toString("base64");
-      const response = await fetch(
-        `https://api-m.paypal.com/v1/billing/subscriptions/${userDetails.subscription}`,
-        {
-          headers: {
-            Authorization: "Basic " + auth,
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-        }
-      );
-      const session = await response.json();
-      res.json({ session: session, method: userDetails.method });
-    } else if (userDetails.method === "flutterwave") {
-      const payload = { email: email };
-      if (!flw) {
-        res.status(500).json({ success: false, message: "Flutterwave not configured" });
-        return;
-      }
-      if (!flw) {
-        res.status(500).json({ success: false, message: "Flutterwave not configured" });
-        return;
-      }
-      const response = await flw.Subscription.get(payload);
-      res.json({ session: response["data"][0], method: userDetails.method });
-    } else if (userDetails.method === "paystack") {
-      const authorization = `Bearer ${process.env.PAYSTACK_SECRET_KEY}`;
-      const response = await axios.get(
-        `https://api.paystack.co/subscription/${userDetails.subscriberId}`,
-        {
-          headers: {
-            Authorization: authorization,
-          },
-        }
-      );
-
-      let subscriptionDetails = null;
-      subscriptionDetails = {
-        subscription_code: response.data.data.subscription_code,
-        createdAt: response.data.data.createdAt,
-        updatedAt: response.data.data.updatedAt,
-        customer_code: userDetails.subscription,
-        email_token: response.data.data.email_token,
-      };
-
-      res.json({ session: subscriptionDetails, method: userDetails.method });
-    } else {
-      const YOUR_KEY_ID = process.env.RAZORPAY_KEY_ID;
-      const YOUR_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
-      const SUBSCRIPTION_ID = userDetails.subscription;
-
-      const config = {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        auth: {
-          username: YOUR_KEY_ID,
-          password: YOUR_KEY_SECRET,
-        },
-      };
-
-      axios
-        .get(
-          `https://api.razorpay.com/v1/subscriptions/${SUBSCRIPTION_ID}`,
-          config
-        )
-        .then((response) => {
-          res.json({ session: response.data, method: userDetails.method });
-        })
-        .catch((error) => {
-          console.log(error);
-        });
-    }
+    res.json(existingNotes);
   } catch (error) {
     console.log("Error", error);
+    res.status(500).json({ message: "Error fetching notes" });
   }
 });
 
@@ -1750,7 +1668,7 @@ app.post("/api/sendexammail", async (req, res) => {
 app.get("/api/course/:courseId/progress", requireAuth, async (req, res) => {
   const { courseId } = req.params;
   const userId = req.user._id.toString();
-  
+
   try {
     // Check if user owns the course or has access
     const course = await Course.findById(courseId);
@@ -1760,22 +1678,22 @@ app.get("/api/course/:courseId/progress", requireAuth, async (req, res) => {
         message: "Course not found"
       });
     }
-    
+
     // Check access permissions
     const isOwner = course.user === userId;
     const isPublic = course.isPublic === true;
-    
+
     if (!isPublic && !isOwner) {
       return res.status(403).json({
         success: false,
         message: "Access denied"
       });
     }
-    
+
     // Get exam results and language info using correct model names
     const examResult = await Exam.findOne({ courseId: courseId, userId: userId });
     const languageInfo = await Language.findOne({ courseId: courseId, userId: userId });
-    
+
     const response = {
       success: true,
       courseId: courseId,
@@ -1792,7 +1710,7 @@ app.get("/api/course/:courseId/progress", requireAuth, async (req, res) => {
         isPublic: course.isPublic
       }
     };
-    
+
     res.json(response);
   } catch (error) {
     logger.error("Get course progress error:", error);
@@ -1806,16 +1724,16 @@ app.get("/api/course/:courseId/progress", requireAuth, async (req, res) => {
 //BACKWARD COMPATIBILITY: Legacy getmyresult endpoint (DEPRECATED)
 app.post("/api/getmyresult", async (req, res) => {
   const { courseId } = req.body;
-  
+
   // Add deprecation warning to response headers
   res.set('X-API-Deprecated', 'true');
   res.set('X-API-Deprecated-Message', 'Use GET /api/course/:courseId/progress instead');
-  
+
   try {
     // Use correct model names (Exam and Language instead of ExamSchema and LangSchema)
     const existingExam = await Exam.findOne({ courseId: courseId });
     const lang = await Language.findOne({ courseId: courseId });
-    
+
     if (existingExam) {
       res.json({
         success: true,
@@ -1825,9 +1743,9 @@ app.post("/api/getmyresult", async (req, res) => {
         _deprecated: "This endpoint is deprecated. Use GET /api/course/:courseId/progress instead"
       });
     } else {
-      res.json({ 
-        success: false, 
-        message: false, 
+      res.json({
+        success: false,
+        message: false,
         lang: lang ? lang.lang : "English",
         _deprecated: "This endpoint is deprecated. Use GET /api/course/:courseId/progress instead"
       });
@@ -1999,8 +1917,7 @@ const startServer = async () => {
       // Schedule cleanup to run every 15 minutes
       setInterval(cleanupStaleFiles, CLEANUP_INTERVAL);
       logger.info(
-        `🧹 Scheduled cleanup job initialized (runs every ${
-          CLEANUP_INTERVAL / 1000 / 60
+        `🧹 Scheduled cleanup job initialized (runs every ${CLEANUP_INTERVAL / 1000 / 60
         } minutes)`
       );
 
@@ -3480,12 +3397,12 @@ app.use('/api', apiRoutes);
 const initializeServer = async () => {
   try {
     logger.info('🚀 Initializing server...');
-    
+
     // Initialize database optimization services
     await databaseOptimizationService.initialize();
     // cachingService initializes itself when imported
     logger.info('✅ Optimization services initialized');
-    
+
     // Run related model migration
     logger.info('🔄 Running related model migration...');
     const migrationResults = await relatedModelMigrationService.migrateAllModels({
@@ -3493,7 +3410,7 @@ const initializeServer = async () => {
       batchSize: 50
     });
     logger.info('✅ Related model migration completed:', migrationResults);
-    
+
     // Perform consistency checks
     const consistencyResults = await relatedModelMigrationService.performConsistencyChecks();
     if (consistencyResults.orphanedNotes > 0 || consistencyResults.orphanedExams > 0 || consistencyResults.orphanedLanguages > 0) {
@@ -3501,7 +3418,7 @@ const initializeServer = async () => {
     } else {
       logger.info('✅ Data consistency check passed');
     }
-    
+
   } catch (error) {
     logger.error('❌ Server initialization failed:', error);
     // Continue startup even if migration fails
@@ -3515,7 +3432,7 @@ const launchServer = async () => {
     const httpServer = app.listen(serverPort, async () => {
       logger.info(`🌟 Server running on port ${serverPort}`);
       logger.info(`🌐 Server URL: ${getServerURL(serverPort)}`);
-      
+
       // Initialize services and run migrations
       await initializeServer();
     });
@@ -3555,7 +3472,7 @@ const launchServer = async () => {
     // Listen for termination signals
     process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
     process.on("SIGINT", () => gracefulShutdown("SIGINT"));
-    
+
   } catch (error) {
     logger.error('Failed to start server:', error);
     process.exit(1);
