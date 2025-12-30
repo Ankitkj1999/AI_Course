@@ -353,45 +353,6 @@ app.get("/api/public/settings", async (req, res) => {
 });
 
 
-//GET NOTES
-app.post("/api/getnotes", async (req, res) => {
-  const { course } = req.body;
-  try {
-    const existingNotes = await Notes.findOne({ course: course });
-    if (existingNotes) {
-      res.json({ success: true, message: existingNotes.notes });
-    } else {
-      res.json({ success: false, message: "" });
-    }
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ success: false, message: "Internal server error" });
-  }
-});
-
-//SAVE NOTES
-app.post("/api/savenotes", async (req, res) => {
-  const { course, notes } = req.body;
-  try {
-    const existingNotes = await Notes.findOne({ course: course });
-
-    if (existingNotes) {
-      await Notes.findOneAndUpdate(
-        { course: course },
-        { $set: { notes: notes } }
-      );
-      res.json({ success: true, message: "Notes updated successfully" });
-    } else {
-      const newNotes = new Notes({ course: course, notes: notes });
-      await newNotes.save();
-      res.json({ success: true, message: "Notes created successfully" });
-    }
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: "Internal server error" });
-  }
-});
-
 //GENERATE EXAMS
 app.post("/api/aiexam", requireAuth, async (req, res) => {
   const { courseId, mainTopic, subtopicsString, lang } = req.body;
