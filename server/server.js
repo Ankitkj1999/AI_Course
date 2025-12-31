@@ -12,14 +12,9 @@ import {
   generateUniqueSlug,
   extractTitleFromContent,
 } from "./utils/slugify.js";
-import Settings from "./models/Settings.js";
 
 import {
   Course,
-  User,
-  Subscription,
-  Contact,
-  Blog,
   Quiz,
 } from "./models/index.js";
 import settingsCache from "./services/settingsCache.js";
@@ -41,11 +36,12 @@ import { generateCourseSEO } from "./utils/seo.js";
 import { getServerPort, getServerURL, validateConfig } from "./utils/config.js";
 import llmService from "./services/llmService.js";
 import { safeGet, safeGetArray, safeGetFirst } from "./utils/safeAccess.js";
-import { uploadConfig } from "./middleware/uploadMiddleware.js";
-import { cleanupFile } from "./services/fileCleanup.js";
 import fs from "fs/promises";
 import path from "path";
 import apiRoutes from "./routes/apiRoutes.js";
+import contactRoutes from "./routes/contactRoutes.js";
+import settingsRoutes from "./routes/settingsRoutes.js";
+import blogRoutes from "./routes/blogRoutes.js";
 import databaseOptimizationService from "./services/databaseOptimization.js";
 import cachingService from "./services/cachingService.js";
 import relatedModelMigrationService from "./services/relatedModelMigration.js";
@@ -243,66 +239,14 @@ initializeQuizRoutes({
 app.use('/api/quiz', quizRoutes);
 app.use('/api/quizzes', quizRoutes);  // For GET /api/quizzes endpoint
 
-// Profile routes are now in routes/userRoutes.js
+// Mount contact routes
+app.use('/api', contactRoutes);
 
-// Payment routes are now in routes/paymentRoutes.js
+// Mount settings routes
+app.use('/api', settingsRoutes);
 
-// Admin routes are now in routes/adminRoutes.js
-
-
-
-
-//CONTACT
-app.post("/api/contact", async (req, res) => {
-  const { fname, lname, email, phone, msg } = req.body;
-  try {
-    const newContact = new Contact({ fname, lname, email, phone, msg });
-    await newContact.save();
-    res.json({ success: true, message: "Submitted" });
-  } catch (error) {
-    console.log("Error", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
-  }
-});
-
-// Admin routes are now in routes/adminRoutes.js
-
-//GET PUBLIC SETTINGS (for client-side use)
-app.get("/api/public/settings", async (req, res) => {
-  try {
-    const settings = await Settings.find({ isSecret: false });
-    const publicSettings = {};
-
-    settings.forEach((setting) => {
-      publicSettings[setting.key] = {
-        value: setting.value,
-        category: setting.category,
-        isSecret: setting.isSecret,
-      };
-    });
-
-    res.json(publicSettings);
-  } catch (error) {
-    console.error("Public settings fetch error:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-
-// Blog management routes are now in routes/adminRoutes.js
-// User deletion is handled in routes/userRoutes.js
-
-//GET ALL BLOGS (Public - no pagination)
-app.get("/api/blogs/public", async (req, res) => {
-  try {
-    const blogs = await Blog.find({}).sort({ date: -1 });
-
-    res.json(blogs);
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ success: false, message: "Internal Server Error" });
-  }
-});
+// Mount blog routes
+app.use('/api', blogRoutes);
 
 // NEW API ROUTES (Section-based architecture)
 // Mount the new API routes with enhanced course management
