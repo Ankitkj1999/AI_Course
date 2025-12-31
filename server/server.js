@@ -2,27 +2,13 @@
 import express from "express";
 import mongoose from "mongoose";
 import bodyParser from "body-parser";
-import nodemailer from "nodemailer";
 import cors from "cors";
-import crypto from "crypto";
-import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
-import gis from "g-i-s";
-import youtubesearchapi from "youtube-search-api";
-import { YoutubeTranscript } from "youtube-transcript";
-import {
-  GoogleGenerativeAI,
-  HarmBlockThreshold,
-  HarmCategory,
-} from "@google/generative-ai";
 import { createApi } from "unsplash-js";
-import showdown from "showdown";
-import axios from "axios";
 import logger from "./utils/logger.js";
 import errorHandler from "./middleware/errorHandler.js";
 import {
-  generateSlug,
   generateUniqueSlug,
   extractTitleFromContent,
 } from "./utils/slugify.js";
@@ -30,10 +16,7 @@ import Settings from "./models/Settings.js";
 
 import {
   Course,
-  Section,
-  Language,
   User,
-  Admin,
   Subscription,
   Contact,
   Blog,
@@ -42,8 +25,6 @@ import {
 import settingsCache from "./services/settingsCache.js";
 import {
   requireAuth,
-  requireAdmin,
-  requireMainAdmin,
   optionalAuth
 } from "./middleware/authMiddleware.js";
 import authRoutes from "./routes/authRoutes.js";
@@ -60,7 +41,7 @@ import { generateCourseSEO } from "./utils/seo.js";
 import { getServerPort, getServerURL, validateConfig } from "./utils/config.js";
 import llmService from "./services/llmService.js";
 import { safeGet, safeGetArray, safeGetFirst } from "./utils/safeAccess.js";
-import { uploadSingle, uploadConfig } from "./middleware/uploadMiddleware.js";
+import { uploadConfig } from "./middleware/uploadMiddleware.js";
 import { cleanupFile } from "./services/fileCleanup.js";
 import fs from "fs/promises";
 import path from "path";
@@ -68,7 +49,6 @@ import apiRoutes from "./routes/apiRoutes.js";
 import databaseOptimizationService from "./services/databaseOptimization.js";
 import cachingService from "./services/cachingService.js";
 import relatedModelMigrationService from "./services/relatedModelMigration.js";
-import fixLexicalContent from "./scripts/fixLexicalContent.js";
 
 // NOTE: Google Generative AI SDK is still available for future advanced features
 // such as Gemini Live APIs, Deep Research, Google Search integration, etc.
@@ -263,43 +243,7 @@ initializeQuizRoutes({
 app.use('/api/quiz', quizRoutes);
 app.use('/api/quizzes', quizRoutes);  // For GET /api/quizzes endpoint
 
-
-//GET PROFILE DETAILS
-app.post("/api/profile", async (req, res) => {
-  const { email, mName, password, uid } = req.body;
-  try {
-    if (password === "") {
-      await User.findOneAndUpdate(
-        { _id: uid },
-        { $set: { email: email, mName: mName } }
-      )
-        .then((result) => {
-          res.json({ success: true, message: "Profile Updated" });
-        })
-        .catch((error) => {
-          res
-            .status(500)
-            .json({ success: false, message: "Internal server error" });
-        });
-    } else {
-      await User.findOneAndUpdate(
-        { _id: uid },
-        { $set: { email: email, mName: mName, password: password } }
-      )
-        .then((result) => {
-          res.json({ success: true, message: "Profile Updated" });
-        })
-        .catch((error) => {
-          res
-            .status(500)
-            .json({ success: false, message: "Internal server error" });
-        });
-    }
-  } catch (error) {
-    console.log("Error", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
-  }
-});
+// Profile routes are now in routes/userRoutes.js
 
 // Payment routes are now in routes/paymentRoutes.js
 
@@ -345,27 +289,8 @@ app.get("/api/public/settings", async (req, res) => {
 });
 
 
-//DELETE
-app.post("/api/deleteuser", async (req, res) => {
-  try {
-    const { userId } = req.body;
-    const deletedUser = await User.findOneAndDelete({ _id: userId });
-
-    if (!deletedUser) {
-      return res.json({ success: false, message: "Internal Server Error" });
-    }
-
-    await Course.deleteMany({ user: userId });
-    await Subscription.deleteMany({ user: userId });
-
-    return res.json({ success: true, message: "Profile deleted successfully" });
-  } catch (error) {
-    console.log("Error", error);
-    return res.json({ success: false, message: "Internal Server Error" });
-  }
-});
-
 // Blog management routes are now in routes/adminRoutes.js
+// User deletion is handled in routes/userRoutes.js
 
 //GET ALL BLOGS (Public - no pagination)
 app.get("/api/blogs/public", async (req, res) => {
