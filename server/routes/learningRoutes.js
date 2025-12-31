@@ -3,7 +3,6 @@
  * 
  * This module handles all learning-related routes including:
  * - Quiz management (create, read, delete)
- * - Flashcard operations (create, read, delete)
  * - Guide management (create, read, delete)
  */
 
@@ -13,7 +12,7 @@ const router = express.Router();
 
 // Dependencies will be injected
 let requireAuth, optionalAuth, logger, llmService;
-let Quiz, Flashcard, Guide, DocumentProcessing;
+let Quiz, Guide, DocumentProcessing;
 let unsplash, safeGet, safeGetFirst;
 let generateUniqueSlug, extractTitleFromContent;
 
@@ -24,7 +23,6 @@ export function initializeLearningRoutes(dependencies) {
   logger = dependencies.logger;
   llmService = dependencies.llmService;
   Quiz = dependencies.Quiz;
-  Flashcard = dependencies.Flashcard;
   Guide = dependencies.Guide;
   DocumentProcessing = dependencies.DocumentProcessing;
   unsplash = dependencies.unsplash;

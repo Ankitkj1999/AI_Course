@@ -15,7 +15,7 @@ const router = express.Router();
 
 // Dependencies will be injected
 let requireAuth, optionalAuth, logger;
-let Course, Quiz, Flashcard;
+let Course, Quiz;
 let generateUniqueSlug;
 
 /**
@@ -28,7 +28,6 @@ export function initializePublicContentRoutes(dependencies) {
   logger = dependencies.logger;
   Course = dependencies.Course;
   Quiz = dependencies.Quiz;
-  Flashcard = dependencies.Flashcard;
 
   generateUniqueSlug = dependencies.generateUniqueSlug;
 }
@@ -39,14 +38,13 @@ export function initializePublicContentRoutes(dependencies) {
 
 /**
  * Get the correct model based on content type
- * @param {string} contentType - Type of content (course, quiz, flashcard)
+ * @param {string} contentType - Type of content (course, quiz)
  * @returns {Model|null} Mongoose model or null if invalid type
  */
 const getContentModel = (contentType) => {
   const models = {
     course: Course,
     quiz: Quiz,
-    flashcard: Flashcard,
   };
   return models[contentType] || null;
 };
@@ -229,14 +227,13 @@ router.get('/public/content', optionalAuth, async (req, res) => {
       modelsToQuery = [
         { model: Course, type: 'course' },
         { model: Quiz, type: 'quiz' },
-        { model: Flashcard, type: 'flashcard' },
       ];
     } else {
       const Model = getContentModel(type);
       if (!Model) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid content type. Must be: course, quiz, flashcard, or all',
+          message: 'Invalid content type. Must be: course, quiz, or all',
         });
       }
       modelsToQuery = [{ model: Model, type }];
@@ -336,7 +333,7 @@ router.get('/public/:contentType', optionalAuth, async (req, res) => {
     if (!Model) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid content type. Must be: course, quiz, or flashcard',
+        message: 'Invalid content type. Must be: course or quiz',
       });
     }
 
@@ -435,7 +432,7 @@ router.get('/public/:contentType/:slug', optionalAuth, async (req, res) => {
     if (!Model) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid content type. Must be: course, quiz, or flashcard',
+        message: 'Invalid content type. Must be: course or quiz',
       });
     }
 

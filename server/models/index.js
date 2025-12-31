@@ -9,7 +9,6 @@ import Subscription from './Subscription.js';
 import Contact from './Contact.js';
 import Blog from './Blog.js';
 import Quiz from './Quiz.js';
-import Flashcard from './Flashcard.js';
 
 export {
     Course,
@@ -23,7 +22,6 @@ export {
     Contact,
     Blog,
     Quiz,
-    Flashcard,
 };
 
 export default {
@@ -38,5 +36,4 @@ export default {
     Contact,
     Blog,
     Quiz,
-    Flashcard,
 };
