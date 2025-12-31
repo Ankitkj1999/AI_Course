@@ -30,8 +30,6 @@ import ProviderSelector from "@/components/ProviderSelector";
 import { useProviderPreferences, setGlobalProviderPreferences } from "@/hooks/useProviderPreferences";
 import { useVisibilityPreference } from "@/hooks/useVisibilityPreference";
 import { CreationVisibilityToggle } from "@/components/CreationVisibilityToggle";
-import DocumentBasedCreation from "@/components/DocumentBasedCreation";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const courseFormSchema = z.object({
   topic: z.string().min(3, { message: "Topic must be at least 3 characters" }),
@@ -315,16 +313,9 @@ const GenerateCourse = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="traditional" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="traditional">From Topic</TabsTrigger>
-                <TabsTrigger value="document">From Document</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="traditional">
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                    <FormField
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <FormField
                     control={form.control}
                     name="topic"
                     render={({ field }) => (
@@ -564,67 +555,15 @@ const GenerateCourse = () => {
                   </div>
 
                   <Button
-                    onClick={() => onSubmit}
-                    type="submit"
-                    className="w-full"
-                  >
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Generate Course
-                  </Button>
-                  </form>
-                </Form>
-              </TabsContent>
-              
-              <TabsContent value="document">
-                <DocumentBasedCreation 
-                  onGenerateContent={async (contentType, source) => {
-                    // Only handle course generation on this page
-                    if (contentType !== 'course') {
-                      toast({
-                        title: "Wrong Content Type",
-                        description: `Please use the Create ${contentType.charAt(0).toUpperCase() + contentType.slice(1)} page to generate ${contentType}s.`,
-                        variant: "destructive",
-                      });
-                      return;
-                    }
-
-                    setIsLoading(true);
-                    try {
-                      const response = await axios.post(
-                        `${serverURL}/api/course/from-document`,
-                        {
-                          processingId: source.processingId,
-                          text: source.text,
-                          provider: selectedProvider,
-                          model: selectedModel,
-                          isPublic: isPublic
-                        },
-                        { withCredentials: true }
-                      );
-
-                      if (response.data.success) {
-                        // Set the generated course data and show preview
-                        setGeneratedTopics(response.data.course);
-                        setIsSubmitted(true);
-                        toast({
-                          title: "Course Generated!",
-                          description: "Your course has been created from the document.",
-                        });
-                      }
-                    } catch (error) {
-                      console.error('Document-based course generation error:', error);
-                      toast({
-                        title: "Generation Failed",
-                        description: (error as { response?: { data?: { message?: string } } }).response?.data?.message || "Failed to generate course from document",
-                        variant: "destructive",
-                      });
-                    } finally {
-                      setIsLoading(false);
-                    }
-                  }}
-                />
-              </TabsContent>
-            </Tabs>
+                  onClick={() => onSubmit}
+                  type="submit"
+                  className="w-full"
+                >
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Generate Course
+                </Button>
+              </form>
+            </Form>
           </CardContent>
         </Card>
       </div>

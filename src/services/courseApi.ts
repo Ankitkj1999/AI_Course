@@ -6,7 +6,6 @@ import {
   CourseArchitectureResponse,
   CreateCourseRequest,
   CreateCourseResponse,
-  LegacyCourseResultResponse,
   Course
 } from '../types/course';
 import { serverURL } from '../constants';
@@ -108,16 +107,6 @@ export class CourseAPI {
    */
   static async getCourseBySlug(slug: string) {
     const response = await api.get(`/course/${slug}`);
-    return response.data;
-  }
-
-  /**
-   * @deprecated Use getCourseProgress instead
-   * Legacy endpoint for backward compatibility
-   */
-  static async getLegacyCourseResult(courseId: string): Promise<LegacyCourseResultResponse> {
-    console.warn('getLegacyCourseResult is deprecated. Use getCourseProgress instead.');
-    const response = await api.post('/getmyresult', { courseId });
     return response.data;
   }
 }

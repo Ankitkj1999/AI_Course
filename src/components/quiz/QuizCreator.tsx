@@ -13,7 +13,6 @@ import ProviderSelector from '@/components/ProviderSelector';
 import { useProviderPreferences } from '@/hooks/useProviderPreferences';
 import { useVisibilityPreference } from '@/hooks/useVisibilityPreference';
 import { CreationVisibilityToggle } from '@/components/CreationVisibilityToggle';
-import DocumentBasedCreation from '@/components/DocumentBasedCreation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface QuizCreatorProps {

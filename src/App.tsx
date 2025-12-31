@@ -36,11 +36,6 @@ import DashboardQuizListPage from "./pages/dashboard/QuizList";
 import DashboardCreateQuizPage from "./pages/dashboard/CreateQuiz";
 import QuizViewerPage from "./pages/QuizViewer";
 
-// Flashcard imports
-import FlashcardListPage from "./pages/FlashcardList";
-import CreateFlashcardPage from "./pages/CreateFlashcard";
-import FlashcardViewerPage from "./pages/FlashcardViewer";
-
 
 
 // Courses import
@@ -80,12 +75,6 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import { googleClientId } from "./constants";
 
 const queryClient = new QueryClient();
-
-// Redirect components for backward compatibility
-const RedirectToFlashcard = () => {
-  const { slug } = useParams<{ slug: string }>();
-  return <Navigate to={`/flashcard/${slug}`} replace />;
-};
 
 
 
@@ -133,8 +122,6 @@ const App = () => {
                   <Route path="profile" element={<Profile />} />
                   <Route path="quizzes" element={<DashboardQuizListPage />} />
                   <Route path="create-quiz" element={<DashboardCreateQuizPage />} />
-                  <Route path="flashcards" element={<FlashcardListPage />} />
-                  <Route path="create-flashcard" element={<CreateFlashcardPage />} />
 
                   <Route path="test-llm" element={<TestLLM />} />
                   <Route path="test-plate" element={<TestPlate />} />
@@ -161,17 +148,6 @@ const App = () => {
                   </AppLayout>
                 } />
 
-                {/* Flashcard Routes */}
-                <Route path="/flashcard/:slug" element={
-                  <AppLayout mode="public">
-                    <FlashcardViewerPage />
-                  </AppLayout>
-                } />
-
-
-
-                {/* Backward Compatibility Redirects */}
-                <Route path="/dashboard/flashcard/:slug" element={<RedirectToFlashcard />} />
 
 
                 {/* Public Content Discovery */}
