@@ -2,9 +2,12 @@
 
 ## 🎥 Platform Demo
 
-[![Demo Video](https://github.com/Ankitkj1999/AI_Course/blob/main/src/res/screenshot.png)](https://github.com/Ankitkj1999/AI_Course/raw/main/demo.mp4)
+[![Watch Demo](https://github.com/Ankitkj1999/AI_Course/blob/main/src/res/screenshot.png)](https://zalon-prod-image-processing-bkt.s3.ap-south-1.amazonaws.com/TEST/AI+Course.mp4)
 
-*Click the thumbnail to watch the full demo*
+*Click the image above to watch the full demo video*
+
+---
+
 ## Deployment
 
 ### Automated Docker Build (GitHub Actions)
