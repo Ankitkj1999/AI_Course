@@ -1,5 +1,10 @@
 # AiCourse
 
+## 🎥 Demo Video
+
+Watch our platform in action: [View Demo Video](https://zalon-prod-image-processing-bkt.s3.ap-south-1.amazonaws.com/TEST/AI+Course.mp4)
+
+
 ## Deployment
 
 ### Automated Docker Build (GitHub Actions)
