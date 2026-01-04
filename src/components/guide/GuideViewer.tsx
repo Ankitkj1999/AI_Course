@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
-  ArrowLeft,
   Eye,
   Calendar,
   Loader2,
@@ -14,6 +13,11 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuthState } from '@/hooks/useAuthState';
+import { usePendingFork } from '@/hooks/usePendingFork';
+import { VisibilityToggle } from '@/components/VisibilityToggle';
+import { ForkButton } from '@/components/ForkButton';
+import { ContentAttribution } from '@/components/ContentAttribution';
 import { guideService } from '@/services/guideService';
 import { Guide } from '@/types/guide';
 import ReactMarkdown from 'react-markdown';
@@ -24,15 +28,20 @@ const GuideViewer: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { userId, isAuthenticated } = useAuthState();
+  
+  // Handle pending fork operations after login
+  usePendingFork();
   
   const [guide, setGuide] = useState<Guide | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeSection, setActiveSection] = useState<string>('');
+  const [isOwner, setIsOwner] = useState(false);
 
   // Process markdown content to handle escaped characters and format code blocks
   const processMarkdownContent = (content: string): string => {
     if (!content) return '';
-    
+
     // If content looks like escaped JSON, try to unescape it
     try {
       // Handle common escape sequences
@@ -41,10 +50,10 @@ const GuideViewer: React.FC = () => {
         .replace(/\\"/g, '"')           // Convert \" to "
         .replace(/\\\\/g, '\\')         // Convert \\\\ to \\
         .replace(/\\t/g, '\t');         // Convert \\t to tabs
-      
+
       // Format code blocks for better parsing
       processed = formatCodeBlocks(processed);
-      
+
       return processed;
     } catch (error) {
       console.warn('Failed to process markdown content:', error);
@@ -52,21 +61,18 @@ const GuideViewer: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    if (slug) {
-      fetchGuide();
-    }
-  }, [slug]);
-
   const fetchGuide = async () => {
     if (!slug) return;
 
     try {
       setIsLoading(true);
       const response = await guideService.getGuideBySlug(slug);
-      
+
       if (response.success) {
         setGuide(response.guide);
+        
+        // Check if current user is the owner
+        setIsOwner(userId === response.guide.userId);
       } else {
         throw new Error('Guide not found');
       }
@@ -82,6 +88,12 @@ const GuideViewer: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (slug) {
+      fetchGuide();
+    }
+  }, [slug]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -116,10 +128,6 @@ const GuideViewer: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
             Guide not found
           </h1>
-          <Button onClick={() => navigate('/dashboard/guides')}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Guides
-          </Button>
         </div>
       </div>
     );
@@ -129,17 +137,15 @@ const GuideViewer: React.FC = () => {
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       {/* Header */}
       <div className="mb-8">
-        <Button 
-          variant="ghost" 
-          onClick={() => navigate('/dashboard/guides')}
-          className="mb-4 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Guides
-        </Button>
+        <div className="mb-4">
+          <ContentAttribution
+            forkedFrom={guide.forkedFrom}
+            contentType="guide"
+          />
+        </div>
         
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
+          <div className="flex-1">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
               {guide.title}
             </h1>
@@ -148,14 +154,44 @@ const GuideViewer: React.FC = () => {
             </p>
           </div>
           
-          <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-            <div className="flex items-center gap-1">
-              <Eye className="h-4 w-4" />
-              {guide.viewCount} views
+          <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4">
+            <div className="flex items-center gap-2">
+              {isOwner && (
+                <VisibilityToggle
+                  contentType="guide"
+                  slug={guide.slug}
+                  isPublic={guide.isPublic || false}
+                  onToggle={(newState) => {
+                    setGuide(prev => prev ? { ...prev, isPublic: newState } : null);
+                  }}
+                />
+              )}
+              
+              {guide.isPublic && (
+                <ForkButton
+                  contentType="guide"
+                  slug={guide.slug}
+                  isAuthenticated={isAuthenticated}
+                  isOwner={isOwner}
+                  onForkSuccess={(forkedContent) => {
+                    toast({
+                      title: 'Guide Forked!',
+                      description: `Successfully forked "${forkedContent.title}"`,
+                    });
+                  }}
+                />
+              )}
             </div>
-            <div className="flex items-center gap-1">
-              <Calendar className="h-4 w-4" />
-              {formatDate(guide.createdAt)}
+            
+            <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+              <div className="flex items-center gap-1">
+                <Eye className="h-4 w-4" />
+                {guide.viewCount} views
+              </div>
+              <div className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                {formatDate(guide.createdAt)}
+              </div>
             </div>
           </div>
         </div>

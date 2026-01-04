@@ -8,6 +8,10 @@ import { Loader2, Brain, Sparkles, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { flashcardService } from '@/services/flashcardService';
 import { useNavigate } from 'react-router-dom';
+import ProviderSelector from '@/components/ProviderSelector';
+import { useProviderPreferences } from '@/hooks/useProviderPreferences';
+import { useVisibilityPreference } from '@/hooks/useVisibilityPreference';
+import { CreationVisibilityToggle } from '@/components/CreationVisibilityToggle';
 
 const FlashcardCreator: React.FC = () => {
   const [keyword, setKeyword] = useState('');
@@ -15,6 +19,17 @@ const FlashcardCreator: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  
+  // Use provider preferences hook for flashcard generation
+  const {
+    selectedProvider,
+    selectedModel,
+    setSelectedProvider,
+    setSelectedModel
+  } = useProviderPreferences('flashcard');
+
+  // Use visibility preference hook
+  const { isPublic, setIsPublic } = useVisibilityPreference('flashcard', true);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +43,7 @@ const FlashcardCreator: React.FC = () => {
       return;
     }
 
-    const userId = sessionStorage.getItem('uid');
+    const userId = localStorage.getItem('uid');
     if (!userId) {
       toast({
         title: "Authentication Error",
@@ -44,13 +59,16 @@ const FlashcardCreator: React.FC = () => {
       const response = await flashcardService.createFlashcardSet({
         userId,
         keyword: keyword.trim(),
-        title: title.trim()
+        title: title.trim(),
+        provider: selectedProvider,
+        model: selectedModel,
+        isPublic: isPublic
       });
 
       if (response.success) {
         toast({
           title: "Flashcards Created!",
-          description: `Successfully created ${response.cards.length} flashcards.`,
+          description: `Successfully created ${response.cards.length} flashcards as ${isPublic ? 'public' : 'private'} content.`,
         });
         
         // Navigate to the flashcard viewer
@@ -58,11 +76,20 @@ const FlashcardCreator: React.FC = () => {
       } else {
         throw new Error(response.message || 'Failed to create flashcards');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating flashcards:', error);
+
+      let errorMessage = "Failed to create flashcards. Please try again.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string } } };
+        errorMessage = axiosError.response?.data?.message || errorMessage;
+      }
+
       toast({
         title: "Creation Failed",
-        description: error.response?.data?.message || error.message || "Failed to create flashcards. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -72,29 +99,30 @@ const FlashcardCreator: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Create Flashcards
-        </h1>
-        <p className="text-gray-600 dark:text-gray-300">
-          Generate AI-powered flashcards for any topic to enhance your learning
-        </p>
-      </div>
-
-      <Card className="bg-white dark:bg-gray-800 shadow-lg">
+      <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+          <CardTitle className="flex items-center gap-2">
             <Brain className="h-5 w-5 text-primary" />
-            Flashcard Generator
+            Create Flashcards
           </CardTitle>
-          <CardDescription className="text-gray-600 dark:text-gray-300">
-            Enter a topic or keyword to generate comprehensive flashcards
+          <CardDescription>
+            Generate AI-powered flashcards for any topic to enhance your learning
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Provider Selection */}
+            <ProviderSelector
+              selectedProvider={selectedProvider}
+              selectedModel={selectedModel}
+              onProviderChange={setSelectedProvider}
+              onModelChange={setSelectedModel}
+              showPerformanceIndicators={true}
+              showCostInfo={true}
+              className="mb-6"
+            />
             <div className="space-y-2">
-              <Label htmlFor="keyword" className="text-gray-700 dark:text-gray-300">
+              <Label htmlFor="keyword">
                 Topic/Keyword *
               </Label>
               <Input
@@ -103,16 +131,15 @@ const FlashcardCreator: React.FC = () => {
                 placeholder="e.g., Photosynthesis, JavaScript Functions, World War II"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                className="dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:placeholder-gray-400"
                 disabled={isLoading}
               />
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 The main topic you want to create flashcards about
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="title" className="text-gray-700 dark:text-gray-300">
+              <Label htmlFor="title">
                 Flashcard Set Title *
               </Label>
               <Input
@@ -121,13 +148,19 @@ const FlashcardCreator: React.FC = () => {
                 placeholder="e.g., Biology: Photosynthesis Basics"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:placeholder-gray-400"
                 disabled={isLoading}
               />
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 A descriptive title for your flashcard set
               </p>
             </div>
+
+            {/* Visibility Toggle */}
+            <CreationVisibilityToggle
+              contentType="flashcard"
+              isPublic={isPublic}
+              onChange={setIsPublic}
+            />
 
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
               <div className="flex items-start gap-3">
@@ -149,7 +182,7 @@ const FlashcardCreator: React.FC = () => {
             <Button
               type="submit"
               disabled={isLoading || !keyword.trim() || !title.trim()}
-              className="w-full bg-gradient-to-r from-primary to-purple-600 hover:from-purple-600 hover:to-primary"
+              className="w-full"
             >
               {isLoading ? (
                 <>

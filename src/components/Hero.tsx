@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -77,7 +78,7 @@ const Hero = () => {
 
   useEffect(() => {
     // Check authentication status
-    const auth = sessionStorage.getItem("auth");
+    const auth = localStorage.getItem("auth");
     setIsAuthenticated(auth === "true");
   }, []);
 
@@ -117,10 +118,10 @@ const Hero = () => {
       <div className="max-w-7xl mx-auto relative">
         <div ref={textRef} className="text-center max-w-4xl mx-auto space-y-6">
           <div className="animate-on-scroll opacity-0 flex items-center justify-center">
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+            <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 border-none">
               <Sparkles className="h-3.5 w-3.5 mr-1.5" />
               AI-Powered Course Creation
-            </span>
+            </Badge>
           </div>
 
           <h1 className="animate-on-scroll opacity-0 font-display text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight">

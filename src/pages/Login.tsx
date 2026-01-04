@@ -3,12 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowRight, Mail, Lock, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { appName, facebookClientId, serverURL } from "@/constants";
 import { useSettings } from "@/hooks/useSettings";
+import { getPendingFork, clearPendingFork } from "@/utils/forkRedirect";
 import Logo from "../res/logo.svg";
 import axios from "axios";
 import { GoogleLogin } from "@react-oauth/google";
@@ -38,14 +39,22 @@ const Login = () => {
     settings.FACEBOOK_LOGIN_ENABLED?.value === "true";
 
   useEffect(() => {
-    const auth = sessionStorage.getItem("auth");
-    if (auth) {
-      redirectHome();
+    const auth = localStorage.getItem("auth");
+    const uid = localStorage.getItem("uid");
+    if (auth && uid) {
+      const pendingFork = getPendingFork();
+      if (pendingFork) {
+        console.log('Found pending fork operation, redirecting to:', pendingFork.returnUrl);
+        clearPendingFork();
+        navigate(pendingFork.returnUrl, { replace: true });
+        return;
+      }
+      navigate("/dashboard", { replace: true });
     }
-  });
+  }, [navigate]);
 
   function redirectHome() {
-    navigate("/dashboard");
+    navigate("/dashboard", { replace: true });
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,38 +62,39 @@ const Login = () => {
     setError("");
     setIsLoading(true);
 
-    // Simple validation
     if (!email || !password) {
       setError("Please enter both email and password");
       setIsLoading(false);
       return;
     }
 
-    // This is where you would integrate authentication logic
     try {
-      // Simulate authentication delay
       const postURL = serverURL + "/api/signin";
-      const response = await axios.post(postURL, { email, password });
+      const response = await axios.post(postURL, { email, password }, { withCredentials: true });
       if (response.data.success) {
-        // Store JWT token
-        if (response.data.token) {
-          localStorage.setItem("token", response.data.token);
-        }
-
-        sessionStorage.setItem("email", response.data.userData.email);
-        sessionStorage.setItem("mName", response.data.userData.mName);
-        sessionStorage.setItem("auth", "true");
-        sessionStorage.setItem("uid", response.data.userData._id);
-        sessionStorage.setItem("type", response.data.userData.type);
-        sessionStorage.setItem("isAdmin", response.data.userData.isAdmin);
+        localStorage.setItem("email", response.data.userData.email);
+        localStorage.setItem("mName", response.data.userData.mName);
+        localStorage.setItem("auth", "true");
+        localStorage.setItem("uid", response.data.userData._id);
+        localStorage.setItem("type", response.data.userData.type);
+        localStorage.setItem("isAdmin", response.data.userData.isAdmin);
         toast({
           title: "Login successful",
           description: "Welcome back to " + appName,
         });
-        if (sessionStorage.getItem("shared") === null) {
+        
+        const pendingFork = getPendingFork();
+        if (pendingFork) {
+          console.log('Found pending fork operation after login, redirecting to:', pendingFork.returnUrl);
+          clearPendingFork();
+          navigate(pendingFork.returnUrl, { replace: true });
+          return;
+        }
+        
+        if (localStorage.getItem("shared") === null) {
           redirectHome();
         } else {
-          getDataFromDatabase(sessionStorage.getItem("shared"));
+          getDataFromDatabase(localStorage.getItem("shared"));
         }
       } else {
         setError(response.data.message);
@@ -106,7 +116,7 @@ const Login = () => {
       const jsonData = JSON.parse(dat);
       const type = response.data[0].type.toLowerCase();
       const mainTopic = response.data[0].mainTopic;
-      const user = sessionStorage.getItem("uid");
+      const user = localStorage.getItem("uid");
       const content = JSON.stringify(jsonData);
 
       const postURLs = serverURL + "/api/courseshared";
@@ -117,7 +127,7 @@ const Login = () => {
         mainTopic,
       });
       if (responses.data.success) {
-        sessionStorage.removeItem("shared");
+        localStorage.removeItem("shared");
         redirectHome();
       } else {
         redirectHome();
@@ -129,239 +139,279 @@ const Login = () => {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-          <Link to="/" className="inline-flex items-center space-x-2">
-            <div className="h-10 w-10 rounded-md bg-primary flex items-center justify-center">
-              <img src={Logo} alt="Logo" className="h-6 w-6" />
-            </div>
-            <span className="font-display font-medium text-lg">{appName}</span>
-          </Link>
-          <h1 className="mt-6 text-3xl font-bold">Welcome back</h1>
-          <p className="mt-2 text-muted-foreground">
-            Sign in to your account to continue
-          </p>
-        </div>
-
+    <div className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
+      <div className="flex w-full max-w-sm flex-col gap-6">
+        <Link to="/" className="flex items-center gap-2 self-center font-medium">
+          <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
+            <img src={Logo} alt="Logo" className="size-4 invert dark:invert-0" />
+          </div>
+          {appName}
+        </Link>
+        
         <Card>
-          <CardContent className="pt-6">
-            {error && (
-              <Alert variant="destructive" className="mb-4">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl">Welcome back</CardTitle>
+            <CardDescription>
+              {(googleLoginEnabled || facebookLoginEnabled) 
+                ? "Login with your Google or Facebook account" 
+                : "Sign in to your account to continue"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit}>
+              <div className="flex flex-col gap-6">
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
 
-            <form onSubmit={handleSubmit} className="space-y-4 mb-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
-                    disabled={isLoading}
-                  />
+                {(googleLoginEnabled || facebookLoginEnabled) && (
+                  <>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {googleLoginEnabled && (
+                        <div className="relative w-full">
+                          {/* Hidden Google Login button */}
+                          <div id="google-login-wrapper" className="absolute opacity-0 pointer-events-none w-full">
+                            <GoogleLogin
+                              theme="outline"
+                              type="standard"
+                              size="large"
+                              width="100%"
+                              logo_alignment="left"
+                              text="continue_with"
+                              onSuccess={async (credentialResponse) => {
+                                const decoded = jwtDecode<DecodedToken>(credentialResponse.credential);
+                                const email = decoded.email;
+                                const name = decoded.name;
+                                const postURL = serverURL + "/api/social";
+                                try {
+                                  setIsLoading(true);
+                                  const response = await axios.post(postURL, { email, name }, { withCredentials: true });
+                                  if (response.data.success) {
+                                    toast({
+                                      title: "Login successful",
+                                      description: "Welcome back to " + appName,
+                                    });
+                                    setIsLoading(false);
+                                    localStorage.setItem("email", decoded.email);
+                                    localStorage.setItem("mName", decoded.name);
+                                    localStorage.setItem("auth", "true");
+                                    localStorage.setItem("uid", response.data.userData._id);
+                                    localStorage.setItem("type", response.data.userData.type);
+                                    
+                                    const pendingFork = getPendingFork();
+                                    if (pendingFork) {
+                                      console.log('Found pending fork operation after Google login, redirecting to:', pendingFork.returnUrl);
+                                      clearPendingFork();
+                                      navigate(pendingFork.returnUrl, { replace: true });
+                                      return;
+                                    }
+                                    
+                                    redirectHome();
+                                  } else {
+                                    setIsLoading(false);
+                                    setError(response.data.message);
+                                  }
+                                } catch (error) {
+                                  console.error(error);
+                                  setIsLoading(false);
+                                  setError("Internal Server Error");
+                                }
+                              }}
+                              onError={() => {
+                                setIsLoading(false);
+                                setError("Internal Server Error");
+                              }}
+                            />
+                          </div>
+                          
+                          {/* Custom styled button */}
+                          <Button
+                            variant="outline"
+                            type="button"
+                            disabled={isLoading}
+                            className="w-full"
+                            onClick={() => {
+                              console.log('Google button clicked in Login');
+                              console.log('googleClientId:', googleClientId);
+                              // Trigger the hidden Google button
+                              const googleBtn = document.querySelector('#google-login-wrapper div[role="button"]') as HTMLElement;
+                              console.log('googleBtn found:', googleBtn);
+                              if (googleBtn) {
+                                console.log('Clicking googleBtn');
+                                googleBtn.click();
+                              } else {
+                                console.log('googleBtn not found');
+                              }
+                            }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-4 w-4">
+                              <path
+                                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                                fill="#4285F4"
+                              />
+                              <path
+                                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                                fill="#34A853"
+                              />
+                              <path
+                                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                                fill="#FBBC05"
+                              />
+                              <path
+                                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                                fill="#EA4335"
+                              />
+                            </svg>
+                            <span className="ml-2">Google</span>
+                          </Button>
+                        </div>
+                      )}
+
+                      {facebookLoginEnabled && (
+                        <FacebookLogin
+                          appId={facebookClientIdDynamic}
+                          style={{
+                            backgroundColor: "transparent",
+                            color: "hsl(var(--foreground))",
+                            fontSize: "14px",
+                            padding: "0px",
+                            width: "100%",
+                            height: "40px",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "0.375rem",
+                            fontWeight: 500,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                            transition: "background-color 0.2s, border-color 0.2s",
+                          }}
+                          onFail={(error) => {
+                            console.error(error);
+                            setIsLoading(false);
+                            setError("Internal Server Error");
+                          }}
+                          onProfileSuccess={async (response) => {
+                            const email = response.email;
+                            const name = response.name;
+                            const postURL = serverURL + "/api/social";
+                            try {
+                              setIsLoading(true);
+                              const response = await axios.post(postURL, { email, name }, { withCredentials: true });
+                              if (response.data.success) {
+                                toast({
+                                  title: "Login successful",
+                                  description: "Welcome back to " + appName,
+                                });
+                                setIsLoading(false);
+                                localStorage.setItem("email", email);
+                                localStorage.setItem("mName", name);
+                                localStorage.setItem("auth", "true");
+                                localStorage.setItem("uid", response.data.userData._id);
+                                localStorage.setItem("type", response.data.userData.type);
+                                
+                                const pendingFork = getPendingFork();
+                                if (pendingFork) {
+                                  console.log('Found pending fork operation after Facebook login, redirecting to:', pendingFork.returnUrl);
+                                  clearPendingFork();
+                                  navigate(pendingFork.returnUrl, { replace: true });
+                                  return;
+                                }
+                                
+                                redirectHome();
+                              } else {
+                                setIsLoading(false);
+                                setError(response.data.message);
+                              }
+                            } catch (error) {
+                              console.error(error);
+                              setIsLoading(false);
+                              setError("Internal Server Error");
+                            }
+                          }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-4 w-4 mr-2">
+                            <path
+                              d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"
+                              fill="currentColor"
+                            />
+                          </svg>
+                          Facebook
+                        </FacebookLogin>
+                      )}
+                    </div>
+
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-card px-2 text-muted-foreground">
+                          Or continue with
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="flex flex-col gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="m@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      disabled={isLoading}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="password">Password</Label>
+                      <Link
+                        to="/forgot-password"
+                        className="text-sm underline-offset-4 hover:underline"
+                      >
+                        Forgot your password?
+                      </Link>
+                    </div>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      disabled={isLoading}
+                      required
+                    />
+                  </div>
+
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? "Signing in..." : "Login"}
+                  </Button>
+
+                  <div className="text-center text-sm text-muted-foreground">
+                    Don&apos;t have an account?{" "}
+                    <Link to="/signup" className="underline underline-offset-4 hover:text-primary">
+                      Sign up
+                    </Link>
+                  </div>
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  <Link
-                    to="/forgot-password"
-                    className="text-sm font-medium text-primary hover:underline"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10"
-                    disabled={isLoading}
-                  />
-                </div>
-              </div>
-
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Signing in..." : "Sign in"}
-                {!isLoading && <ArrowRight className="ml-2 h-4 w-4" />}
-              </Button>
             </form>
-
-            <div className="space-y-3">
-              {(googleLoginEnabled || facebookLoginEnabled) && (
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
-                      Or continue with
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {googleLoginEnabled && (
-                <div className="w-full overflow-hidden">
-                  <div className="w-full max-w-full">
-                    <GoogleLogin
-                      theme="outline"
-                      type="standard"
-                      size="large"
-                      width="100%"
-                      logo_alignment="left"
-                    onSuccess={async (credentialResponse) => {
-                      const decoded = jwtDecode<DecodedToken>(
-                        credentialResponse.credential
-                      );
-                      const email = decoded.email;
-                      const name = decoded.name;
-                      const postURL = serverURL + "/api/social";
-                      try {
-                        setIsLoading(true);
-                        const response = await axios.post(postURL, {
-                          email,
-                          name,
-                        });
-                        if (response.data.success) {
-                          // Store JWT token
-                          if (response.data.token) {
-                            localStorage.setItem("token", response.data.token);
-                          }
-
-                          toast({
-                            title: "Login successful",
-                            description: "Welcome back to " + appName,
-                          });
-                          setIsLoading(false);
-                          sessionStorage.setItem("email", decoded.email);
-                          sessionStorage.setItem("mName", decoded.name);
-                          sessionStorage.setItem("auth", "true");
-                          sessionStorage.setItem(
-                            "uid",
-                            response.data.userData._id
-                          );
-                          sessionStorage.setItem(
-                            "type",
-                            response.data.userData.type
-                          );
-                          redirectHome();
-                        } else {
-                          setIsLoading(false);
-                          setError(response.data.message);
-                        }
-                      } catch (error) {
-                        console.error(error);
-                        setIsLoading(false);
-                        setError("Internal Server Error");
-                      }
-                    }}
-                    onError={() => {
-                      setIsLoading(false);
-                      setError("Internal Server Error");
-                    }}
-                  />
-                  </div>
-                </div>
-              )}
-
-              {facebookLoginEnabled && (
-                <FacebookLogin
-                  appId={facebookClientIdDynamic}
-                  style={{
-                    backgroundColor: "#1877F2",
-                    color: "#fff",
-                    fontSize: "14px",
-                    padding: "12px 24px",
-                    width: "100%",
-                    height: "40px",
-                    border: "none",
-                    borderRadius: "0.375rem",
-                    fontWeight: 500,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    transition: "background-color 0.2s",
-                  }}
-                  onFail={(error) => {
-                    console.error(error);
-                    setIsLoading(false);
-                    setError("Internal Server Error");
-                  }}
-                  onProfileSuccess={async (response) => {
-                    const email = response.email;
-                    const name = response.name;
-                    const postURL = serverURL + "/api/social";
-                    try {
-                      setIsLoading(true);
-                      const response = await axios.post(postURL, {
-                        email,
-                        name,
-                      });
-                      if (response.data.success) {
-                        // Store JWT token
-                        if (response.data.token) {
-                          localStorage.setItem("token", response.data.token);
-                        }
-
-                        toast({
-                          title: "Login successful",
-                          description: "Welcome back to " + appName,
-                        });
-                        setIsLoading(false);
-                        sessionStorage.setItem("email", email);
-                        sessionStorage.setItem("mName", name);
-                        sessionStorage.setItem("auth", "true");
-                        sessionStorage.setItem(
-                          "uid",
-                          response.data.userData._id
-                        );
-                        sessionStorage.setItem(
-                          "type",
-                          response.data.userData.type
-                        );
-                        redirectHome();
-                      } else {
-                        setIsLoading(false);
-                        setError(response.data.message);
-                      }
-                    } catch (error) {
-                      console.error(error);
-                      setIsLoading(false);
-                      setError("Internal Server Error");
-                    }
-                  }}
-                />
-              )}
-            </div>
           </CardContent>
-
-          <CardFooter className="flex flex-col space-y-4 border-t p-6">
-            <div className="text-center text-sm">
-              Don't have an account?{" "}
-              <Link
-                to="/signup"
-                className="font-medium text-primary hover:underline"
-              >
-                Sign up
-              </Link>
-            </div>
-          </CardFooter>
         </Card>
+
+        <div className="text-balance text-center text-xs text-muted-foreground [&_a]:underline [&_a]:underline-offset-4 hover:[&_a]:text-primary">
+          By clicking continue, you agree to our{" "}
+          <Link to="/terms">Terms of Service</Link> and{" "}
+          <Link to="/privacy-policy">Privacy Policy</Link>.
+        </div>
       </div>
     </div>
   );

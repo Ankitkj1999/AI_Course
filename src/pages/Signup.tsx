@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowRight, Mail, Lock, User, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { appLogo, appName, companyName, facebookClientId, serverURL, websiteURL } from '@/constants';
 import { useSettings } from '@/hooks/useSettings';
 import Logo from '../res/logo.svg';
@@ -45,7 +45,7 @@ const Signup = () => {
   const facebookLoginEnabled = settings.FACEBOOK_LOGIN_ENABLED?.value === 'true';
 
   useEffect(() => {
-    const auth = sessionStorage.getItem('auth');
+    const auth = localStorage.getItem('auth');
     if (auth) {
       redirectHome();
     }
@@ -59,7 +59,6 @@ const Signup = () => {
     e.preventDefault();
     setError('');
 
-    // Simple validation
     if (!name || !email || !password) {
       setError('Please fill out all fields');
       return;
@@ -77,18 +76,17 @@ const Signup = () => {
 
     setIsLoading(true);
 
-    // This is where you would integrate signup logic
     try {
       const postURL = serverURL + '/api/signup';
       const type = 'free';
 
       const response = await axios.post(postURL, { email, mName: name, password, type });
       if (response.data.success) {
-        sessionStorage.setItem('email', email);
-        sessionStorage.setItem('mName', name);
-        sessionStorage.setItem('auth', 'true');
-        sessionStorage.setItem('uid', response.data.userId);
-        sessionStorage.setItem('type', 'free');
+        localStorage.setItem('email', email);
+        localStorage.setItem('mName', name);
+        localStorage.setItem('auth', 'true');
+        localStorage.setItem('uid', response.data.userId);
+        localStorage.setItem('type', 'free');
         toast({
           title: "Account created!",
           description: "Welcome to " + appName + ".",
@@ -168,236 +166,292 @@ const Signup = () => {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-          <Link to="/" className="inline-flex items-center space-x-2">
-            <div className="h-10 w-10 rounded-md bg-primary flex items-center justify-center">
-              <img src={Logo} alt="Logo" className='h-6 w-6' />
-            </div>
-            <span className="font-display font-medium text-lg">{appName}</span>
-          </Link>
-          <h1 className="mt-6 text-3xl font-bold">Create your account</h1>
-          <p className="mt-2 text-muted-foreground">Sign up to get started with {appName}</p>
-        </div>
-
+    <div className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
+      <div className="flex w-full max-w-sm flex-col gap-6">
+        <Link to="/" className="flex items-center gap-2 self-center font-medium">
+          <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
+            <img src={Logo} alt="Logo" className="size-4 invert dark:invert-0" />
+          </div>
+          {appName}
+        </Link>
+        
         <Card>
-          <CardContent className="pt-6">
-            {error && (
-              <Alert variant="destructive" className="mb-4">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl">Create your account</CardTitle>
+            <CardDescription>
+              {(googleLoginEnabled || facebookLoginEnabled) 
+                ? "Sign up with your Google or Facebook account" 
+                : "Enter your details below to create your account"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit}>
+              <div className="flex flex-col gap-6">
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
 
-            <form onSubmit={handleSubmit} className="space-y-4 mb-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
-                  <Input
-                    id="name"
-                    placeholder="John Doe"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="pl-10"
-                    disabled={isLoading}
-                  />
+                {(googleLoginEnabled || facebookLoginEnabled) && (
+                  <>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {googleLoginEnabled && (
+                        <div className="relative w-full">
+                          {/* Hidden Google Login button */}
+                          <div id="google-login-wrapper" className="absolute opacity-0 pointer-events-none w-full">
+                            <GoogleLogin
+                              theme='outline'
+                              type='standard'
+                              size='large'
+                              width="100%"
+                              logo_alignment='left'
+                              text="continue_with"
+                              onSuccess={async (credentialResponse) => {
+                                const decoded = jwtDecode<GoogleJwtPayload>(credentialResponse.credential);
+                                const email = decoded.email;
+                                const name = decoded.name;
+                                const postURL = serverURL + '/api/social';
+                                try {
+                                  setIsLoading(true);
+                                  const response = await axios.post(postURL, { email, name });
+                                  if (response.data.success) {
+                                    toast({
+                                      title: "Account created!",
+                                      description: "Welcome to " + appName,
+                                    });
+                                    setIsLoading(false);
+                                    localStorage.setItem('email', decoded.email);
+                                    localStorage.setItem('mName', decoded.name);
+                                    localStorage.setItem('auth', 'true');
+                                    localStorage.setItem('uid', response.data.userData._id);
+                                    localStorage.setItem('type', response.data.userData.type);
+                                    sendEmail(decoded.email, decoded.name);
+                                  } else {
+                                    setIsLoading(false);
+                                    setError(response.data.message);
+                                  }
+                                } catch (error) {
+                                  console.error(error);
+                                  setIsLoading(false);
+                                  setError('Internal Server Error');
+                                }
+                              }}
+                              onError={() => {
+                                setIsLoading(false);
+                                setError('Internal Server Error');
+                              }}
+                            />
+                          </div>
+                          
+                          {/* Custom styled button */}
+                          <Button
+                            variant="outline"
+                            type="button"
+                            disabled={isLoading}
+                            className="w-full"
+                            onClick={() => {
+                              console.log('Google button clicked in Signup');
+                              console.log('googleClientId:', googleClientId);
+                              // Trigger the hidden Google button
+                              const googleBtn = document.querySelector('#google-login-wrapper div[role="button"]') as HTMLElement;
+                              console.log('googleBtn found:', googleBtn);
+                              if (googleBtn) {
+                                console.log('Clicking googleBtn');
+                                googleBtn.click();
+                              } else {
+                                console.log('googleBtn not found');
+                              }
+                            }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-4 w-4">
+                              <path
+                                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                                fill="#4285F4"
+                              />
+                              <path
+                                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                                fill="#34A853"
+                              />
+                              <path
+                                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                                fill="#FBBC05"
+                              />
+                              <path
+                                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                                fill="#EA4335"
+                              />
+                            </svg>
+                            <span className="ml-2">Google</span>
+                          </Button>
+                        </div>
+                      )}
+
+                      {facebookLoginEnabled && (
+                        <FacebookLogin
+                          appId={facebookClientIdDynamic}
+                          style={{
+                            backgroundColor: "transparent",
+                            color: "hsl(var(--foreground))",
+                            fontSize: "14px",
+                            padding: "0px",
+                            width: "100%",
+                            height: "40px",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "0.375rem",
+                            fontWeight: 500,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                            transition: "background-color 0.2s, border-color 0.2s",
+                          }}
+                          onFail={(error) => {
+                            console.error(error);
+                            setIsLoading(false);
+                            setError('Internal Server Error');
+                          }}
+                          onProfileSuccess={async (response) => {
+                            const profile = response as FacebookProfileResponse;
+                            const email = profile.email;
+                            const name = profile.name;
+                            const postURL = serverURL + '/api/social';
+                            try {
+                              setIsLoading(true);
+                              const response = await axios.post(postURL, { email, name });
+                              if (response.data.success) {
+                                toast({
+                                  title: "Account created!",
+                                  description: "Welcome to " + appName,
+                                });
+                                setIsLoading(false);
+                                localStorage.setItem('email', profile.email);
+                                localStorage.setItem('mName', profile.name);
+                                localStorage.setItem('auth', 'true');
+                                localStorage.setItem('uid', response.data.userData._id);
+                                localStorage.setItem('type', response.data.userData.type);
+                                sendEmail(profile.email, profile.name);
+                              } else {
+                                setIsLoading(false);
+                                setError(response.data.message);
+                              }
+                            } catch (error) {
+                              console.error(error);
+                              setIsLoading(false);
+                              setError('Internal Server Error');
+                            }
+                          }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-4 w-4 mr-2">
+                            <path
+                              d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"
+                              fill="currentColor"
+                            />
+                          </svg>
+                          Facebook
+                        </FacebookLogin>
+                      )}
+                    </div>
+
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-card px-2 text-muted-foreground">
+                          Or continue with
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="flex flex-col gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Full Name</Label>
+                    <Input
+                      id="name"
+                      type="text"
+                      placeholder="John Doe"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      disabled={isLoading}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="m@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      disabled={isLoading}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      disabled={isLoading}
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Must be at least 9 characters long.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="terms"
+                      checked={agreeToTerms}
+                      onCheckedChange={(checked) => setAgreeToTerms(checked as boolean)}
+                      disabled={isLoading}
+                    />
+                    <label
+                      htmlFor="terms"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      I agree to the{" "}
+                      <Link to="/terms" className="underline underline-offset-4 hover:text-primary">
+                        terms of service
+                      </Link>
+                      {" "}and{" "}
+                      <Link to="/privacy-policy" className="underline underline-offset-4 hover:text-primary">
+                        privacy policy
+                      </Link>
+                    </label>
+                  </div>
+
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? 'Creating account...' : 'Create Account'}
+                  </Button>
+
+                  <div className="text-center text-sm text-muted-foreground">
+                    Already have an account?{" "}
+                    <Link to="/login" className="underline underline-offset-4 hover:text-primary">
+                      Sign in
+                    </Link>
+                  </div>
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
-                    disabled={isLoading}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Create a strong password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10"
-                    disabled={isLoading}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Must be at least 9 characters long
-                </p>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="terms"
-                  checked={agreeToTerms}
-                  onCheckedChange={(checked) => setAgreeToTerms(checked as boolean)}
-                  disabled={isLoading}
-                />
-                <label
-                  htmlFor="terms"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  I agree to the{" "}
-                  <Link to="/terms" className="text-primary hover:underline">
-                    terms of service
-                  </Link>
-                  {" "}and{" "}
-                  <Link to="/privacy-policy" className="text-primary hover:underline">
-                    privacy policy
-                  </Link>
-                </label>
-              </div>
-
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Creating account...' : 'Create account'}
-                {!isLoading && <ArrowRight className="ml-2 h-4 w-4" />}
-              </Button>
             </form>
-
-            <div className="space-y-3">
-              {(googleLoginEnabled || facebookLoginEnabled) && (
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
-                  </div>
-                </div>
-              )}
-
-              {googleLoginEnabled && (
-                <div className="w-full overflow-hidden">
-                  <div className="w-full max-w-full">
-                    <GoogleLogin
-                      theme='outline'
-                      type='standard'
-                      size='large'
-                      width="100%"
-                      logo_alignment='left'
-                    onSuccess={async (credentialResponse) => {
-                      const decoded = jwtDecode<GoogleJwtPayload>(credentialResponse.credential);
-                      const email = decoded.email;
-                      const name = decoded.name;
-                      const postURL = serverURL + '/api/social';
-                      try {
-                        setIsLoading(true);
-                        const response = await axios.post(postURL, { email, name });
-                        if (response.data.success) {
-                          toast({
-                            title: "Login successful",
-                            description: "Welcome back to " + appName,
-                          });
-                          setIsLoading(false);
-                          sessionStorage.setItem('email', decoded.email);
-                          sessionStorage.setItem('mName', decoded.name);
-                          sessionStorage.setItem('auth', 'true');
-                          sessionStorage.setItem('uid', response.data.userData._id);
-                          sessionStorage.setItem('type', response.data.userData.type);
-                          sendEmail(decoded.email, decoded.name);
-                        } else {
-                          setIsLoading(false);
-                          setError(response.data.message);
-                        }
-                      } catch (error) {
-                        console.error(error);
-                        setIsLoading(false);
-                        setError('Internal Server Error');
-                      }
-
-                    }}
-                    onError={() => {
-                      setIsLoading(false);
-                      setError('Internal Server Error');
-                    }}
-                  />
-                  </div>
-                </div>
-              )}
-
-              {facebookLoginEnabled && (
-                <FacebookLogin
-                  appId={facebookClientIdDynamic}
-                  style={{
-                    backgroundColor: '#1877F2',
-                    color: '#fff',
-                    fontSize: '14px',
-                    padding: '12px 24px',
-                    width: '100%',
-                    height: '40px',
-                    border: 'none',
-                    borderRadius: '0.375rem',
-                    fontWeight: 500,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.2s',
-                  }}
-                  onFail={(error) => {
-                    console.error(error);
-                    setIsLoading(false);
-                    setError('Internal Server Error');
-                  }}
-                  onProfileSuccess={async (response) => {
-                    const profile = response as FacebookProfileResponse;
-                    const email = profile.email;
-                    const name = profile.name;
-                    const postURL = serverURL + '/api/social';
-                    try {
-                      setIsLoading(true);
-                      const response = await axios.post(postURL, { email, name });
-                      if (response.data.success) {
-                        toast({
-                          title: "Login successful",
-                          description: "Welcome back to " + appName,
-                        });
-                        setIsLoading(false);
-                        sessionStorage.setItem('email', profile.email);
-                        sessionStorage.setItem('mName', profile.name);
-                        sessionStorage.setItem('auth', 'true');
-                        sessionStorage.setItem('uid', response.data.userData._id);
-                        sessionStorage.setItem('type', response.data.userData.type);
-                        sendEmail(profile.email, profile.name);
-                      } else {
-                        setIsLoading(false);
-                        setError(response.data.message);
-                      }
-                    } catch (error) {
-                      console.error(error);
-                      setIsLoading(false);
-                      setError('Internal Server Error');
-                    }
-                  }}
-                />
-              )}
-            </div>
           </CardContent>
-
-          <CardFooter className="flex flex-col space-y-4 border-t p-6">
-            <div className="text-center text-sm">
-              Already have an account?{' '}
-              <Link to="/login" className="font-medium text-primary hover:underline">
-                Sign in
-              </Link>
-            </div>
-          </CardFooter>
         </Card>
+
+        <div className="text-balance text-center text-xs text-muted-foreground [&_a]:underline [&_a]:underline-offset-4 hover:[&_a]:text-primary">
+          By clicking continue, you agree to our{" "}
+          <Link to="/terms">Terms of Service</Link> and{" "}
+          <Link to="/privacy-policy">Privacy Policy</Link>.
+        </div>
       </div>
     </div>
   );

@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -11,8 +11,9 @@ import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
 import Dashboard from "./pages/Dashboard";
 import CoursePage from "./pages/CoursePage";
+import { CourseIdRedirect } from "./pages/CourseRedirect";
 import GenerateCourse from "./pages/GenerateCourse";
-import DashboardLayout from "./components/layouts/DashboardLayout";
+import { AppLayout } from "./components/layouts/AppLayout";
 import ProfilePricing from "./pages/ProfilePricing";
 import PaymentDetails from "./pages/PaymentDetails";
 import Profile from "./pages/Profile";
@@ -45,6 +46,15 @@ import GuideListPage from "./pages/GuideList";
 import CreateGuidePage from "./pages/CreateGuide";
 import GuideViewerPage from "./pages/GuideViewer";
 
+// Courses import
+import CoursesPage from "./pages/dashboard/Courses";
+
+// LLM Test imports
+import TestLLM from "./pages/TestLLM";
+
+// Public Content imports
+import PublicContent from "./pages/PublicContent";
+
 // Admin imports
 import AdminLayout from "./components/layouts/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -70,6 +80,17 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import { googleClientId } from "./constants";
 
 const queryClient = new QueryClient();
+
+// Redirect components for backward compatibility
+const RedirectToFlashcard = () => {
+  const { slug } = useParams<{ slug: string }>();
+  return <Navigate to={`/flashcard/${slug}`} replace />;
+};
+
+const RedirectToGuide = () => {
+  const { slug } = useParams<{ slug: string }>();
+  return <Navigate to={`/guide/${slug}`} replace />;
+};
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -106,8 +127,9 @@ const App = () => {
                 <Route path="/reset-password/:token" element={<ResetPassword />} />
 
                 {/* Dashboard Routes */}
-                <Route path="/dashboard" element={<DashboardLayout />}>
+                <Route path="/dashboard" element={<AppLayout mode="authenticated" />}>
                   <Route index element={<Dashboard />} />
+                  <Route path="courses" element={<CoursesPage />} />
                   <Route path="generate-course" element={<GenerateCourse />} />
                   <Route path="pricing" element={<ProfilePricing />} />
                   <Route path="payment/:planId" element={<PaymentDetails />} />
@@ -118,22 +140,53 @@ const App = () => {
                   <Route path="create-flashcard" element={<CreateFlashcardPage />} />
                   <Route path="guides" element={<GuideListPage />} />
                   <Route path="create-guide" element={<CreateGuidePage />} />
+                  <Route path="test-llm" element={<TestLLM />} />
                 </Route>
 
                 {/* Course Routes */}
-                <Route path="/course/:courseId" element={<CoursePage />} />
-                <Route path="/course/:courseId/certificate" element={<Certificate />} />
-                <Route path="/course/:courseId/quiz" element={<QuizPage />} />
+                {/* ID-based redirect route (for backward compatibility) */}
+                <Route path="/course/id/:id" element={<CourseIdRedirect />} />
+                {/* Slug-based route (primary) - matches kebab-case slugs */}
+                <Route path="/course/:slug" element={<CoursePage />} />
+                <Route path="/course/:slug/certificate" element={<Certificate />} />
+                <Route path="/course/:slug/quiz" element={<QuizPage />} />
 
                 {/* Quiz Routes */}
-                <Route path="/quiz/:slug" element={<QuizViewerPage />} />
-                <Route path="/quiz/id/:id" element={<QuizViewerPage />} />
+                <Route path="/quiz/:slug" element={
+                  <AppLayout mode="public">
+                    <QuizViewerPage />
+                  </AppLayout>
+                } />
+                <Route path="/quiz/id/:id" element={
+                  <AppLayout mode="public">
+                    <QuizViewerPage />
+                  </AppLayout>
+                } />
 
                 {/* Flashcard Routes */}
-                <Route path="/dashboard/flashcard/:slug" element={<FlashcardViewerPage />} />
+                <Route path="/flashcard/:slug" element={
+                  <AppLayout mode="public">
+                    <FlashcardViewerPage />
+                  </AppLayout>
+                } />
 
                 {/* Guide Routes */}
-                <Route path="/dashboard/guide/:slug" element={<GuideViewerPage />} />
+                <Route path="/guide/:slug" element={
+                  <AppLayout mode="public">
+                    <GuideViewerPage />
+                  </AppLayout>
+                } />
+
+                {/* Backward Compatibility Redirects */}
+                <Route path="/dashboard/flashcard/:slug" element={<RedirectToFlashcard />} />
+                <Route path="/dashboard/guide/:slug" element={<RedirectToGuide />} />
+
+                {/* Public Content Discovery */}
+                <Route path="/discover" element={
+                  <AppLayout mode="public">
+                    <PublicContent />
+                  </AppLayout>
+                } />
 
                 {/* Payment Routes */}
                 <Route path="/payment-success/:planId" element={<PaymentSuccess />} />

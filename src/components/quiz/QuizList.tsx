@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { QuizService } from '@/services/quizService';
 import { getQuizURL, getQuizShareURL } from '@/utils/config';
-import { InlineLoader } from '@/components/ui/loading';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -12,10 +13,26 @@ import {
   Share2,
   Trash2,
   Plus,
-  Clock,
-  BarChart3
+  Loader2,
+  Globe,
+  Lock,
+  GitFork,
+  ExternalLink
 } from 'lucide-react';
 import type { Quiz } from '@/types/quiz';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface QuizListProps {
   userId: string;
@@ -29,15 +46,31 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [deletingQuiz, setDeletingQuiz] = useState<string | null>(null);
+  const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'public' | 'private'>('all');
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
 
   useEffect(() => {
     fetchQuizzes();
-  }, [currentPage]);
+  }, [currentPage, visibilityFilter]);
+
+  // Reset pagination when filter changes
+  useEffect(() => {
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [visibilityFilter]);
 
   const fetchQuizzes = async () => {
     try {
       setLoading(true);
-      const response = await QuizService.getUserQuizzes(userId, currentPage, 9);
+      const response = await QuizService.getUserQuizzes(userId, currentPage, 9, visibilityFilter);
       
       if (response.success) {
         setQuizzes(response.data);
@@ -56,7 +89,6 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
   const handleShare = (quiz: Quiz) => {
     const shareUrls = getQuizShareURL(quiz);
     
-    // Simple implementation - copy to clipboard
     navigator.clipboard.writeText(shareUrls.copy).then(() => {
       toast({
         title: "Link Copied!",
@@ -71,23 +103,18 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
     });
   };
 
-  const handleDelete = async (quiz: Quiz) => {
-    if (!confirm(`Are you sure you want to delete "${quiz.title}"?`)) {
-      return;
-    }
-
-    setDeletingQuiz(quiz.slug);
-    
+  const handleDelete = async (slug: string, title: string) => {
+    setDeletingQuiz(slug);
     try {
-      const response = await QuizService.deleteQuiz(quiz.slug, userId);
-      
+      const response = await QuizService.deleteQuiz(slug, userId);
+
       if (response.success) {
-        // Remove quiz from list
-        setQuizzes(prev => prev.filter(q => q.slug !== quiz.slug));
         toast({
-          title: "Quiz Deleted",
-          description: `"${quiz.title}" has been deleted successfully.`,
+          title: "Deleted",
+          description: `"${title}" has been deleted successfully.`,
         });
+
+        fetchQuizzes();
       } else {
         toast({
           title: "Error",
@@ -107,22 +134,54 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
   if (loading) {
-    return <InlineLoader message="Loading your quizzes..." />;
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">My Quizzes</h1>
+            <p className="text-muted-foreground mt-1">Manage your AI-generated quizzes</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Skeleton className="w-[140px] h-9" />
+            <Skeleton className="w-32 h-10" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="overflow-hidden border-border/40 bg-card/50">
+              <CardHeader className="pb-3 pt-4">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <Skeleton className="w-3/4 h-5 mb-2" />
+                    <Skeleton className="w-1/2 h-3" />
+                  </div>
+                  <Skeleton className="h-5 w-5 rounded" />
+                </div>
+              </CardHeader>
+              <CardContent className="pb-3 pt-0">
+                <div className="flex items-center gap-3 mb-4">
+                  <Skeleton className="w-12 h-3" />
+                  <Skeleton className="w-16 h-3" />
+                </div>
+                <Skeleton className="w-16 h-5 rounded-full" />
+              </CardContent>
+              <CardFooter className="pt-0 flex gap-2">
+                <Skeleton className="flex-1 h-8" />
+                <Skeleton className="h-8 w-8" />
+                <Skeleton className="h-8 w-8" />
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (error) {
     return (
       <div className="text-center py-8">
-        <p className="text-red-600 mb-4">{error}</p>
+        <p className="text-destructive mb-4">{error}</p>
         <Button onClick={fetchQuizzes}>
           Retry
         </Button>
@@ -135,114 +194,176 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Quizzes</h1>
-          <p className="text-gray-600 dark:text-gray-300">Manage your AI-generated quizzes</p>
+          <h1 className="text-2xl font-bold tracking-tight">My Quizzes</h1>
+          <p className="text-muted-foreground mt-1">Manage your AI-generated quizzes</p>
         </div>
-        <Button asChild>
-          <Link to="/dashboard/create-quiz">
-            <Plus className="w-4 h-4 mr-2" />
-            Create Quiz
-          </Link>
-        </Button>
+        <div className="flex items-center gap-3">
+          <Select value={visibilityFilter} onValueChange={(value: 'all' | 'public' | 'private') => setVisibilityFilter(value)}>
+            <SelectTrigger className="w-[140px] h-9">
+              <SelectValue placeholder="Filter" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Quizzes</SelectItem>
+              <SelectItem value="public">
+                <div className="flex items-center">
+                  <Globe className="h-3.5 w-3.5 mr-2" />
+                  Public
+                </div>
+              </SelectItem>
+              <SelectItem value="private">
+                <div className="flex items-center">
+                  <Lock className="h-3.5 w-3.5 mr-2" />
+                  Private
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <Button asChild>
+            <Link to="/dashboard/create-quiz">
+              <Plus className="w-4 h-4 mr-2" />
+              Create Quiz
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Quiz Grid */}
       {quizzes.length === 0 ? (
-        <div className="text-center py-12">
-          <Brain className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No quizzes yet</h3>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">Create your first AI-generated quiz to get started</p>
-          <Button asChild>
-            <Link to="/dashboard/create-quiz">
-              <Plus className="w-5 h-5 mr-2" />
-              Create Your First Quiz
-            </Link>
-          </Button>
-        </div>
+        <Card className="text-center py-12">
+          <CardContent>
+            <Brain className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-semibold mb-2">No quizzes yet</h3>
+            <p className="text-muted-foreground mb-6">Create your first AI-generated quiz to get started</p>
+            <Button asChild>
+              <Link to="/dashboard/create-quiz">
+                <Plus className="w-5 h-5 mr-2" />
+                Create Your First Quiz
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {quizzes.map((quiz) => {
             const quizURL = getQuizURL(quiz);
             const isDeleting = deletingQuiz === quiz.slug;
-            
+
             return (
-              <div key={quiz._id} className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-                {/* Quiz Header */}
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg text-gray-900 dark:text-white mb-2 line-clamp-2">
-                        {quiz.title}
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-                        Topic: {quiz.keyword}
-                      </p>
+              <Card key={quiz._id} className="group bg-card/50 backdrop-blur-sm border-border/40 flex flex-col">
+                <CardHeader className="pb-3 pt-4">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-lg leading-tight line-clamp-2">{quiz.title}</CardTitle>
+                      <CardDescription className="text-xs mt-1 line-clamp-1">{quiz.keyword}</CardDescription>
                     </div>
-                    <Brain className="h-8 w-8 text-blue-600 flex-shrink-0" />
+                    <Brain className="h-5 w-5 text-primary shrink-0" />
+                  </div>
+                </CardHeader>
+                <CardContent className="pb-3 pt-0 flex-1 flex flex-col">
+                  <div className="space-y-3 flex-1">
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Eye className="h-3.5 w-3.5" />
+                        {quiz.viewCount}
+                      </div>
+                      <span>•</span>
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3.5 w-3.5" />
+                        {formatDate(quiz.createdAt)}
+                      </div>
+                      {quiz.isPublic && quiz.forkCount > 0 && (
+                        <>
+                          <span>•</span>
+                          <div className="flex items-center gap-1">
+                            <GitFork className="h-3.5 w-3.5" />
+                            {quiz.forkCount}
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Stats */}
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                      <Eye className="h-4 w-4 mr-2" />
-                      {quiz.viewCount} views
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                      <BarChart3 className="h-4 w-4 mr-2" />
+                  <div className="flex items-center gap-2 mt-4">
+                    <Badge variant="secondary" className="text-xs">
                       {quiz.format}
-                    </div>
-                  </div>
-
-                  {/* Dates */}
-                  <div className="space-y-1 mb-4">
-                    <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
-                      <Calendar className="h-3 w-3 mr-2" />
-                      Created: {formatDate(quiz.createdAt)}
-                    </div>
-                    <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
-                      <Clock className="h-3 w-3 mr-2" />
-                      Last viewed: {formatDate(quiz.lastVisitedAt)}
-                    </div>
-                  </div>
-
-                  {/* URL Display */}
-                  <div className="text-xs text-gray-400 dark:text-gray-500 mb-4 font-mono bg-gray-50 dark:bg-gray-700 p-2 rounded">
-                    {quiz.slug ? (
-                      <span className="text-green-600 dark:text-green-400">✓ SEO: {quizURL}</span>
-                    ) : (
-                      <span className="text-orange-600 dark:text-orange-400">⚠ ID: {quizURL}</span>
+                    </Badge>
+                    {quiz.isPublic !== undefined && (
+                      <Badge 
+                        variant={quiz.isPublic ? 'success' : 'secondary'} 
+                        className="text-xs"
+                      >
+                        {quiz.isPublic ? (
+                          <>
+                            <Globe className="h-3 w-3 mr-1" />
+                            Public
+                          </>
+                        ) : (
+                          <>
+                            <Lock className="h-3 w-3 mr-1" />
+                            Private
+                          </>
+                        )}
+                      </Badge>
                     )}
                   </div>
+                </CardContent>
+                <CardFooter className="pt-0 flex gap-2">
+                  <Button asChild variant="outline" size="sm" className="flex-1 bg-accent/10 border border-border/50 group-hover:bg-accent transition-colors text-xs h-8">
+                    <Link to={quizURL}>
+                      <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                      Take Quiz
+                    </Link>
+                  </Button>
 
-                  {/* Actions */}
-                  <div className="flex items-center justify-between">
-                    <Button asChild size="sm">
-                      <Link to={quizURL}>
-                        Take Quiz
-                      </Link>
-                    </Button>
-                    
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => handleShare(quiz)}
-                        className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white transition-colors"
-                        title="Share quiz"
-                      >
-                        <Share2 className="w-4 h-4" />
-                      </button>
-                      
-                      <button
-                        onClick={() => handleDelete(quiz)}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleShare(quiz)}
+                    className="h-8 w-8 p-0"
+                    title="Share quiz"
+                  >
+                    <Share2 className="h-3.5 w-3.5" />
+                  </Button>
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         disabled={isDeleting}
-                        className="p-2 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition-colors disabled:opacity-50"
-                        title="Delete quiz"
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                        {isDeleting ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          Delete Quiz
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete "{quiz.title}"? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>
+                          Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDelete(quiz.slug, quiz.title)}
+                          className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </CardFooter>
+              </Card>
             );
           })}
         </div>
@@ -260,7 +381,7 @@ export const QuizList: React.FC<QuizListProps> = ({ userId }) => {
             Previous
           </Button>
 
-          <span className="px-4 py-2 text-sm text-gray-600">
+          <span className="px-4 py-2 text-sm text-muted-foreground">
             Page {currentPage} of {totalPages}
           </span>
 

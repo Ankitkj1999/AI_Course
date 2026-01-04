@@ -1,0 +1,636 @@
+import { ChatOpenAI } from '@langchain/openai';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import dotenv from 'dotenv';
+import axios from 'axios';
+
+// Load environment variables
+dotenv.config();
+
+/**
+ * Provider configurations for different LLM services
+ */
+const PROVIDER_CONFIGS = {
+  gemini: {
+    id: 'gemini',
+    name: 'Google Gemini',
+    isFree: false,
+    defaultModel: null, // Will be set dynamically
+    envKeyName: 'GOOGLE_API_KEY',
+    availableModels: [], // Will be populated dynamically
+    dynamicModels: true
+  },
+  openrouter: {
+    id: 'openrouter',
+    name: 'OpenRouter (Multi-Model)',
+    isFree: false,
+    defaultModel: null, // Will be set dynamically
+    envKeyName: 'OPENROUTER_API_KEY',
+    availableModels: [], // Will be populated dynamically
+    dynamicModels: true
+  }
+};
+
+/**
+ * LangChain Factory for creating LLM instances
+ */
+class LangChainFactory {
+  constructor() {
+    this.providers = new Map();
+    this.modelCache = new Map(); // Cache for OpenRouter models
+    this.cacheExpiry = 30 * 60 * 1000; // 30 minutes cache
+    this.initializeProviders();
+  }
+
+  /**
+   * Initialize available providers based on environment variables
+   */
+  async initializeProviders() {
+    console.log('Initializing LLM providers...');
+
+    for (const [providerId, config] of Object.entries(PROVIDER_CONFIGS)) {
+      // For OpenRouter, use settings cache; for others, use direct env
+      const apiKey = config.envKeyName === 'OPENROUTER_API_KEY'
+        ? await this.getCachedApiKey(config.envKeyName)
+        : process.env[config.envKeyName];
+
+      if (apiKey) {
+        try {
+          // Handle dynamic models for OpenRouter
+          if (config.dynamicModels) {
+            await this.initializeDynamicProvider(providerId, config, apiKey);
+          } else {
+            const provider = this.createProvider(providerId, config, apiKey);
+            this.providers.set(providerId, {
+              config,
+              instance: provider,
+              isAvailable: true
+            });
+            console.log(`✓ ${config.name} provider initialized`);
+          }
+        } catch (error) {
+          console.error(`✗ Failed to initialize ${config.name}:`, error.message);
+          this.providers.set(providerId, {
+            config,
+            instance: null,
+            isAvailable: false,
+            error: error.message
+          });
+        }
+      } else {
+        console.log(`- ${config.name} provider skipped (no API key)`);
+        this.providers.set(providerId, {
+          config,
+          instance: null,
+          isAvailable: false,
+          error: 'API key not provided'
+        });
+      }
+    }
+  }
+
+  /**
+   * Initialize dynamic provider (OpenRouter or Gemini)
+   */
+  async initializeDynamicProvider(providerId, config, apiKey) {
+    try {
+      let models = [];
+
+      if (providerId === 'openrouter') {
+        models = await this.fetchOpenRouterModels(apiKey);
+      } else if (providerId === 'gemini') {
+        models = await this.fetchGeminiModels(apiKey);
+      }
+
+      if (models.length === 0) {
+        throw new Error(`No models available from ${config.name}`);
+      }
+
+      // Update config with dynamic models
+      const updatedConfig = {
+        ...config,
+        availableModels: models.map(m => m.id || m.name || m),
+        defaultModel: models[0].id || models[0].name || models[0] // Use first available model as default
+      };
+
+      const provider = this.createProvider(providerId, updatedConfig, apiKey);
+      this.providers.set(providerId, {
+        config: updatedConfig,
+        instance: provider,
+        isAvailable: true
+      });
+
+      console.log(`✓ ${config.name} provider initialized with ${models.length} models`);
+    } catch (error) {
+      console.error(`✗ Failed to initialize ${config.name}:`, error.message);
+      this.providers.set(providerId, {
+        config,
+        instance: null,
+        isAvailable: false,
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Fetch available models from Gemini API
+   */
+  async fetchGeminiModels(apiKey) {
+    const cacheKey = 'gemini_models';
+    const cached = this.modelCache.get(cacheKey);
+
+    // Check if cache is still valid
+    if (cached && (Date.now() - cached.timestamp) < this.cacheExpiry) {
+      return cached.models;
+    }
+
+    try {
+      // Use Google AI models API endpoint to get available models
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        signal: AbortSignal.timeout(10000) // 10 second timeout
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const allModels = data.models || [];
+
+      // Filter models that support generateContent (text generation)
+      const textGenerationModels = allModels.filter(model =>
+        model.supportedGenerationMethods &&
+        model.supportedGenerationMethods.includes('generateContent') &&
+        !model.name.includes('embedding') && // Exclude embedding models
+        !model.name.includes('imagen') // Exclude image generation models
+      );
+
+      // Convert to our format and sort by version (prefer newer/stable models)
+      const validatedModels = textGenerationModels
+        .map(model => ({
+          id: model.name.replace('models/', ''), // Remove 'models/' prefix
+          name: model.displayName || model.name.replace('models/', ''),
+          version: model.version,
+          inputLimit: model.inputTokenLimit,
+          outputLimit: model.outputTokenLimit
+        }))
+        .sort((a, b) => {
+          // Prefer stable versions over preview/experimental
+          const aIsStable = !a.version.includes('preview') && !a.version.includes('exp');
+          const bIsStable = !b.version.includes('preview') && !b.version.includes('exp');
+
+          if (aIsStable && !bIsStable) return -1;
+          if (!aIsStable && bIsStable) return 1;
+
+          // For same stability level, prefer higher input limits
+          return (b.inputLimit || 0) - (a.inputLimit || 0);
+        });
+
+      // Cache the results
+      this.modelCache.set(cacheKey, {
+        models: validatedModels,
+        timestamp: Date.now()
+      });
+
+      console.log(`✅ Fetched ${validatedModels.length} Gemini models from API (${textGenerationModels.length} total models)`);
+
+      // Log some examples for debugging
+      if (validatedModels.length > 0) {
+        console.log('Top models:');
+        validatedModels.slice(0, 5).forEach(model => {
+          console.log(`- ${model.id} (${model.version}, ${model.inputLimit} tokens)`);
+        });
+      }
+
+      return validatedModels;
+
+    } catch (error) {
+      console.error('Failed to fetch Gemini models from API:', error.message);
+
+      // Return cached models if available, even if expired
+      if (cached) {
+        console.log('Using expired cached Gemini models as fallback');
+        return cached.models;
+      }
+
+      // Last resort: Return empty array to disable provider
+      console.log('❌ Gemini API unavailable - disabling Gemini provider');
+      return [];
+    }
+  }
+
+  /**
+   * Fetch available models from OpenRouter API
+   */
+  async fetchOpenRouterModels(apiKey, preferFree = true) {
+    const cacheKey = `openrouter_models_${preferFree}`;
+    const cached = this.modelCache.get(cacheKey);
+
+    // Check if cache is still valid
+    if (cached && (Date.now() - cached.timestamp) < this.cacheExpiry) {
+      return cached.models;
+    }
+
+    try {
+      const response = await axios.get('https://openrouter.ai/api/v1/models', {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 10000 // 10 second timeout
+      });
+
+      const allModels = response.data.data || [];
+
+      // Filter models based on pricing preference
+      let filteredModels = allModels;
+
+      if (preferFree) {
+        // Get free models (pricing.prompt = 0 and pricing.completion = 0)
+        filteredModels = allModels.filter(model =>
+          model.pricing &&
+          model.pricing.prompt === 0 &&
+          model.pricing.completion === 0
+        );
+
+        console.log(`Found ${filteredModels.length} truly free models`);
+
+        // If no free models, fall back to low-cost models
+        if (filteredModels.length === 0) {
+          filteredModels = allModels.filter(model =>
+            model.pricing &&
+            (model.pricing.prompt + model.pricing.completion) <= 0.0001 // Very low cost threshold
+          );
+          console.log(`No free models found, using ${filteredModels.length} low-cost models`);
+        }
+
+        // If still no models, use all available models as last resort
+        if (filteredModels.length === 0) {
+          console.log('No free or low-cost models found, using all available models');
+          filteredModels = allModels;
+        }
+      }
+
+      // Sort by context length (prefer models with more context)
+      filteredModels.sort((a, b) => (b.context_length || 0) - (a.context_length || 0));
+
+      // Cache the results
+      this.modelCache.set(cacheKey, {
+        models: filteredModels,
+        timestamp: Date.now()
+      });
+
+      console.log(`Fetched ${filteredModels.length} models from OpenRouter (${preferFree ? 'free/low-cost' : 'all'})`);
+
+      // Log some examples for debugging
+      if (filteredModels.length > 0) {
+        console.log('Sample models:');
+        filteredModels.slice(0, 3).forEach(model => {
+          const cost = model.pricing ? `$${model.pricing.prompt + model.pricing.completion}` : 'unknown';
+          console.log(`- ${model.id} (${cost}, context: ${model.context_length || 'unknown'})`);
+        });
+      }
+
+      return filteredModels;
+
+    } catch (error) {
+      console.error('Failed to fetch OpenRouter models:', error.message);
+
+      // Return cached models if available, even if expired
+      if (cached) {
+        console.log('Using expired cached models as fallback');
+        return cached.models;
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * Create a provider instance based on the provider ID
+   */
+  createProvider(providerId, config, apiKey) {
+    switch (providerId) {
+      case 'gemini':
+        return new ChatGoogleGenerativeAI({
+          apiKey,
+          model: config.defaultModel,
+          temperature: 0.7
+        });
+
+      case 'openrouter':
+        return new ChatOpenAI({
+          apiKey,
+          model: config.defaultModel,
+          temperature: 0.7,
+          configuration: {
+            baseURL: 'https://openrouter.ai/api/v1',
+            defaultHeaders: {
+              'HTTP-Referer': process.env.WEBSITE_URL || 'http://localhost:8080',
+              'X-Title': 'AI Course Generator'
+            }
+          }
+        });
+
+      default:
+        throw new Error(`Unknown provider: ${providerId}`);
+    }
+  }
+
+  /**
+   * Get an LLM instance for the specified provider
+   */
+  async getLLM(providerId, options = {}) {
+    const provider = this.providers.get(providerId);
+
+    if (!provider) {
+      throw new Error(`Provider ${providerId} not found`);
+    }
+
+    if (!provider.isAvailable) {
+      throw new Error(`Provider ${providerId} is not available: ${provider.error}`);
+    }
+
+    // If custom model or temperature is specified, create a new instance
+    if (options.model || options.temperature !== undefined) {
+      const apiKey = providerId === 'openrouter'
+        ? await this.getCachedApiKey('OPENROUTER_API_KEY')
+        : process.env[provider.config.envKeyName];
+      const config = { ...provider.config };
+
+      if (options.model) config.defaultModel = options.model;
+
+      const llm = this.createProvider(providerId, config, apiKey);
+
+      if (options.temperature !== undefined) {
+        llm.temperature = options.temperature;
+      }
+
+      return llm;
+    }
+
+    return provider.instance;
+  }
+
+  /**
+   * Get list of available providers
+   */
+  getAvailableProviders() {
+    return Array.from(this.providers.entries()).map(([id, provider]) => ({
+      id,
+      name: provider.config.name,
+      isFree: provider.config.isFree,
+      isAvailable: provider.isAvailable,
+      models: provider.config.availableModels,
+      error: provider.error || null
+    }));
+  }
+
+  /**
+   * Check if a provider is available
+   */
+  isProviderAvailable(providerId) {
+    const provider = this.providers.get(providerId);
+    return provider && provider.isAvailable;
+  }
+
+  /**
+   * Get the first available provider
+   */
+  getDefaultProvider() {
+    for (const [id, provider] of this.providers.entries()) {
+      if (provider.isAvailable) {
+        return id;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Validate provider configuration
+   */
+  validateProvider(providerId) {
+    const provider = this.providers.get(providerId);
+    
+    if (!provider) {
+      return { valid: false, error: `Provider ${providerId} not found` };
+    }
+    
+    if (!provider.isAvailable) {
+      return { valid: false, error: provider.error };
+    }
+    
+    return { valid: true };
+  }
+
+  /**
+   * Perform health check on a specific provider
+   */
+  async healthCheck(providerId) {
+    const startTime = Date.now();
+
+    try {
+      const validation = this.validateProvider(providerId);
+      if (!validation.valid) {
+        return {
+          provider: providerId,
+          healthy: false,
+          error: validation.error,
+          responseTime: Date.now() - startTime,
+          timestamp: new Date().toISOString()
+        };
+      }
+
+      // Test with a minimal prompt
+      const llm = await this.getLLM(providerId, { temperature: 0 });
+      const testPrompt = 'Hello';
+
+      const response = await llm.invoke(testPrompt);
+      const responseTime = Date.now() - startTime;
+
+      return {
+        provider: providerId,
+        healthy: true,
+        responseTime,
+        testResponse: response.content?.substring(0, 50) || 'No content',
+        timestamp: new Date().toISOString()
+      };
+
+    } catch (error) {
+      return {
+        provider: providerId,
+        healthy: false,
+        error: error.message,
+        responseTime: Date.now() - startTime,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
+  /**
+   * Perform health check on all available providers
+   */
+  async healthCheckAll() {
+    const availableProviders = Array.from(this.providers.keys())
+      .filter(id => this.isProviderAvailable(id));
+    
+    const healthChecks = await Promise.allSettled(
+      availableProviders.map(id => this.healthCheck(id))
+    );
+
+    return healthChecks.map((result, index) => ({
+      providerId: availableProviders[index],
+      status: result.status,
+      data: result.status === 'fulfilled' ? result.value : { error: result.reason?.message }
+    }));
+  }
+
+  /**
+   * Get provider statistics and metadata
+   */
+  getProviderStats() {
+    const providers = this.getAvailableProviders();
+    const available = providers.filter(p => p.isAvailable);
+    const unavailable = providers.filter(p => !p.isAvailable);
+    const freeProviders = available.filter(p => p.isFree);
+    const paidProviders = available.filter(p => !p.isFree);
+
+    return {
+      total: providers.length,
+      available: available.length,
+      unavailable: unavailable.length,
+      free: freeProviders.length,
+      paid: paidProviders.length,
+      providers: {
+        available: available.map(p => ({ id: p.id, name: p.name, isFree: p.isFree })),
+        unavailable: unavailable.map(p => ({ id: p.id, name: p.name, error: p.error }))
+      }
+    };
+  }
+
+  /**
+   * Create unified response format for LLM responses
+   */
+  createUnifiedResponse(success, data = {}) {
+    const baseResponse = {
+      success,
+      timestamp: new Date().toISOString(),
+      version: '1.0'
+    };
+
+    if (success) {
+      return {
+        ...baseResponse,
+        data: {
+          content: data.content || '',
+          provider: data.provider || 'unknown',
+          providerName: data.providerName || 'Unknown Provider',
+          model: data.model || 'default',
+          responseTime: data.responseTime || 0,
+          metadata: {
+            promptLength: data.promptLength || 0,
+            responseLength: data.responseLength || 0,
+            temperature: data.temperature || 0.7,
+            ...data.additionalMetadata
+          }
+        }
+      };
+    } else {
+      return {
+        ...baseResponse,
+        error: {
+          message: data.error || 'Unknown error',
+          provider: data.provider || 'unknown',
+          code: data.errorCode || 'UNKNOWN_ERROR',
+          details: data.errorDetails || null
+        }
+      };
+    }
+  }
+
+  /**
+   * Get provider by priority (free providers first, then by availability)
+   */
+  getProviderByPriority(preferFree = true) {
+    const providers = this.getAvailableProviders().filter(p => p.isAvailable);
+    
+    if (providers.length === 0) {
+      return null;
+    }
+
+    if (preferFree) {
+      const freeProvider = providers.find(p => p.isFree);
+      if (freeProvider) {
+        return freeProvider.id;
+      }
+    }
+
+    // Return first available provider
+    return providers[0].id;
+  }
+
+  /**
+   * Refresh provider configurations (useful for runtime updates)
+   */
+  async refreshProviders() {
+    console.log('Refreshing LLM providers...');
+    this.providers.clear();
+    this.modelCache.clear(); // Clear model cache too
+    await this.initializeProviders();
+    return this.getProviderStats();
+  }
+
+  /**
+   * Get API key from cache (for production) or env (for development)
+   */
+  async getCachedApiKey(envKeyName) {
+    // Import settingsCache dynamically to avoid circular dependency
+    const settingsCache = (await import('./settingsCache.js')).default;
+    return await settingsCache.get(envKeyName);
+  }
+
+  /**
+   * Force refresh OpenRouter models (bypass cache)
+   */
+  async refreshOpenRouterModels(preferFree = true) {
+    const cacheKey = `openrouter_models_${preferFree}`;
+    this.modelCache.delete(cacheKey);
+
+    const provider = this.providers.get('openrouter');
+    if (provider && provider.isAvailable) {
+      const apiKey = await this.getCachedApiKey('OPENROUTER_API_KEY');
+      if (apiKey) {
+        try {
+          const models = await this.fetchOpenRouterModels(apiKey, preferFree);
+          // Update provider config with new models
+          const updatedConfig = {
+            ...provider.config,
+            availableModels: models.map(m => m.id),
+            defaultModel: models[0]?.id || provider.config.defaultModel
+          };
+
+          this.providers.set('openrouter', {
+            ...provider,
+            config: updatedConfig
+          });
+
+          console.log(`Refreshed OpenRouter models: ${models.length} available`);
+          return models;
+        } catch (error) {
+          console.error('Failed to refresh OpenRouter models:', error.message);
+          throw error;
+        }
+      }
+    }
+
+    return [];
+  }
+}
+
+// Create singleton instance
+const llmFactory = new LangChainFactory();
+
+export default llmFactory;

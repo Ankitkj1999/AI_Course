@@ -6,7 +6,7 @@ echo "🚀 Deploying AiCourse production on gksage.com..."
 # Configuration
 DOCKER_USERNAME="ankitkj199"
 IMAGE_NAME="aicourse"
-TAG="production"
+TAG=${1:-production}  # Accept tag parameter, default to "production"
 FULL_IMAGE_NAME="$DOCKER_USERNAME/$IMAGE_NAME:$TAG"
 CONTAINER_NAME="aicourse-app"
 
@@ -56,9 +56,9 @@ if [ $? -eq 0 ]; then
     
     if [ $? -eq 0 ]; then
         echo "✅ Production container started successfully!"
-        echo "🌐 Application available at: https://gksage.com"
-        echo "🌐 Alternative: https://www.gksage.com"
-        echo "❤️  Health check: https://gksage.com/health"
+        echo "🌐 Application available at: http://gksage.run.place"
+        echo "🌐 Alternative: http://gksage.run.place"
+        echo "❤️  Health check: http://gksage.run.place/health"
         echo "📋 View logs: docker logs -f $CONTAINER_NAME"
         echo "🛑 Stop: docker stop $CONTAINER_NAME"
         

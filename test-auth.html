@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Cookie Authentication</title>
+</head>
+<body>
+    <h1>JWT to Cookie Migration Test</h1>
+    
+    <div>
+        <h2>Login Test</h2>
+        <input type="email" id="email" placeholder="Email" value="test@example.com">
+        <input type="password" id="password" placeholder="Password" value="password">
+        <button onclick="testLogin()">Test Login</button>
+    </div>
+    
+    <div>
+        <h2>Protected Route Test</h2>
+        <button onclick="testProtectedRoute()">Test Protected Route</button>
+    </div>
+    
+    <div>
+        <h2>Logout Test</h2>
+        <button onclick="testLogout()">Test Logout</button>
+    </div>
+    
+    <div id="results"></div>
+
+    <script>
+        const serverURL = 'http://localhost:5010';
+        
+        async function testLogin() {
+            try {
+                const response = await fetch(`${serverURL}/api/signin`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        email: document.getElementById('email').value,
+                        password: document.getElementById('password').value
+                    })
+                });
+                
+                const data = await response.json();
+                document.getElementById('results').innerHTML += `<p>Login: ${JSON.stringify(data)}</p>`;
+                
+                // Check if cookie was set
+                console.log('Cookies:', document.cookie);
+            } catch (error) {
+                document.getElementById('results').innerHTML += `<p>Login Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function testProtectedRoute() {
+            try {
+                const response = await fetch(`${serverURL}/api/prompt`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        prompt: 'Test prompt'
+                    })
+                });
+                
+                const data = await response.json();
+                document.getElementById('results').innerHTML += `<p>Protected Route: ${JSON.stringify(data)}</p>`;
+            } catch (error) {
+                document.getElementById('results').innerHTML += `<p>Protected Route Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function testLogout() {
+            try {
+                const response = await fetch(`${serverURL}/api/logout`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                
+                const data = await response.json();
+                document.getElementById('results').innerHTML += `<p>Logout: ${JSON.stringify(data)}</p>`;
+            } catch (error) {
+                document.getElementById('results').innerHTML += `<p>Logout Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

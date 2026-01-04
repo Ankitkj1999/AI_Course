@@ -55,63 +55,63 @@ const PaymentSuccess = () => {
   async function getDetails() {
 
     setReceiptId(planId);
-    setPlanName(sessionStorage.getItem('plan'));
-    setCost(sessionStorage.getItem('plan') === 'Monthly Plan' ? '' + MonthCost : '' + YearCost);
-    setName(sessionStorage.getItem('mName'));
-    setEmail(sessionStorage.getItem('email'));
-    setMethod(sessionStorage.getItem('method'));
+    setPlanName(localStorage.getItem('plan'));
+    setCost(localStorage.getItem('plan') === 'Monthly Plan' ? '' + MonthCost : '' + YearCost);
+    setName(localStorage.getItem('mName'));
+    setEmail(localStorage.getItem('email'));
+    setMethod(localStorage.getItem('method'));
 
-    if (sessionStorage.getItem('method') === 'stripe') {
+    if (localStorage.getItem('method') === 'stripe') {
       const dataToSend = {
-        subscriberId: sessionStorage.getItem('stripe'),
-        uid: sessionStorage.getItem('uid'),
-        plan: sessionStorage.getItem('plan')
+        subscriberId: localStorage.getItem('stripe'),
+        uid: localStorage.getItem('uid'),
+        plan: localStorage.getItem('plan')
       };
       const postURL = serverURL + '/api/stripedetails';
       await axios.post(postURL, dataToSend).then(res => {
-        sessionStorage.setItem('type', sessionStorage.getItem('plan'));
+        localStorage.setItem('type', localStorage.getItem('plan'));
         sendEmail();
       });
-    } else if (sessionStorage.getItem('method') === 'paystack') {
+    } else if (localStorage.getItem('method') === 'paystack') {
       const dataToSend = {
-        email: sessionStorage.getItem('email'),
-        uid: sessionStorage.getItem('uid'),
-        plan: sessionStorage.getItem('plan')
+        email: localStorage.getItem('email'),
+        uid: localStorage.getItem('uid'),
+        plan: localStorage.getItem('plan')
       };
       const postURL = serverURL + '/api/paystackfetch';
       await axios.post(postURL, dataToSend).then(res => {
-        sessionStorage.setItem('type', sessionStorage.getItem('plan'));
+        localStorage.setItem('type', localStorage.getItem('plan'));
         sendEmail();
       });
-    } else if (sessionStorage.getItem('method') === 'flutterwave') {
+    } else if (localStorage.getItem('method') === 'flutterwave') {
       const dataToSend = {
-        email: sessionStorage.getItem('email'),
-        uid: sessionStorage.getItem('uid'),
-        plan: sessionStorage.getItem('plan')
+        email: localStorage.getItem('email'),
+        uid: localStorage.getItem('uid'),
+        plan: localStorage.getItem('plan')
       };
       const postURL = serverURL + '/api/flutterdetails';
       await axios.post(postURL, dataToSend).then(res => {
-        sessionStorage.setItem('type', sessionStorage.getItem('plan'));
+        localStorage.setItem('type', localStorage.getItem('plan'));
         sendEmail();
       });
     } else {
       const subscriptionId = planId;
       const dataToSend = {
         subscriberId: subscriptionId,
-        uid: sessionStorage.getItem('uid'),
-        plan: sessionStorage.getItem('plan')
+        uid: localStorage.getItem('uid'),
+        plan: localStorage.getItem('plan')
       };
       try {
-        if (sessionStorage.getItem('method') === 'paypal') {
+        if (localStorage.getItem('method') === 'paypal') {
           const postURL = serverURL + '/api/paypaldetails';
           await axios.post(postURL, dataToSend).then(res => {
-            sessionStorage.setItem('type', sessionStorage.getItem('plan'));
+            localStorage.setItem('type', localStorage.getItem('plan'));
             sendEmail();
           });
-        } else if (sessionStorage.getItem('method') === 'razorpay') {
+        } else if (localStorage.getItem('method') === 'razorpay') {
           const postURL = serverURL + '/api/razorapydetails';
           await axios.post(postURL, dataToSend).then(res => {
-            sessionStorage.setItem('type', sessionStorage.getItem('plan'));
+            localStorage.setItem('type', localStorage.getItem('plan'));
             sendEmail();
           });
         }
@@ -175,12 +175,12 @@ const PaymentSuccess = () => {
 
 
     try {
-      const email = sessionStorage.getItem('email');
-      const plan = sessionStorage.getItem('plan');
-      const user = sessionStorage.getItem('uid');
+      const email = localStorage.getItem('email');
+      const plan = localStorage.getItem('plan');
+      const user = localStorage.getItem('uid');
       const subscription = planId;
-      const subscriberId = sessionStorage.getItem('email');
-      const method = sessionStorage.getItem('method');
+      const subscriberId = localStorage.getItem('email');
+      const method = localStorage.getItem('method');
       const postURL = serverURL + '/api/sendreceipt';
       await axios.post(postURL, { html, email, plan, subscriberId, user, method, subscription });
     } catch (error) {

@@ -5,7 +5,7 @@ export const companyName = import.meta.env.VITE_COMPANY_NAME || 'Spacester';
 // Dynamic URL detection based on environment
 export const websiteURL = typeof window !== 'undefined' 
   ? `${window.location.protocol}//${window.location.host}`
-  : import.meta.env.VITE_WEBSITE_URL || 'https://gksage.com';
+  : import.meta.env.VITE_WEBSITE_URL || 'http://gksage.run.place';
 
 // Dynamic server URL detection
 const getServerURL = () => {
@@ -19,19 +19,16 @@ const getServerURL = () => {
     return `${window.location.protocol}//${window.location.host}`;
   }
   
-  // In development, try to detect from browser
+  // In development, try common ports in order
   if (import.meta.env.DEV && typeof window !== 'undefined') {
     const protocol = window.location.protocol;
     const hostname = window.location.hostname;
     
-    // Check if there's a server running on common ports
-    const commonPorts = [5011, 5010, 5012, 5013];
-    
-    // For now, return the most likely port based on current setup
+    // Try ports in order: 5011 (current), 5010 (default), 5012, 5013
     return `${protocol}//${hostname}:5011`;
   }
   
-  return 'http://localhost:5010';
+  return 'http://localhost:5011';
 };
 
 export const serverURL = getServerURL();
@@ -97,3 +94,8 @@ export const facebookClientId = "818765030524259"; // Fallback
 export const facebookSocialLink = "https://www.youtube.com/@spacester-codecanyon";
 export const twitterSocialLink = "https://www.youtube.com/@spacester-codecanyon";
 export const instagramSocialLink = "https://www.youtube.com/@spacester-codecanyon";
+
+//  the lanaguage option should be on top when selecting for course creation for generating course so that
+// title could also be in that language only
+
+// have constants stored in db 

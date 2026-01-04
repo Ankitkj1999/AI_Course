@@ -14,6 +14,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useToast } from '@/hooks/use-toast';
 import ShareOnSocial from 'react-share-on-social';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import CourseImage from '@/components/CourseImage';
+import { Progress } from '@/components/ui/progress';
 
 const Dashboard = () => {
 
@@ -22,13 +24,113 @@ const Dashboard = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const userId = sessionStorage.getItem('uid');
+  const userId = localStorage.getItem('uid');
   const [courseProgress, setCourseProgress] = useState({});
   const [modules, setTotalModules] = useState({});
   const [lessons, setTotalLessons] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   const { toast } = useToast();
+
+  const getQuiz = async (courseId: string) => {
+    const postURL = serverURL + '/api/getmyresult';
+    const response = await axios.post(postURL, { courseId });
+    if (response.data.success) {
+      return response.data.message;
+    } else {
+      return false;
+    }
+  };
+
+  const fetchUserCourses = useCallback(async () => {
+    setIsLoading(page === 1);
+    setLoadingMore(page > 1);
+    const postURL = `${serverURL}/api/courses?userId=${userId}&page=${page}&limit=9`;
+    try {
+      console.log('Fetching courses from:', postURL);
+      const response = await axios.get(postURL);
+      console.log('API Response received:', response.data);
+      const coursesData = response.data.courses || response.data || [];
+      console.log('Courses data length:', coursesData.length);
+
+      if (coursesData.length === 0) {
+        setHasMore(false);
+      } else {
+        const progressMap = { ...courseProgress }; // Spread existing state
+        const modulesMap = { ...modules }; // Spread existing state
+        const lessonsMap = { ...lessons }; // Spread existing state
+
+        // Calculate progress data synchronously to avoid API calls
+        coursesData.forEach((course) => {
+          try {
+            const jsonData = JSON.parse(course.content);
+            const mainTopicKey = course.mainTopic.toLowerCase();
+
+            // Count done topics
+            let doneCount = 0;
+            let totalTopics = 0;
+            if (jsonData[mainTopicKey]) {
+              jsonData[mainTopicKey].forEach((topic: { subtopics: string[]; }) => {
+                topic.subtopics.forEach((subtopic) => {
+                  if (subtopic.done) {
+                    doneCount++;
+                  }
+                  totalTopics++;
+                });
+              });
+            }
+            const completionPercentage = totalTopics > 0 ? Math.round((doneCount / totalTopics) * 100) : 0;
+            progressMap[course._id] = completionPercentage;
+
+            // Count modules
+            modulesMap[course._id] = jsonData[mainTopicKey] ? jsonData[mainTopicKey].length : 0;
+
+            // Count lessons
+            lessonsMap[course._id] = jsonData[mainTopicKey] ?
+              jsonData[mainTopicKey].reduce((total: number, topic: { subtopics: string[]; }) => total + topic.subtopics.length, 0) : 0;
+
+          } catch (error) {
+            console.error('Error parsing course content:', error);
+            progressMap[course._id] = 0;
+            modulesMap[course._id] = 0;
+            lessonsMap[course._id] = 0;
+          }
+        });
+        setCourseProgress(progressMap);
+        setTotalModules(modulesMap);
+        setTotalLessons(lessonsMap);
+        await setCourses((prevCourses) => {
+          const existingIds = new Set(prevCourses.map(course => course._id));
+          const newCourses = coursesData.filter(course => !existingIds.has(course._id));
+          return [...prevCourses, ...newCourses];
+        });
+        console.log('Courses state updated, isLoading should be false now');
+      }
+    } catch (error) {
+      console.error('API Error:', error);
+    } finally {
+      console.log('Setting loading states to false');
+      setIsLoading(false);
+      setLoadingMore(false);
+    }
+  }, [page, userId]);
+
+  useEffect(() => {
+    fetchUserCourses();
+  }, [fetchUserCourses]);
+
+  const handleScroll = useCallback(() => {
+    if (!hasMore || loadingMore) return;
+    const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+    if (scrollTop + clientHeight >= scrollHeight - 100) {
+      setPage((prevPage) => prevPage + 1);
+    }
+  }, [hasMore, loadingMore]);
+
+  useEffect(() => {
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [handleScroll]);
 
   function redirectCreate() {
     navigate("/dashboard/generate-course");
@@ -39,9 +141,9 @@ const Dashboard = () => {
     const response = await axios.post(postURL, { courseId });
     if (response.data.success) {
       const jsonData = JSON.parse(content);
-      sessionStorage.setItem('courseId', courseId);
-      sessionStorage.setItem('first', completed);
-      sessionStorage.setItem('jsonData', JSON.stringify(jsonData));
+      localStorage.setItem('courseId', courseId);
+      localStorage.setItem('first', completed);
+      localStorage.setItem('jsonData', JSON.stringify(jsonData));
       let ending = '';
       if (completed) ending = end;
       navigate('/course/' + courseId, {
@@ -57,9 +159,9 @@ const Dashboard = () => {
       });
     } else {
       const jsonData = JSON.parse(content);
-      sessionStorage.setItem('courseId', courseId);
-      sessionStorage.setItem('first', completed);
-      sessionStorage.setItem('jsonData', JSON.stringify(jsonData));
+      localStorage.setItem('courseId', courseId);
+      localStorage.setItem('first', completed);
+      localStorage.setItem('jsonData', JSON.stringify(jsonData));
       let ending = '';
       if (completed) ending = end;
       navigate('/course/' + courseId, {
@@ -96,114 +198,8 @@ const Dashboard = () => {
     }
   };
 
-  const fetchUserCourses = useCallback(async () => {
-    setIsLoading(page === 1);
-    setLoadingMore(page > 1);
-    const postURL = `${serverURL}/api/courses?userId=${userId}&page=${page}&limit=9`;
-    try {
-      const response = await axios.get(postURL);
-      if (response.data.length === 0) {
-        setHasMore(false);
-      } else {
-        const progressMap = { ...courseProgress }; // Spread existing state
-        const modulesMap = { ...modules }; // Spread existing state
-        const lessonsMap = { ...lessons }; // Spread existing state
-        for (const course of response.data) {
-          const progress = await CountDoneTopics(course.content, course.mainTopic, course._id);
-          const totalModules = await CountTotalModules(course.content, course.mainTopic);
-          const totalLessons = await CountTotalLessons(course.content, course.mainTopic);
-          progressMap[course._id] = progress;
-          modulesMap[course._id] = totalModules;
-          lessonsMap[course._id] = totalLessons;
-        }
-        setCourseProgress(progressMap);
-        setTotalModules(modulesMap);
-        setTotalLessons(lessonsMap);
-        await setCourses((prevCourses) => [...prevCourses, ...response.data]);
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsLoading(false);
-      setLoadingMore(false);
-    }
-  }, [userId, page]);
 
-  useEffect(() => {
-    fetchUserCourses();
-  }, [fetchUserCourses]);
 
-  const handleScroll = useCallback(() => {
-    if (!hasMore || loadingMore) return;
-    const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
-    if (scrollTop + clientHeight >= scrollHeight - 100) {
-      setPage((prevPage) => prevPage + 1);
-    }
-  }, [hasMore, loadingMore]);
-
-  useEffect(() => {
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [handleScroll]);
-
-  const CountDoneTopics = async (json: string, mainTopic: string, courseId: string) => {
-    try {
-      const jsonData = JSON.parse(json);
-      let doneCount = 0;
-      let totalTopics = 0;
-      jsonData[mainTopic.toLowerCase()].forEach((topic: { subtopics: string[]; }) => {
-        topic.subtopics.forEach((subtopic) => {
-          if (subtopic.done) {
-            doneCount++;
-          }
-          totalTopics++;
-        });
-      });
-      const quizCount = await getQuiz(courseId);
-      totalTopics = totalTopics + 1;
-      if (quizCount) {
-        totalTopics = totalTopics - 1;
-      }
-      const completionPercentage = Math.round((doneCount / totalTopics) * 100);
-      return completionPercentage;
-    } catch (error) {
-      console.error(error);
-      return 0;
-    }
-  }
-
-  const CountTotalModules = async (json: string, mainTopic: string) => {
-    try {
-      const jsonData = JSON.parse(json);
-      return jsonData[mainTopic.toLowerCase()].length;
-    } catch (error) {
-      console.error(error);
-      return 0;
-    }
-  }
-
-  const CountTotalLessons = async (json: string, mainTopic: string) => {
-    try {
-      const jsonData = JSON.parse(json);
-      return jsonData[mainTopic.toLowerCase()].reduce(
-        (total, topic) => total + topic.subtopics.length,
-        0
-      );
-    } catch (error) {
-      console.error(error);
-      return 0;
-    }
-  }
-
-  async function getQuiz(courseId: string) {
-    const postURL = serverURL + '/api/getmyresult';
-    const response = await axios.post(postURL, { courseId });
-    if (response.data.success) {
-      return response.data.message;
-    } else {
-      return false;
-    }
-  }
 
   return (
     <>
@@ -215,7 +211,7 @@ const Dashboard = () => {
       <div className="space-y-8 animate-fade-in">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-gradient bg-gradient-to-r from-primary to-indigo-500">My Courses</h1>
+            <h1 className="text-2xl font-bold tracking-tight">My Courses</h1>
             <p className="text-muted-foreground mt-1">Continue learning where you left off</p>
           </div>
           <div className="flex items-center gap-3">
@@ -253,7 +249,7 @@ const Dashboard = () => {
                 </Tooltip>
               </div>
             </TooltipProvider>
-            <Button onClick={() => redirectCreate()} className="shadow-md bg-gradient-to-r from-primary to-indigo-500 hover:from-indigo-500 hover:to-primary hover:shadow-lg transition-all">
+            <Button size="lg" className="shadow-md hover:shadow-lg" onClick={() => redirectCreate()}>
               <Sparkles className="mr-2 h-4 w-4" />
               Generate New Course
             </Button>
@@ -261,7 +257,7 @@ const Dashboard = () => {
         </div>
         {isLoading ? (
           viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {[1, 2, 3].map((i) => (
                 <Card key={i} className="overflow-hidden border-border/40 bg-card/50">
                   <div className="aspect-[16/10] relative overflow-hidden">
@@ -318,17 +314,17 @@ const Dashboard = () => {
           <>
             {courses.length > 0 ? (
               viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {courses.map((course) => (
-                    <Card key={course._id} className="overflow-hidden hover:shadow-md transition-all duration-200 border-border/40 hover:border-primary/30 group bg-card/50 backdrop-blur-sm">
+                    <Card key={course._id} className="group bg-card/50 backdrop-blur-sm border-border/40">
                       <div className="aspect-[16/10] relative overflow-hidden">
-                        <img
+                        <CourseImage
                           src={course.photo}
                           alt={course.mainTopic}
                           className="object-cover w-full h-full group-hover:scale-[1.02] transition-transform duration-300"
                         />
                         <div className="absolute top-3 right-3">
-                          <Badge variant={course.completed === true ? 'default' : 'secondary'} className="text-xs px-2 py-1">
+                          <Badge variant={course.completed === true ? 'success' : 'secondary'}>
                             {course.completed === true ? 'Completed' : 'In Progress'}
                           </Badge>
                         </div>
@@ -341,10 +337,10 @@ const Dashboard = () => {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="w-36">
                               <ShareOnSocial
-                                textToShare={sessionStorage.getItem('mName') + " shared you course on " + course.mainTopic}
+                                textToShare={localStorage.getItem('mName') + " shared you course on " + course.mainTopic}
                                 link={websiteURL + '/shareable?id=' + course._id}
-                                linkTitle={sessionStorage.getItem('mName') + " shared you course on " + course.mainTopic}
-                                linkMetaDesc={sessionStorage.getItem('mName') + " shared you course on " + course.mainTopic}
+                                linkTitle={localStorage.getItem('mName') + " shared you course on " + course.mainTopic}
+                                linkMetaDesc={localStorage.getItem('mName') + " shared you course on " + course.mainTopic}
                                 linkFavicon={appLogo}
                                 noReferer
                               >
@@ -367,12 +363,7 @@ const Dashboard = () => {
                       </CardHeader>
                       <CardContent className="pb-3 pt-0">
                         <div className="mb-3">
-                          <div className="h-1.5 bg-secondary/60 rounded-full">
-                            <div
-                              className="h-1.5 bg-gradient-to-r from-primary to-indigo-500 rounded-full transition-all duration-300"
-                              style={{ width: `${courseProgress[course._id] || 0}%` }}
-                            ></div>
-                          </div>
+                          <Progress value={courseProgress[course._id] || 0} className="h-1.5" />
                           <p className="text-xs text-muted-foreground mt-1.5">{courseProgress[course._id] || 0}% complete</p>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -389,7 +380,7 @@ const Dashboard = () => {
                           onClick={() => redirectCourse(course.content, course.mainTopic, course.type, course._id, course.completed, course.end)}
                           variant="ghost"
                           size="sm"
-                          className="w-full group-hover:bg-primary/5 transition-colors justify-between text-xs h-8"
+                          className="w-full bg-accent/10 border border-border/50 group-hover:bg-accent transition-colors justify-between text-xs h-8"
                         >
                           Continue Learning
                           <ArrowRight className="h-3.5 w-3.5 ml-2 group-hover:translate-x-0.5 transition-transform" />
@@ -404,7 +395,7 @@ const Dashboard = () => {
                     <Card key={course._id} className="overflow-hidden hover:shadow-md transition-all duration-200 border-border/40 hover:border-primary/30 group bg-card/50 backdrop-blur-sm">
                       <div className="flex min-h-[140px]">
                         <div className="w-32 sm:w-48 relative overflow-hidden flex-shrink-0">
-                          <img
+                          <CourseImage
                             src={course.photo}
                             alt={course.mainTopic}
                             className="object-cover w-full h-full group-hover:scale-[1.02] transition-transform duration-300"
@@ -418,9 +409,9 @@ const Dashboard = () => {
                                 <CardDescription className="text-xs capitalize mt-1">{course.type}</CardDescription>
                               </div>
                               <div className="flex items-center justify-between w-full sm:w-auto mt-2 sm:mt-0 sm:ml-4 sm:gap-2">
-                                <Badge variant={course.completed === true ? 'default' : 'secondary'} className="text-xs px-2 py-1">
-                                  {course.completed === true ? 'Completed' : 'In Progress'}
-                                </Badge>
+                                  <Badge variant={course.completed === true ? 'success' : 'secondary'}>
+                                    {course.completed === true ? 'Completed' : 'In Progress'}
+                                  </Badge>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-muted">
@@ -429,10 +420,10 @@ const Dashboard = () => {
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent className="w-36">
                                     <ShareOnSocial
-                                      textToShare={sessionStorage.getItem('mName') + " shared you course on " + course.mainTopic}
+                                      textToShare={localStorage.getItem('mName') + " shared you course on " + course.mainTopic}
                                       link={websiteURL + '/shareable?id=' + course._id}
-                                      linkTitle={sessionStorage.getItem('mName') + " shared you course on " + course.mainTopic}
-                                      linkMetaDesc={sessionStorage.getItem('mName') + " shared you course on " + course.mainTopic}
+                                      linkTitle={localStorage.getItem('mName') + " shared you course on " + course.mainTopic}
+                                      linkMetaDesc={localStorage.getItem('mName') + " shared you course on " + course.mainTopic}
                                       linkFavicon={appLogo}
                                       noReferer
                                     >
@@ -452,12 +443,7 @@ const Dashboard = () => {
                           </CardHeader>
                           <CardContent className="pb-3 pt-0 flex-1">
                             <div className="mb-3">
-                              <div className="h-1.5 bg-secondary/60 rounded-full">
-                                <div
-                                  className="h-1.5 bg-gradient-to-r from-primary to-indigo-500 rounded-full transition-all duration-300"
-                                  style={{ width: `${courseProgress[course._id] || 0}%` }}
-                                ></div>
-                              </div>
+                              <Progress value={courseProgress[course._id] || 0} className="h-1.5" />
                               <p className="text-xs text-muted-foreground mt-1.5">{courseProgress[course._id] || 0}% complete</p>
                             </div>
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -474,7 +460,7 @@ const Dashboard = () => {
                               onClick={() => redirectCourse(course.content, course.mainTopic, course.type, course._id, course.completed, course.end)}
                               variant="ghost"
                               size="sm"
-                              className="group-hover:bg-primary/5 transition-colors justify-between text-xs h-8 px-4"
+                              className="bg-accent/10 border border-border/50 group-hover:bg-accent transition-colors justify-between text-xs h-8 px-4"
                             >
                               Continue Learning
                               <ArrowRight className="h-3.5 w-3.5 ml-2 group-hover:translate-x-0.5 transition-transform" />
@@ -505,7 +491,7 @@ const Dashboard = () => {
             )}
             {loadingMore && (
               viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {[1, 2, 3].map((i) => (
                     <Card key={i} className="overflow-hidden border-border/40 bg-card/50">
                       <div className="aspect-[16/10] relative overflow-hidden">

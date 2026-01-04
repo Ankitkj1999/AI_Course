@@ -5,6 +5,13 @@ export interface FlashcardType {
   tags: string[];
 }
 
+export interface ForkedFrom {
+  contentId: string | null;
+  originalOwnerId: string | null;
+  originalOwnerName: string | null;
+  forkedAt: string | null;
+}
+
 export interface FlashcardSet {
   _id: string;
   userId: string;
@@ -23,6 +30,11 @@ export interface FlashcardSet {
   createdAt: string;
   updatedAt: string;
   cardCount?: number;
+  // Visibility and fork fields
+  isPublic: boolean;
+  forkCount: number;
+  forkedFrom?: ForkedFrom;
+  ownerName: string;
 }
 
 export interface FlashcardListResponse {
@@ -46,6 +58,9 @@ export interface CreateFlashcardRequest {
   userId: string;
   keyword: string;
   title: string;
+  provider?: string;
+  model?: string;
+  isPublic?: boolean;
 }
 
 export interface CreateFlashcardResponse {

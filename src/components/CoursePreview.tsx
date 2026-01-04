@@ -18,6 +18,9 @@ interface CoursePreviewProps {
     type: string,
     lang: string,
     onClose?: () => void;
+    selectedProvider?: string;
+    selectedModel?: string;
+    isPublic?: boolean;
 }
 
 const CoursePreview: React.FC<CoursePreviewProps> = ({
@@ -27,6 +30,9 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
     type,
     lang,
     onClose,
+    selectedProvider,
+    selectedModel,
+    isPublic = false,
 }) => {
     const navigate = useNavigate();
     const [isLoadingCourse, setIsLoadingCourse] = useState(false);
@@ -58,12 +64,14 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
     async function sendPrompt(prompt, promptImage) {
         const dataToSend = {
             prompt: prompt,
+            provider: selectedProvider,
+            model: selectedModel,
+            temperature: 0.7
         };
         try {
             const postURL = serverURL + '/api/generate';
-            const token = localStorage.getItem("token");
             const res = await axios.post(postURL, dataToSend, {
-                headers: { Authorization: `Bearer ${token}` }
+                withCredentials: true
             });
             const generatedText = res.data.text;
             const htmlContent = generatedText;
@@ -124,18 +132,21 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
         topics[courseName.toLowerCase()][0].subtopics[0].theory = theory;
         topics[courseName.toLowerCase()][0].subtopics[0].image = image;
 
-        const user = sessionStorage.getItem('uid');
+        const user = localStorage.getItem('uid');
         const content = JSON.stringify(topics);
         const postURL = serverURL + '/api/course';
-        const token = localStorage.getItem("token");
-        const response = await axios.post(postURL, { user, content, type, mainTopic: courseName, lang }, {
-            headers: { Authorization: `Bearer ${token}` }
+        const response = await axios.post(postURL, { user, content, type, mainTopic: courseName, lang, isPublic }, {
+            withCredentials: true
         });
 
         if (response.data.success) {
-            sessionStorage.setItem('courseId', response.data.courseId);
-            sessionStorage.setItem('first', response.data.completed);
-            sessionStorage.setItem('jsonData', JSON.stringify(topics));
+            toast({
+                title: "Course Created!",
+                description: `Course has been created as ${isPublic ? 'public' : 'private'} content.`,
+            });
+            localStorage.setItem('courseId', response.data.courseId);
+            localStorage.setItem('first', response.data.completed);
+            localStorage.setItem('jsonData', JSON.stringify(topics));
             navigate('/course/' + response.data.courseId, {
                 state: {
                     jsonData: topics,
@@ -161,18 +172,21 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
         topics[courseName.toLowerCase()][0].subtopics[0].theory = theory;
         topics[courseName.toLowerCase()][0].subtopics[0].youtube = image;
 
-        const user = sessionStorage.getItem('uid');
+        const user = localStorage.getItem('uid');
         const content = JSON.stringify(topics);
         const postURL = serverURL + '/api/course';
-        const token = localStorage.getItem("token");
-        const response = await axios.post(postURL, { user, content, type, mainTopic: courseName, lang }, {
-            headers: { Authorization: `Bearer ${token}` }
+        const response = await axios.post(postURL, { user, content, type, mainTopic: courseName, lang, isPublic }, {
+            withCredentials: true
         });
 
         if (response.data.success) {
-            sessionStorage.setItem('courseId', response.data.courseId);
-            sessionStorage.setItem('first', response.data.completed);
-            sessionStorage.setItem('jsonData', JSON.stringify(topics));
+            toast({
+                title: "Course Created!",
+                description: `Course has been created as ${isPublic ? 'public' : 'private'} content.`,
+            });
+            localStorage.setItem('courseId', response.data.courseId);
+            localStorage.setItem('first', response.data.completed);
+            localStorage.setItem('jsonData', JSON.stringify(topics));
             navigate('/course/' + response.data.courseId, {
                 state: {
                     jsonData: topics,
@@ -251,12 +265,14 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
     async function sendSummery(prompt, url) {
         const dataToSend = {
             prompt: prompt,
+            provider: selectedProvider,
+            model: selectedModel,
+            temperature: 0.7
         };
         try {
             const postURL = serverURL + '/api/generate';
-            const token = localStorage.getItem("token");
             const res = await axios.post(postURL, dataToSend, {
-                headers: { Authorization: `Bearer ${token}` }
+                withCredentials: true
             });
             const generatedText = res.data.text;
             const htmlContent = generatedText;
@@ -344,7 +360,7 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({
     return (
         <div className="space-y-6 py-8 animate-fade-in">
             <div className="text-center mb-8">
-                <h1 className="text-3xl font-bold tracking-tight text-gradient bg-gradient-to-r from-primary to-indigo-500 mb-4">
+                <h1 className="text-2xl font-bold tracking-tight mb-4">
                     {courseName.toUpperCase()}
                 </h1>
                 <p className="text-muted-foreground max-w-lg mx-auto">

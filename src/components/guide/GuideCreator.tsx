@@ -8,11 +8,26 @@ import { Loader2, BookOpen, Sparkles, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { guideService } from '@/services/guideService';
 import { useNavigate } from 'react-router-dom';
+import ProviderSelector from '@/components/ProviderSelector';
+import { useProviderPreferences } from '@/hooks/useProviderPreferences';
+import { useVisibilityPreference } from '@/hooks/useVisibilityPreference';
+import { CreationVisibilityToggle } from '@/components/CreationVisibilityToggle';
 
 const GuideCreator: React.FC = () => {
   const [keyword, setKeyword] = useState('');
   const [title, setTitle] = useState('');
   const [customization, setCustomization] = useState('');
+  // Use provider preferences hook for guide generation
+  const {
+    selectedProvider,
+    selectedModel,
+    setSelectedProvider,
+    setSelectedModel
+  } = useProviderPreferences('guide');
+
+  // Use visibility preference hook
+  const { isPublic, setIsPublic } = useVisibilityPreference('guide', true);
+
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -29,30 +44,33 @@ const GuideCreator: React.FC = () => {
       return;
     }
 
-    const userId = sessionStorage.getItem('uid');
-    if (!userId) {
-      toast({
-        title: "Authentication Error",
-        description: "Please log in to create guides.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsLoading(true);
 
     try {
+      const userId = localStorage.getItem('uid');
+      if (!userId) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in to create guides.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const response = await guideService.createGuide({
         userId,
         keyword: keyword.trim(),
         title: title.trim(),
-        customization: customization.trim() || undefined
+        customization: customization.trim() || undefined,
+        provider: selectedProvider,
+        model: selectedModel,
+        isPublic: isPublic
       });
 
       if (response.success) {
         toast({
           title: "Guide Created!",
-          description: `Successfully created "${response.guide.title}".`,
+          description: `Successfully created "${response.guide.title}" as ${isPublic ? 'public' : 'private'} content.`,
         });
         
         // Navigate to the guide viewer
@@ -60,11 +78,20 @@ const GuideCreator: React.FC = () => {
       } else {
         throw new Error(response.message || 'Failed to create guide');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating guide:', error);
+
+      const getErrorMessage = (error: unknown): string => {
+        if (typeof error === 'object' && error !== null) {
+          const err = error as { response?: { data?: { message?: string } }; message?: string };
+          return err.response?.data?.message || err.message || "Failed to create guide. Please try again.";
+        }
+        return "Failed to create guide. Please try again.";
+      };
+
       toast({
         title: "Creation Failed",
-        description: error.response?.data?.message || error.message || "Failed to create guide. Please try again.",
+        description: getErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -74,29 +101,30 @@ const GuideCreator: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Create Study Guide
-        </h1>
-        <p className="text-gray-600 dark:text-gray-300">
-          Generate comprehensive study guides for any topic with AI assistance
-        </p>
-      </div>
-
-      <Card className="bg-white dark:bg-gray-800 shadow-lg">
+      <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+          <CardTitle className="flex items-center gap-2">
             <BookOpen className="h-5 w-5 text-primary" />
-            Guide Generator
+            Create Study Guide
           </CardTitle>
-          <CardDescription className="text-gray-600 dark:text-gray-300">
-            Create focused, single-page study guides with examples and practice questions
+          <CardDescription>
+            Generate comprehensive study guides for any topic with AI assistance
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Provider Selection */}
+            <ProviderSelector
+              selectedProvider={selectedProvider}
+              selectedModel={selectedModel}
+              onProviderChange={setSelectedProvider}
+              onModelChange={setSelectedModel}
+              showPerformanceIndicators={true}
+              showCostInfo={true}
+              className="mb-6"
+            />
             <div className="space-y-2">
-              <Label htmlFor="keyword" className="text-gray-700 dark:text-gray-300">
+              <Label htmlFor="keyword">
                 Topic/Keyword *
               </Label>
               <Input
@@ -105,16 +133,15 @@ const GuideCreator: React.FC = () => {
                 placeholder="e.g., React Hooks, Machine Learning, Python Functions"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                className="dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:placeholder-gray-400"
                 disabled={isLoading}
               />
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 The main topic you want to create a study guide about
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="title" className="text-gray-700 dark:text-gray-300">
+              <Label htmlFor="title">
                 Guide Title *
               </Label>
               <Input
@@ -123,16 +150,15 @@ const GuideCreator: React.FC = () => {
                 placeholder="e.g., Complete Guide to React Hooks"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:placeholder-gray-400"
                 disabled={isLoading}
               />
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 A descriptive title for your study guide
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="customization" className="text-gray-700 dark:text-gray-300">
+              <Label htmlFor="customization">
                 Additional Requirements (Optional)
               </Label>
               <Textarea
@@ -140,14 +166,20 @@ const GuideCreator: React.FC = () => {
                 placeholder="e.g., Focus on practical examples, include beginner-friendly explanations, cover advanced concepts..."
                 value={customization}
                 onChange={(e) => setCustomization(e.target.value)}
-                className="dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:placeholder-gray-400"
                 disabled={isLoading}
                 rows={3}
               />
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 Specify any particular focus, difficulty level, or special requirements
               </p>
             </div>
+
+            {/* Visibility Toggle */}
+            <CreationVisibilityToggle
+              contentType="guide"
+              isPublic={isPublic}
+              onChange={setIsPublic}
+            />
 
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
               <div className="flex items-start gap-3">
@@ -170,7 +202,7 @@ const GuideCreator: React.FC = () => {
             <Button
               type="submit"
               disabled={isLoading || !keyword.trim() || !title.trim()}
-              className="w-full bg-gradient-to-r from-primary to-blue-600 hover:from-blue-600 hover:to-primary"
+              className="w-full"
             >
               {isLoading ? (
                 <>

@@ -136,7 +136,7 @@ curl http://localhost:5010/health
 - `server/.env` - Environment configuration
 - `docker-compose.yml` - Docker configuration
 - `Dockerfile` - Docker build instructions
-- `scripts/dev.sh` - Development helper script
+- `scripts/unused/dev-setup.sh` - Development helper script (moved to unused folder)
 
 ## 🔄 Development Workflow
 

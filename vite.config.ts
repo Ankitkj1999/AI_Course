@@ -10,6 +10,13 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: parseInt(process.env.VITE_PORT || '8080'),
     strictPort: false, // Allow Vite to use next available port if specified port is busy
+    proxy: {
+      '/api': {
+        target: process.env.VITE_SERVER_URL || 'http://localhost:5010',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
   },
   plugins: [
     react(),
@@ -20,7 +27,7 @@ export default defineConfig(({ mode }) => ({
         name: 'AI Course - AI-Powered Course Generator',
         short_name: 'AI Course',
         description: 'Generate comprehensive courses on any topic using AI. Learn at your own pace with structured lessons.',
-        theme_color: '#a855f7',
+        theme_color: '#7c3aed',
         background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait-primary',

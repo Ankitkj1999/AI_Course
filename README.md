@@ -1,70 +1,70 @@
-# 🎓 AiCourse - AI-Powered Course Generator
+# AiCourse
 
-An intelligent course generation platform that uses AI to create comprehensive educational content automatically. Built with React, Node.js, and Google's Generative AI.
+## Deployment
 
-![AiCourse](https://firebasestorage.googleapis.com/v0/b/aicourse-81b42.appspot.com/o/aicouse.png?alt=media&token=7175cdbe-64b4-4fe4-bb6d-b519347ad8af)
+### Automated Docker Build (GitHub Actions)
 
-## ✨ Features
+The project uses GitHub Actions for automated Docker image building and pushing to Docker Hub.
 
-### 🤖 AI-Powered Content Generation
+#### Workflow Configuration
 
-- **Automated Course Creation**: Generate complete courses using Google's Gemini AI
-- **Smart Content Structure**: AI creates organized lessons, topics, and subtopics
-- **Multi-Language Support**: Generate courses in different languages
-- **Rich Media Integration**: Automatic image and video suggestions
+- **Trigger**: Pushes to the `production` branch
+- **Platforms**: Multi-platform build (linux/amd64, linux/arm64)
+- **Image**: `ankitkj199/aicourse`
+- **Tags**: Branch name, SHA, and `latest` for production branch
 
-### 📚 Course Management
+#### Required GitHub Secrets
 
-- **Interactive Course Builder**: Create, edit, and manage courses
-- **Progress Tracking**: Monitor learning progress and completion
-- **Certificate Generation**: Automated certificate creation upon completion
-- **Course Sharing**: Share courses with shareable links
-- **Notes & Annotations**: Take and save notes during learning
+Add these secrets to your GitHub repository settings:
 
-### 💳 Payment Integration
+- `DOCKER_USERNAME`: Your Docker Hub username
+- `DOCKER_PASSWORD`: Your Docker Hub password or access token
 
-- **Multiple Payment Gateways**: Stripe, PayPal, Razorpay, Paystack, Flutterwave
-- **Subscription Management**: Monthly and yearly plans
-- **Free Tier Available**: Basic features without payment
+#### Manual Deployment Scripts (Legacy)
 
-### 🔐 Authentication & Security
+For manual deployment, use these npm scripts:
 
-- **Social Login**: Google and Facebook authentication
-- **Email Authentication**: Traditional email/password login
-- **Password Recovery**: Secure password reset functionality
-- **User Profiles**: Customizable user profiles and preferences
+```bash
+# Build and push to Docker Hub
+npm run docker:build:push [tag]
 
-### 🎨 Modern UI/UX
+# Deploy on server from Docker Hub
+npm run docker:deploy:production [tag]
+```
 
-- **Responsive Design**: Works on desktop, tablet, and mobile
-- **Dark/Light Mode**: Theme switching capability
-- **Rich Text Editor**: TipTap-based content editor
-- **Interactive Components**: Built with Radix UI components
+#### Next Phase: EC2 Deployment
 
-## 🚀 Tech Stack
+The next phase will involve pulling the Docker image on EC2 and running it automatically.
 
-### Frontend
+## Development
 
-- **React 18** - Modern React with hooks
-- **TypeScript** - Type-safe development
-- **Vite** - Fast build tool and dev server
-- **Tailwind CSS** - Utility-first CSS framework
-- **Radix UI** - Accessible component library
-- **TanStack Query** - Data fetching and caching
-- **React Router** - Client-side routing
+### Prerequisites
 
-### Backend
+- Node.js 20+
+- Docker
+- Docker Compose
 
-- **Node.js** - JavaScript runtime
-- **Express.js** - Web application framework
-- **MongoDB** - NoSQL database with Mongoose ODM
-- **Google Generative AI** - AI content generation
-- **Nodemailer** - Email functionality
-- **JWT** - Authentication tokens
+### Local Development
 
-### APIs & Services
+```bash
+# Install dependencies
+npm install
 
-- **Google Gemini AI** - Course content generation
+# Start development server
+npm run dev
+
+# Or start both server and client
+npm run dev:full
+```
+
+### Docker Development
+
+```bash
+# Build and run with Docker Compose
+npm run docker:up
+
+# View logs
+npm run docker:logs
 - **Unsplash API** - Course cover images
 - **YouTube API** - Video content integration
 - **Multiple Payment APIs** - Stripe, PayPal, etc.
@@ -184,9 +184,9 @@ aicourse/
 
 #### Docker Hub Deployment
 
-- `npm run docker:build:push` - Build and push to Docker Hub
+- `npm run docker:build:push [tag]` - Build and push to Docker Hub (default: latest)
 - `npm run docker:build:production` - Build production image
-- `npm run docker:deploy:production` - Deploy on server from Docker Hub
+- `npm run docker:deploy:production [tag]` - Deploy on server from Docker Hub (default: production)
 - `npm run docker:up:hub` - Run from Docker Hub image
 
 #### General Commands
@@ -195,6 +195,14 @@ aicourse/
 - `npm run docker:logs` - View container logs
 - `npm run docker:restart` - Restart containers
 - `npm run health` - Check application health status
+
+### Log Monitoring Commands
+
+- `tail -f server/logs/combined.log` - Monitor all logs in real-time
+- `tail -f server/logs/error.log` - Monitor errors only
+- `grep "LLM" server/logs/combined.log` - Filter LLM operations
+- `grep "ERROR" server/logs/combined.log` - Find error entries
+- `docker logs -f aicourse-app` - Monitor Docker container logs
 
 ## 🐳 Docker Deployment
 
@@ -223,6 +231,14 @@ npm run docker:restart
 
 # Check health
 npm run health
+
+# Production deployment workflow
+npm run docker:build:push v1.2.3        # Build and push with custom tag
+npm run docker:deploy:production v1.2.3 # Deploy the same tag
+
+# Or use default tags:
+npm run docker:build:push production    # Build and push with 'production' tag
+npm run docker:deploy:production production  # Deploy the 'production' tag
 ```
 
 ### Docker Configuration
@@ -262,6 +278,184 @@ Edit `server/.env` to configure:
 - API keys
 - Email settings
 - Payment gateway credentials
+
+## 📊 Logging & Monitoring
+
+AiCourse includes comprehensive logging for monitoring application performance, debugging issues, and tracking LLM operations.
+
+### Log Files Location
+
+All logs are stored in the `server/logs/` directory:
+
+```
+server/logs/
+├── combined.log      # All application logs (info, warn, error)
+├── error.log         # Error-level logs only
+├── exceptions.log    # Uncaught exceptions
+└── rejections.log    # Unhandled promise rejections
+```
+
+### Viewing Logs
+
+#### Real-time Log Monitoring
+
+```bash
+# Watch all logs in real-time
+tail -f server/logs/combined.log
+
+# Watch only errors
+tail -f server/logs/error.log
+
+# Filter LLM-specific logs
+tail -f server/logs/combined.log | grep "LLM"
+
+# Filter by log level
+tail -f server/logs/combined.log | grep "error\|warn"
+```
+
+#### Docker Log Monitoring
+
+```bash
+# View container logs
+npm run docker:logs
+
+# Follow container logs in real-time
+docker logs -f aicourse-app
+
+# View last 100 log entries
+docker logs --tail 100 aicourse-app
+```
+
+### Log Structure
+
+Logs are structured in JSON format with the following fields:
+
+```json
+{
+  "level": "info",
+  "message": "LLM request completed successfully",
+  "timestamp": "2025-11-06 11:28:33:2833",
+  "requestId": "req_1762408495723_kacod2bq3",
+  "endpoint": "/api/generate",
+  "tags": ["LLM", "REQUEST_SUCCESS"],
+  "provider": "gemini",
+  "duration": 1500,
+  "userId": "user123"
+}
+```
+
+### LLM Operation Logging
+
+The application provides detailed logging for LLM operations:
+
+#### Provider Selection & Fallback
+- Provider selection logic and decisions
+- Fallback provider usage when primary fails
+- Provider availability and health status
+
+#### Performance Metrics
+- Request/response timing information
+- LLM instance creation time
+- Content generation duration
+- Token usage statistics
+
+#### Error Tracking
+- Validation failures with context
+- Provider-specific errors
+- Fallback operation results
+
+#### Log Tags for Filtering
+
+Use these tags to filter specific operations:
+
+```bash
+# Service initialization
+grep "SERVICE_INIT" server/logs/combined.log
+
+# Provider selection
+grep "PROVIDER_SELECTION" server/logs/combined.log
+
+# Fallback operations
+grep "FALLBACK" server/logs/combined.log
+
+# Performance metrics
+grep "PERFORMANCE" server/logs/combined.log
+
+# Validation failures
+grep "VALIDATION_FAILURE" server/logs/combined.log
+
+# Health checks
+grep "HEALTH_CHECK" server/logs/combined.log
+```
+
+### Log Analysis Examples
+
+#### Find Recent Errors
+```bash
+# Last 50 error entries
+tail -50 server/logs/error.log
+
+# Errors from the last hour
+grep "$(date '+%Y-%m-%d %H')" server/logs/error.log
+```
+
+#### Monitor LLM Performance
+```bash
+# Find slow requests (>5 seconds)
+grep -E '"duration":[5-9][0-9]{3}|"duration":[1-9][0-9]{4}' server/logs/combined.log
+
+# Provider fallback incidents
+grep "PROVIDER_FALLBACK" server/logs/combined.log
+```
+
+#### Track User Activity
+```bash
+# Find logs for specific user
+grep '"userId":"user123"' server/logs/combined.log
+
+# Course generation requests
+grep "COURSE.*REQUEST_SUCCESS" server/logs/combined.log
+```
+
+### Log Rotation
+
+Logs are automatically managed by Winston with the following behavior:
+
+- **Console Output**: Colored, human-readable format for development
+- **File Output**: JSON format for parsing and analysis
+- **Error Separation**: Errors are logged to both combined.log and error.log
+- **Exception Handling**: Uncaught exceptions and rejections are logged separately
+
+### Production Log Management
+
+For production environments, consider:
+
+1. **Log Rotation**: Implement log rotation to prevent disk space issues
+2. **External Monitoring**: Use tools like ELK Stack, Splunk, or CloudWatch
+3. **Alerting**: Set up alerts for error patterns or performance degradation
+4. **Retention**: Configure appropriate log retention policies
+
+#### Example Log Rotation Setup
+
+```bash
+# Install logrotate (Ubuntu/Debian)
+sudo apt-get install logrotate
+
+# Create logrotate configuration
+sudo nano /etc/logrotate.d/aicourse
+```
+
+```
+/path/to/aicourse/server/logs/*.log {
+    daily
+    missingok
+    rotate 30
+    compress
+    delaycompress
+    notifempty
+    copytruncate
+}
+```
 
 ## 💰 Pricing Plans
 
@@ -308,8 +502,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🆘 Support
 
-- 📧 Email: <spacester.app@gmail.com>
-- 🐛 Issues: [GitHub Issues](https://github.com/yourusername/aicourse/issues)
+- 📧 Email: <ankit.k.j@gmail.com>
+- 🐛 Issues: [GitHub Issues](https://github.com/ankitkj1999/aicourse/issues)
 - 📖 Documentation: See guides above
 
 ## 🙏 Acknowledgments
@@ -321,4 +515,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-Made with ❤️ by [Spacester](https://github.com/spacester)
+Made with ❤️ by [Ankit](https://github.com/ankitkj1999)

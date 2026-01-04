@@ -56,7 +56,7 @@ const AdminLayout = () => {
   }
 
   useEffect(() => {
-    const isAdmin = sessionStorage.getItem('isAdmin') === 'true';
+    const isAdmin = localStorage.getItem('isAdmin') === 'true';
     if (!isAdmin) {
       redirectHome();
     }
@@ -64,7 +64,7 @@ const AdminLayout = () => {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-gradient-to-br from-background to-muted/20">
+      <div className="flex min-h-screen w-full bg-background">
         <Sidebar className="border-r border-border/40">
           <SidebarHeader className="border-b border-border/40">
             <Link to="/admin" className="flex items-center space-x-2 px-4 py-3">
@@ -280,9 +280,16 @@ const AdminLayout = () => {
 
               {/* Logout */}
               <Button
-                onClick={() => {
-                  sessionStorage.clear();
-                  localStorage.removeItem('token');
+                onClick={async () => {
+                  try {
+                    // Call server logout endpoint to clear httpOnly cookie
+                    const serverURL = await import('../../utils/config').then(m => m.detectServerURL());
+                    await axios.post(`${serverURL}/api/logout`, {}, { withCredentials: true });
+                  } catch (error) {
+                    console.error('Logout error:', error);
+                  }
+                  
+                  localStorage.clear();
                   navigate('/login');
                 }}
                 variant="outline"

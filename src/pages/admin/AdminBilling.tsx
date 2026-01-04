@@ -21,15 +21,15 @@ const AdminBilling = () => {
         if (response.data && response.data[0] && response.data[0].billing) {
           setValue(response.data[0].billing);
         }
-        // Fallback to sessionStorage if API fails
-        const storedBilling = sessionStorage.getItem('billing');
+        // Fallback to localStorage if API fails
+        const storedBilling = localStorage.getItem('billing');
         if (storedBilling && !response.data[0]?.billing) {
           setValue(storedBilling);
         }
       } catch (error) {
         console.error('Error loading billing policy:', error);
-        // Fallback to sessionStorage
-        const storedBilling = sessionStorage.getItem('billing');
+        // Fallback to localStorage
+        const storedBilling = localStorage.getItem('billing');
         if (storedBilling) {
           setValue(storedBilling);
         }
@@ -50,7 +50,7 @@ const AdminBilling = () => {
       });
       
       if (response.data.success) {
-        sessionStorage.setItem('billing', String(value));
+        localStorage.setItem('billing', String(value));
         toast.success('Billing Policy updated successfully');
       } else {
         toast.error('Failed to update Billing Policy');

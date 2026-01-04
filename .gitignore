@@ -12,6 +12,8 @@ lerna-debug.log*
 .env.test.local
 .env.production.local
 server/.env
+server/.env.production
+
 
 # Keep example environment files
 !.env.example
@@ -93,7 +95,6 @@ dist
 
 # Gatsby files
 .cache/
-public
 
 # Storybook build outputs
 .out

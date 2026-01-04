@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,12 +7,16 @@ import {
   ChevronLeft, 
   ChevronRight, 
   RotateCcw, 
-  ArrowLeft,
   Eye,
   Calendar,
   Loader2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuthState } from '@/hooks/useAuthState';
+import { usePendingFork } from '@/hooks/usePendingFork';
+import { VisibilityToggle } from '@/components/VisibilityToggle';
+import { ForkButton } from '@/components/ForkButton';
+import { ContentAttribution } from '@/components/ContentAttribution';
 import { flashcardService } from '@/services/flashcardService';
 import { FlashcardSet, FlashcardType } from '@/types/flashcard';
 
@@ -20,42 +24,67 @@ const FlashcardViewer: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { userId, isAuthenticated } = useAuthState();
+  
+  // Handle pending fork operations after login
+  usePendingFork();
   
   const [flashcardSet, setFlashcardSet] = useState<FlashcardSet | null>(null);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOwner, setIsOwner] = useState(false);
 
-  useEffect(() => {
-    if (slug) {
-      fetchFlashcardSet();
+  const fetchFlashcardSet = useCallback(async () => {
+    if (!slug) {
+      console.log('No slug provided');
+      return;
     }
-  }, [slug]);
 
-  const fetchFlashcardSet = async () => {
-    if (!slug) return;
-
+    console.log('Fetching flashcard set for slug:', slug);
     try {
       setIsLoading(true);
+      console.log('Making API call to getFlashcardBySlug');
       const response = await flashcardService.getFlashcardBySlug(slug);
-      
+      console.log('API response received:', response);
+
       if (response.success) {
+        console.log('Setting flashcard set:', response.flashcard);
         setFlashcardSet(response.flashcard);
+        
+        // Check if current user is the owner
+        setIsOwner(userId === response.flashcard.userId);
       } else {
+        console.log('API returned success=false');
         throw new Error('Flashcard set not found');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching flashcard set:', error);
+
+      const getErrorMessage = (error: unknown): string => {
+        if (typeof error === 'object' && error !== null) {
+          const err = error as { message?: string };
+          return err.message || "Failed to load flashcard set. Please try again.";
+        }
+        return "Failed to load flashcard set. Please try again.";
+      };
+
       toast({
         title: "Error",
-        description: "Failed to load flashcard set. Please try again.",
+        description: getErrorMessage(error),
         variant: "destructive",
       });
       navigate('/dashboard/flashcards');
     } finally {
+      console.log('Setting isLoading to false');
       setIsLoading(false);
     }
-  };
+  }, [slug, toast, navigate]);
+
+  useEffect(() => {
+    console.log('useEffect triggered, slug:', slug);
+    fetchFlashcardSet();
+  }, [fetchFlashcardSet]);
 
   const nextCard = () => {
     if (!flashcardSet) return;
@@ -107,10 +136,6 @@ const FlashcardViewer: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
             Flashcard set not found
           </h1>
-          <Button onClick={() => navigate('/dashboard/flashcards')}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Flashcards
-          </Button>
         </div>
       </div>
     );
@@ -122,17 +147,15 @@ const FlashcardViewer: React.FC = () => {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       {/* Header */}
       <div className="mb-8">
-        <Button 
-          variant="ghost" 
-          onClick={() => navigate('/dashboard/flashcards')}
-          className="mb-4 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Flashcards
-        </Button>
+        <div className="mb-4">
+          <ContentAttribution
+            forkedFrom={flashcardSet.forkedFrom}
+            contentType="flashcard"
+          />
+        </div>
         
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
+          <div className="flex-1">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
               {flashcardSet.title}
             </h1>
@@ -141,14 +164,44 @@ const FlashcardViewer: React.FC = () => {
             </p>
           </div>
           
-          <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-            <div className="flex items-center gap-1">
-              <Eye className="h-4 w-4" />
-              {flashcardSet.viewCount} views
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+            <div className="flex items-center gap-2">
+              {isOwner && (
+                <VisibilityToggle
+                  contentType="flashcard"
+                  slug={flashcardSet.slug}
+                  isPublic={flashcardSet.isPublic || false}
+                  onToggle={(newState) => {
+                    setFlashcardSet(prev => prev ? { ...prev, isPublic: newState } : null);
+                  }}
+                />
+              )}
+              
+              {flashcardSet.isPublic && (
+                <ForkButton
+                  contentType="flashcard"
+                  slug={flashcardSet.slug}
+                  isAuthenticated={isAuthenticated}
+                  isOwner={isOwner}
+                  onForkSuccess={(forkedContent) => {
+                    toast({
+                      title: 'Flashcard Set Forked!',
+                      description: `Successfully forked "${forkedContent.title}"`,
+                    });
+                  }}
+                />
+              )}
             </div>
-            <div className="flex items-center gap-1">
-              <Calendar className="h-4 w-4" />
-              {formatDate(flashcardSet.createdAt)}
+            
+            <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+              <div className="flex items-center gap-1">
+                <Eye className="h-4 w-4" />
+                {flashcardSet.viewCount} views
+              </div>
+              <div className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                {formatDate(flashcardSet.createdAt)}
+              </div>
             </div>
           </div>
         </div>
@@ -164,7 +217,7 @@ const FlashcardViewer: React.FC = () => {
             {currentCard.difficulty}
           </Badge>
         </div>
-        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+        <div className="w-full bg-muted rounded-full h-2">
           <div 
             className="bg-primary h-2 rounded-full transition-all duration-300"
             style={{ width: `${((currentCardIndex + 1) / flashcardSet.cards.length) * 100}%` }}
@@ -174,8 +227,8 @@ const FlashcardViewer: React.FC = () => {
 
       {/* Flashcard */}
       <div className="mb-8">
-        <Card 
-          className="min-h-[300px] cursor-pointer transition-all duration-300 hover:shadow-lg bg-white dark:bg-gray-800"
+        <Card
+          className="min-h-[300px] cursor-pointer transition-all duration-300 hover:shadow-lg"
           onClick={flipCard}
         >
           <CardContent className="p-8 flex items-center justify-center text-center min-h-[300px]">
@@ -222,7 +275,6 @@ const FlashcardViewer: React.FC = () => {
           variant="outline"
           onClick={prevCard}
           disabled={flashcardSet.cards.length <= 1}
-          className="dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600"
         >
           <ChevronLeft className="mr-2 h-4 w-4" />
           Previous
@@ -231,7 +283,6 @@ const FlashcardViewer: React.FC = () => {
         <Button
           variant="outline"
           onClick={flipCard}
-          className="dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600"
         >
           <RotateCcw className="mr-2 h-4 w-4" />
           Flip Card
@@ -241,7 +292,6 @@ const FlashcardViewer: React.FC = () => {
           variant="outline"
           onClick={nextCard}
           disabled={flashcardSet.cards.length <= 1}
-          className="dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600"
         >
           Next
           <ChevronRight className="ml-2 h-4 w-4" />

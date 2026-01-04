@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI Study - Transform text into complete courses, quizzes, flashcards, and study guides in minutes. AI-powered learning platform for educators and professionals.">
+    <title>AI Study Newsletter - AI-Powered Learning Material Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --background: #ffffff;
+            --foreground: #0f172a;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --card: #f8fafc;
+            --success: #22c55e;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            line-height: 1.6;
+            color: var(--foreground);
+            background: var(--background);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Newsletter Header */
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+        }
+
+        .header-content {
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: 800;
+            color: white;
+            text-decoration: none;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .header-subtitle {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1rem;
+        }
+
+        .cta-button {
+            background: var(--primary);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        .cta-button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(99, 102, 241, 0.3);
+        }
+
+        .cta-button-outline {
+            background: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+
+        .cta-button-outline:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 80px 20px;
+            text-align: center;
+            background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 400px;
+            background: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.1), transparent);
+            z-index: 0;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+            border-radius: 50px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 1.5rem;
+            color: var(--foreground);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--muted);
+            margin-bottom: 2rem;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 3rem;
+            flex-wrap: wrap;
+        }
+
+        .video-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            position: relative;
+        }
+
+        .video-container video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* Features Section */
+        .features {
+            padding: 80px 20px;
+            background: white;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+            border-radius: 50px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--foreground);
+        }
+
+        .section-description {
+            font-size: 1.125rem;
+            color: var(--muted);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: var(--card);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.15);
+            border-color: var(--primary-light);
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(99, 102, 241, 0.1);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+            font-size: 24px;
+        }
+
+        .feature-card h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            color: var(--foreground);
+        }
+
+        .feature-card p {
+            color: var(--muted);
+            line-height: 1.7;
+        }
+
+        /* How It Works Section */
+        .how-it-works {
+            padding: 80px 20px;
+            background: var(--card);
+        }
+
+        .steps {
+            display: grid;
+            gap: 3rem;
+            margin-top: 3rem;
+        }
+
+        .step {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        .step-number {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .step-content h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+
+        .step-content p {
+            color: var(--muted);
+            margin-bottom: 1rem;
+        }
+
+        .step-features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .step-tag {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        /* Pricing Section */
+        .pricing {
+            padding: 80px 20px;
+            background: white;
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .pricing-card {
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            padding: 2.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .pricing-card.featured {
+            border-color: var(--primary);
+            box-shadow: 0 20px 40px rgba(99, 102, 241, 0.2);
+            transform: scale(1.05);
+        }
+
+        .pricing-card:hover {
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .plan-badge {
+            background: var(--primary);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 1rem;
+        }
+
+        .plan-name {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .plan-price {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin: 1rem 0;
+        }
+
+        .plan-price span {
+            font-size: 1.25rem;
+            color: var(--muted);
+            font-weight: 400;
+        }
+
+        .plan-features {
+            list-style: none;
+            margin: 2rem 0;
+        }
+
+        .plan-features li {
+            padding: 0.75rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .plan-features li::before {
+            content: '✓';
+            color: var(--success);
+            font-weight: 700;
+            font-size: 1.25rem;
+        }
+
+        /* Testimonials Section */
+        .testimonials {
+            padding: 80px 20px;
+            background: var(--card);
+        }
+
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .testimonial-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .stars {
+            color: #fbbf24;
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+        }
+
+        .quote {
+            font-size: 1.125rem;
+            color: var(--foreground);
+            margin-bottom: 1.5rem;
+            line-height: 1.7;
+        }
+
+        .author {
+            font-weight: 700;
+            color: var(--foreground);
+        }
+
+        .author-title {
+            color: var(--muted);
+            font-size: 0.875rem;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            padding: 80px 20px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            text-align: center;
+        }
+
+        .cta-section h2 {
+            color: white;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .cta-section p {
+            font-size: 1.25rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+        .cta-section .cta-button {
+            background: white;
+            color: var(--primary);
+        }
+
+        .cta-section .cta-button:hover {
+            background: var(--card);
+            transform: translateY(-3px);
+        }
+
+        /* Footer */
+        footer {
+            background: var(--foreground);
+            color: white;
+            padding: 3rem 20px 2rem;
+            text-align: center;
+        }
+
+        footer p {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        footer a {
+            color: var(--primary-light);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            h2 {
+                font-size: 2rem;
+            }
+
+            .hero {
+                padding: 60px 20px;
+            }
+
+            .features, .how-it-works, .pricing, .testimonials, .cta-section {
+                padding: 60px 20px;
+            }
+
+            .step {
+                grid-template-columns: 1fr;
+            }
+
+            .pricing-card.featured {
+                transform: scale(1);
+            }
+
+            .features-grid, .pricing-grid, .testimonials-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Newsletter Header -->
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">✨ AI Study</div>
+                <p class="header-subtitle">Your Monthly Update on AI-Powered Learning</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- Newsletter Introduction -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="badge">📰 Newsletter Edition - November 2025</div>
+            <h1>
+                Discover AI Study:<br>
+                <span class="gradient-text">Transform Learning with AI</span>
+            </h1>
+            <p>
+                We're excited to introduce AI Study - a revolutionary platform that helps educators and professionals 
+                create comprehensive learning materials in minutes. From complete courses to quizzes, flashcards, 
+                and study guides, all powered by advanced AI technology.
+            </p>
+            <div class="video-container" id="demo">
+                <video autoplay muted loop playsinline>
+                    <source src="https://zalon-prod-image-processing-bkt.s3.ap-south-1.amazonaws.com/TEST/AI+Course.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+            <p style="margin-top: 2rem; font-style: italic; color: var(--muted);">
+                Watch how AI Study generates complete courses in seconds
+            </p>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Features</span>
+                <h2>What AI Study Offers:<br><span class="gradient-text">Comprehensive Learning Tools</span></h2>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>AI-Powered Generation</h3>
+                    <p>Advanced AI algorithms analyze your inputs to generate comprehensive, structured courses instantly.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📚</div>
+                    <h3>Multiple Course Formats</h3>
+                    <p>Choose between Image + Theory, Video + Theory, or Text-only formats for personalized learning.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎴</div>
+                    <h3>Smart Flash Cards</h3>
+                    <p>Auto-generate interactive flash cards from course content for effective memorization and review.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📝</div>
+                    <h3>Study Guides</h3>
+                    <p>Create comprehensive study guides with key concepts, summaries, and learning objectives.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">✍️</div>
+                    <h3>Interactive Quizzes</h3>
+                    <p>Generate relevant quizzes, assessments, and practice tests to reinforce learning outcomes.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔄</div>
+                    <h3>AI Teacher Chat</h3>
+                    <p>Get instant answers and explanations from your personal AI tutor while studying.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🌍</div>
+                    <h3>23+ Languages</h3>
+                    <p>Generate courses in multiple languages with AI-powered translation and localization.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📱</div>
+                    <h3>PWA & Offline Access</h3>
+                    <p>Install as a mobile app and access your courses offline. Export to PDF for easy sharing and printing.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="how-it-works" id="how-it-works">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">How It Works</span>
+                <h2>How AI Study Works:<br><span class="gradient-text">Simple & Powerful</span></h2>
+                <p class="section-description">Create professional learning materials effortlessly with our intelligent AI system.</p>
+            </div>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>Define Your Learning Path</h3>
+                        <p>Enter your topic and subtopics. Our AI understands your learning goals and creates a structured curriculum tailored to your needs.</p>
+                        <div class="step-features">
+                            <span class="step-tag">Custom topics</span>
+                            <span class="step-tag">Subtopic planning</span>
+                            <span class="step-tag">Learning objectives</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>AI Content Generation</h3>
+                        <p>Choose your preferred format and watch our AI create comprehensive courses with theory, visuals, and interactive elements.</p>
+                        <div class="step-features">
+                            <span class="step-tag">Text & Image courses</span>
+                            <span class="step-tag">Video & Theory courses</span>
+                            <span class="step-tag">Interactive quizzes</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>Global Accessibility</h3>
+                        <p>Generate courses in 23+ languages with AI-powered translation, making learning accessible to a global audience.</p>
+                        <div class="step-features">
+                            <span class="step-tag">23+ languages</span>
+                            <span class="step-tag">Cultural adaptation</span>
+                            <span class="step-tag">Localized content</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h3>Enhanced Learning Tools</h3>
+                        <p>Access advanced features like flashcards, study guides, and AI teacher chat for a complete learning experience.</p>
+                        <div class="step-features">
+                            <span class="step-tag">Smart flashcards</span>
+                            <span class="step-tag">Study guides</span>
+                            <span class="step-tag">AI teacher chat</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <h3>Launch & Learn</h3>
+                        <p>Your course is ready! Study online, download for offline access, or install as a PWA for the ultimate learning experience.</p>
+                        <div class="step-features">
+                            <span class="step-tag">PWA support</span>
+                            <span class="step-tag">Offline access</span>
+                            <span class="step-tag">Progress tracking</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing" id="pricing">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Pricing</span>
+                <h2>Flexible Pricing Options</h2>
+                <p class="section-description">Start for free or unlock premium features with our affordable plans.</p>
+            </div>
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <div class="plan-name">Free</div>
+                    <div class="plan-price">$0<span></span></div>
+                    <ul class="plan-features">
+                        <li>Generate 5 Sub-Topics</li>
+                        <li>Lifetime access</li>
+                        <li>Theory & Image Course</li>
+                        <li>AI Teacher Chat</li>
+                    </ul>
+                    <a href="#contact" class="cta-button cta-button-outline" style="width: 100%; text-align: center;">Get Started</a>
+                </div>
+                <div class="pricing-card featured">
+                    <span class="plan-badge">Most Popular</span>
+                    <div class="plan-name">Monthly</div>
+                    <div class="plan-price">$9<span>/mo</span></div>
+                    <ul class="plan-features">
+                        <li>Generate 10 Sub-Topics</li>
+                        <li>1 Month Access</li>
+                        <li>Theory & Image Course</li>
+                        <li>AI Teacher Chat</li>
+                        <li>Course In 23+ Languages</li>
+                        <li>Create Unlimited Course</li>
+                        <li>Video & Theory Course</li>
+                    </ul>
+                    <a href="#contact" class="cta-button" style="width: 100%; text-align: center;">Get Started</a>
+                </div>
+                <div class="pricing-card">
+                    <div class="plan-name">Yearly</div>
+                    <div class="plan-price">$49<span>/yr</span></div>
+                    <ul class="plan-features">
+                        <li>Generate 10 Sub-Topics</li>
+                        <li>1 Year Access</li>
+                        <li>Theory & Image Course</li>
+                        <li>AI Teacher Chat</li>
+                        <li>Course In 23+ Languages</li>
+                        <li>Create Unlimited Course</li>
+                        <li>Video & Theory Course</li>
+                    </ul>
+                    <a href="#contact" class="cta-button cta-button-outline" style="width: 100%; text-align: center;">Get Started</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section class="testimonials">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Testimonials</span>
+                <h2>Trusted by <span class="gradient-text">Educators</span> &<br><span class="gradient-text">Learning Professionals</span></h2>
+            </div>
+            <div class="testimonials-grid">
+                <div class="testimonial-card">
+                    <div class="stars">★★★★★</div>
+                    <p class="quote">"AI Study saved me at least 40 hours of work on my last course. What used to take weeks now takes minutes, and the quality is even better."</p>
+                    <p class="author">Sarah Johnson</p>
+                    <p class="author-title">Online Course Creator</p>
+                </div>
+                <div class="testimonial-card">
+                    <div class="stars">★★★★★</div>
+                    <p class="quote">"As a university professor, I was skeptical about AI-generated content. But AI Study perfectly structured my research into a comprehensive course for my students."</p>
+                    <p class="author">Prof. David Chen</p>
+                    <p class="author-title">Computer Science Department</p>
+                </div>
+                <div class="testimonial-card">
+                    <div class="stars">★★★★★</div>
+                    <p class="quote">"Our training team uses AI Study to create onboarding content for new employees. We've reduced development time by 80% while improving engagement metrics."</p>
+                    <p class="author">Michael Rodriguez</p>
+                    <p class="author-title">Head of L&D, TechCorp</p>
+                </div>
+                <div class="testimonial-card">
+                    <div class="stars">★★★★☆</div>
+                    <p class="quote">"The quiz generation feature alone is worth the subscription. It creates thoughtful assessments that actually test comprehension, not just memorization."</p>
+                    <p class="author">Emma Wilson</p>
+                    <p class="author-title">Educational Consultant</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section" id="contact">
+        <div class="container">
+            <h2>Try AI Study Today</h2>
+            <p>Join thousands of educators and professionals creating better learning materials with AI.</p>
+            <p style="margin-top: 1.5rem; font-size: 1.125rem;">
+                📧 Interested in learning more? <a href="mailto:hello@aistudy.com?subject=AI%20Study%20Inquiry" style="color: white; text-decoration: underline;">Contact us</a>
+            </p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 AI Study - AI-Powered Learning Material Generator. All rights reserved.</p>
+            <p style="margin-top: 1rem;">
+                You received this newsletter because you expressed interest in AI Study.<br>
+                <a href="mailto:hello@aistudy.com">hello@aistudy.com</a>
+            </p>
+        </div>
+    </footer>
+</body>
+</html>

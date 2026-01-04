@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
@@ -18,7 +18,7 @@ import {
   FormItem,
   FormLabel,
 } from "@/components/ui/form";
-import { Sparkles, Plus } from "lucide-react";
+import { Sparkles, Plus, Info } from "lucide-react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import CoursePreview from "@/components/CoursePreview";
@@ -26,6 +26,10 @@ import SEO from "@/components/SEO";
 import { useToast } from "@/hooks/use-toast";
 import { serverURL } from "@/constants";
 import axios from "axios";
+import ProviderSelector from "@/components/ProviderSelector";
+import { useProviderPreferences, setGlobalProviderPreferences } from "@/hooks/useProviderPreferences";
+import { useVisibilityPreference } from "@/hooks/useVisibilityPreference";
+import { CreationVisibilityToggle } from "@/components/CreationVisibilityToggle";
 
 const courseFormSchema = z.object({
   topic: z.string().min(3, { message: "Topic must be at least 3 characters" }),
@@ -49,6 +53,28 @@ const GenerateCourse = () => {
   const [paidMember, setPaidMember] = useState(false);
   const [lang, setLang] = useState("English");
   const { toast } = useToast();
+  
+  // Use provider preferences hook for course generation
+  const {
+    selectedProvider,
+    selectedModel,
+    setSelectedProvider: setSelectedProviderInternal,
+    setSelectedModel: setSelectedModelInternal
+  } = useProviderPreferences('course');
+
+  // Use visibility preference hook
+  const { isPublic, setIsPublic } = useVisibilityPreference('course', true);
+
+  // Wrapper functions that also sync to global preferences
+  const setSelectedProvider = (provider: string) => {
+    setSelectedProviderInternal(provider);
+    setGlobalProviderPreferences({ provider });
+  };
+
+  const setSelectedModel = (model: string) => {
+    setSelectedModelInternal(model);
+    setGlobalProviderPreferences({ model });
+  };
 
   const languages = [
     { code: "en", name: "English" },
@@ -92,7 +118,7 @@ const GenerateCourse = () => {
   ];
 
   useEffect(() => {
-    if (sessionStorage.getItem("type") !== "free") {
+    if (localStorage.getItem("type") !== "free") {
       setPaidMember(true);
     }
   }, []);
@@ -195,14 +221,24 @@ const GenerateCourse = () => {
   async function sendPrompt(prompt: string) {
     const dataToSend = {
       prompt: prompt,
+      provider: selectedProvider || undefined, // Include provider if selected
+      model: selectedModel || undefined, // Include model if selected
+      temperature: 0.7 // Default temperature for course generation
     };
+    
     try {
       const postURL = serverURL + "/api/prompt";
-      const token = localStorage.getItem("token");
       const res = await axios.post(postURL, dataToSend, {
-        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
       });
+      
       const generatedText = res.data.generatedText;
+      
+      // Log provider metadata if available (for debugging)
+      if (res.data.metadata) {
+        console.log("Course generated using:", res.data.metadata);
+      }
+      
       const cleanedJsonString = generatedText
         .replace(/```json/g, "")
         .replace(/```/g, "");
@@ -211,19 +247,22 @@ const GenerateCourse = () => {
         setGeneratedTopics(parsedJson);
         setIsLoading(false);
       } catch (error) {
-        console.error(error);
+        console.error("JSON parsing error:", error);
         setIsLoading(false);
         toast({
           title: "Error",
-          description: "Internal Server Error",
+          description: "Failed to parse course content. Please try again.",
         });
       }
     } catch (error) {
-      console.error(error);
+      console.error("API request error:", error);
       setIsLoading(false);
+      
+      // Provide more specific error messages
+      const errorMessage = error.response?.data?.message || "Internal Server Error";
       toast({
         title: "Error",
-        description: "Internal Server Error",
+        description: errorMessage,
       });
     }
   }
@@ -247,6 +286,9 @@ const GenerateCourse = () => {
           type={selectedType}
           lang={lang.toLowerCase()}
           onClose={handleEditTopics}
+          selectedProvider={selectedProvider}
+          selectedModel={selectedModel}
+          isPublic={isPublic}
         />
       </>
     );
@@ -259,23 +301,20 @@ const GenerateCourse = () => {
         description="Create a customized AI-generated course"
         keywords="course generation, AI learning, custom education"
       />
-      <div className="space-y-8 animate-fade-in max-w-3xl mx-auto px-4 py-8">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-gradient bg-gradient-to-r from-primary to-indigo-500 mb-4">
-            Generate Course
-          </h1>
-          <p className="text-muted-foreground max-w-lg mx-auto">
-            Type the topic on which you want to Generate course. Also, you can
-            enter a list of subtopics, which are the specifics you want to
-            learn.
-          </p>
-        </div>
-
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="space-y-6">
+      <div className="container mx-auto px-4 py-8 max-w-2xl">
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Generate Course
+            </CardTitle>
+            <CardDescription>
+              Create AI-powered courses for any topic to enhance learning
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   <FormField
                     control={form.control}
                     name="topic"
@@ -472,19 +511,61 @@ const GenerateCourse = () => {
                     )}
                   />
 
+                  {/* Provider Selection */}
+                  <div className="space-y-2">
+                    <FormLabel>AI Provider (Optional)</FormLabel>
+                    <ProviderSelector
+                      selectedProvider={selectedProvider}
+                      selectedModel={selectedModel}
+                      onProviderChange={setSelectedProvider}
+                      onModelChange={setSelectedModel}
+                      showHealthStatus={false}
+                      showModelSelector={true}
+                      showPerformanceIndicators={true}
+                      showCostInfo={true}
+                      className="border-0 shadow-none"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Choose your preferred AI provider for course generation. Performance and cost information is shown to help you decide.
+                    </p>
+                  </div>
+
+                  {/* Visibility Toggle */}
+                  <CreationVisibilityToggle
+                    contentType="course"
+                    isPublic={isPublic}
+                    onChange={setIsPublic}
+                  />
+
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-medium text-blue-900 dark:text-blue-400 mb-1">
+                          What you'll get:
+                        </h4>
+                        <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
+                          <li>• Complete course with modules and lessons</li>
+                          <li>• AI-generated content with theory and examples</li>
+                          <li>• Progress tracking and completion status</li>
+                          <li>• Shareable course with unique link</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
                   <Button
                     onClick={() => onSubmit}
                     type="submit"
                     className="w-full"
                   >
                     <Sparkles className="mr-2 h-4 w-4" />
-                    Submit
+                    Generate Course
                   </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </form>
-        </Form>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
       </div>
     </>
   );

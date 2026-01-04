@@ -1,3 +1,10 @@
+export interface ForkedFrom {
+  contentId: string | null;
+  originalOwnerId: string | null;
+  originalOwnerName: string | null;
+  forkedAt: string | null;
+}
+
 export interface Guide {
   _id: string;
   userId: string;
@@ -17,6 +24,11 @@ export interface Guide {
   lastVisitedAt: string;
   createdAt: string;
   updatedAt: string;
+  // Visibility and fork fields
+  isPublic: boolean;
+  forkCount: number;
+  forkedFrom?: ForkedFrom;
+  ownerName: string;
 }
 
 export interface GuideListResponse {
@@ -41,6 +53,9 @@ export interface CreateGuideRequest {
   keyword: string;
   title: string;
   customization?: string;
+  provider?: string;
+  model?: string;
+  isPublic?: boolean;
 }
 
 export interface CreateGuideResponse {

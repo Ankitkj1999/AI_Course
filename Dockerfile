@@ -12,6 +12,14 @@ WORKDIR /app
 COPY package*.json ./
 COPY server/package*.json ./server/
 
+# Configure npm for better reliability
+ARG NPM_CONFIG_FETCH_TIMEOUT=600000
+ARG NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
+ARG NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
+ENV NPM_CONFIG_FETCH_TIMEOUT=$NPM_CONFIG_FETCH_TIMEOUT
+ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=$NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT
+ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=$NPM_CONFIG_FETCH_RETRY_MINTIMEOUT
+
 # Install dependencies
 RUN npm ci --only=production && npm cache clean --force
 RUN cd server && npm install --only=production && npm cache clean --force
@@ -41,13 +49,13 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 appuser
 
 # Copy built application
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/server ./server
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/server/node_modules ./server/node_modules
+COPY --from=builder --chown=appuser:nodejs /app/dist ./dist
+COPY --from=builder --chown=appuser:nodejs /app/server ./server
+COPY --from=deps --chown=appuser:nodejs /app/node_modules ./node_modules
+COPY --from=deps --chown=appuser:nodejs /app/server/node_modules ./server/node_modules
 
-# Create logs directory and set permissions
-RUN mkdir -p logs server/logs && chown -R appuser:nodejs /app
+# Create logs directory
+RUN mkdir -p logs server/logs
 
 USER appuser
 

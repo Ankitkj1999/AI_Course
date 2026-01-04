@@ -21,15 +21,15 @@ const AdminRefund = () => {
         if (response.data && response.data[0] && response.data[0].refund) {
           setValue(response.data[0].refund);
         }
-        // Fallback to sessionStorage if API fails
-        const storedRefund = sessionStorage.getItem('refund');
+        // Fallback to localStorage if API fails
+        const storedRefund = localStorage.getItem('refund');
         if (storedRefund && !response.data[0]?.refund) {
           setValue(storedRefund);
         }
       } catch (error) {
         console.error('Error loading refund policy:', error);
-        // Fallback to sessionStorage
-        const storedRefund = sessionStorage.getItem('refund');
+        // Fallback to localStorage
+        const storedRefund = localStorage.getItem('refund');
         if (storedRefund) {
           setValue(storedRefund);
         }
@@ -50,7 +50,7 @@ const AdminRefund = () => {
       });
       
       if (response.data.success) {
-        sessionStorage.setItem('refund', String(value));
+        localStorage.setItem('refund', String(value));
         toast.success('Refund Policy updated successfully');
       } else {
         toast.error('Failed to update Refund Policy');

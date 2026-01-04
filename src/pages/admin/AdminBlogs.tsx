@@ -56,11 +56,8 @@ const AdminBlogs = () => {
 
   const handleToggle = async (id: string, type: 'popular' | 'featured', value: boolean) => {
     try {
-      const token = localStorage.getItem("token");
       await axios.post(`${serverURL}/api/updateblogs`, { id, type, value }, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        withCredentials: true,
       });
       toast.success(`Blog post ${type} status updated`);
       refetch();
@@ -71,11 +68,8 @@ const AdminBlogs = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      const token = localStorage.getItem("token");
       await axios.post(`${serverURL}/api/deleteblogs`, { id }, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        withCredentials: true,
       });
       toast.success('Blog post deleted successfully');
       refetch();

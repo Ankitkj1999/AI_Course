@@ -7,6 +7,7 @@ import cors from 'cors';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import cookieParser from 'cookie-parser';
 import gis from 'g-i-s';
 import youtubesearchapi from 'youtube-search-api';
 import { YoutubeTranscript } from 'youtube-transcript';
@@ -23,6 +24,12 @@ import Settings from './models/Settings.js';
 import settingsCache from './services/settingsCache.js';
 import { generateCourseSEO } from './utils/seo.js';
 import { getServerPort, getServerURL, validateConfig } from './utils/config.js';
+import llmService from './services/llmService.js';
+import { safeGet, safeGetArray, safeGetFirst } from './utils/safeAccess.js';
+
+// NOTE: Google Generative AI SDK is still available for future advanced features
+// such as Gemini Live APIs, Deep Research, Google Search integration, etc.
+// Currently using LangChain for standardized multi-model support.
 
 // Load environment variables
 dotenv.config();
@@ -62,9 +69,9 @@ const corsOptions = {
             'http://localhost:5010',
             'https://localhost:5010',
             // Production domains
-            'https://gksage.com',
-            'https://www.gksage.com',
-            'http://gksage.com',
+            'http://gksage.run.place',
+            'http://gksage.run.place',
+            'http://gksage.run.place',
             'http://www.gksage.com',
             // Additional origins from environment
             ...envOrigins,
@@ -82,7 +89,7 @@ const corsOptions = {
             callback(new Error(`Origin ${origin} not allowed by CORS`));
         }
     },
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true
 };
@@ -101,7 +108,29 @@ app.use((req, res, next) => {
 const PORT = process.env.PORT;
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(express.json({ limit: '50mb' }));
-mongoose.connect(process.env.MONGODB_URI);
+app.use(cookieParser());
+mongoose.connect(process.env.MONGODB_URI, {
+    serverSelectionTimeoutMS: 30000, // 30 seconds
+    socketTimeoutMS: 45000, // 45 seconds
+    maxPoolSize: 10,
+    minPoolSize: 2,
+    retryWrites: true,
+    retryReads: true
+});
+
+// MongoDB connection event handlers
+mongoose.connection.on('connected', () => {
+    logger.info('MongoDB connected successfully');
+});
+
+mongoose.connection.on('error', (err) => {
+    logger.error('MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+    logger.warn('MongoDB disconnected');
+});
+
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 465,
@@ -149,8 +178,21 @@ const courseSchema = new mongoose.Schema({
     photo: String,
     date: { type: Date, default: Date.now },
     end: { type: Date, default: Date.now },
-    completed: { type: Boolean, default: false }
+    completed: { type: Boolean, default: false },
+    // Visibility and fork fields
+    isPublic: { type: Boolean, default: false, index: true },
+    forkCount: { type: Number, default: 0 },
+    forkedFrom: {
+        contentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', default: null },
+        originalOwnerId: { type: String, default: null },
+        originalOwnerName: { type: String, default: null },
+        forkedAt: { type: Date, default: null }
+    },
+    ownerName: { type: String, default: '' }
 });
+
+// Create compound index for efficient public content queries
+courseSchema.index({ isPublic: 1, date: -1 });
 const subscriptionSchema = new mongoose.Schema({
     user: String,
     subscription: String,
@@ -218,8 +260,21 @@ const quizSchema = new mongoose.Schema({
         possibleAnswers: [String]
     }],
     createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now }
+    updatedAt: { type: Date, default: Date.now },
+    // Visibility and fork fields
+    isPublic: { type: Boolean, default: false, index: true },
+    forkCount: { type: Number, default: 0 },
+    forkedFrom: {
+        contentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Quiz', default: null },
+        originalOwnerId: { type: String, default: null },
+        originalOwnerName: { type: String, default: null },
+        forkedAt: { type: Date, default: null }
+    },
+    ownerName: { type: String, default: '' }
 });
+
+// Create compound index for efficient public content queries
+quizSchema.index({ isPublic: 1, createdAt: -1 });
 
 const flashcardSchema = new mongoose.Schema({
     userId: { type: String, required: true, index: true },
@@ -241,8 +296,21 @@ const flashcardSchema = new mongoose.Schema({
     viewCount: { type: Number, default: 0 },
     lastVisitedAt: { type: Date, default: Date.now },
     createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now }
+    updatedAt: { type: Date, default: Date.now },
+    // Visibility and fork fields
+    isPublic: { type: Boolean, default: false, index: true },
+    forkCount: { type: Number, default: 0 },
+    forkedFrom: {
+        contentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Flashcard', default: null },
+        originalOwnerId: { type: String, default: null },
+        originalOwnerName: { type: String, default: null },
+        forkedAt: { type: Date, default: null }
+    },
+    ownerName: { type: String, default: '' }
 });
+
+// Create compound index for efficient public content queries
+flashcardSchema.index({ isPublic: 1, createdAt: -1 });
 
 const guideSchema = new mongoose.Schema({
     userId: { type: String, required: true, index: true },
@@ -261,8 +329,21 @@ const guideSchema = new mongoose.Schema({
     viewCount: { type: Number, default: 0 },
     lastVisitedAt: { type: Date, default: Date.now },
     createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now }
+    updatedAt: { type: Date, default: Date.now },
+    // Visibility and fork fields
+    isPublic: { type: Boolean, default: false, index: true },
+    forkCount: { type: Number, default: 0 },
+    forkedFrom: {
+        contentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Guide', default: null },
+        originalOwnerId: { type: String, default: null },
+        originalOwnerName: { type: String, default: null },
+        forkedAt: { type: Date, default: null }
+    },
+    ownerName: { type: String, default: '' }
 });
+
+// Create compound index for efficient public content queries
+guideSchema.index({ isPublic: 1, createdAt: -1 });
 
 //MODEL
 const User = mongoose.model('User', userSchema);
@@ -283,7 +364,7 @@ const Guide = mongoose.model('Guide', guideSchema);
 // Basic auth middleware - requires valid user
 const requireAuth = async (req, res, next) => {
     try {
-        const token = req.headers.authorization?.split(' ')[1];
+        const token = req.cookies.auth_token;
         if (!token || token === 'null' || token === 'undefined') {
             return res.status(401).json({ error: 'Authentication required' });
         }
@@ -306,7 +387,7 @@ const requireAuth = async (req, res, next) => {
 // Admin middleware - requires admin user
 const requireAdmin = async (req, res, next) => {
     try {
-        const token = req.headers.authorization?.split(' ')[1];
+        const token = req.cookies.auth_token;
         if (!token || token === 'null' || token === 'undefined') {
             return res.status(401).json({ error: 'Authentication required' });
         }
@@ -336,7 +417,7 @@ const requireAdmin = async (req, res, next) => {
 // Main admin middleware (for critical settings)
 const requireMainAdmin = async (req, res, next) => {
     try {
-        const token = req.headers.authorization?.split(' ')[1];
+        const token = req.cookies.auth_token;
         if (!token || token === 'null' || token === 'undefined') {
             return res.status(401).json({ error: 'No valid token provided' });
         }
@@ -372,10 +453,28 @@ const requireMainAdmin = async (req, res, next) => {
     }
 };
 
+// Optional auth middleware - attaches user if authenticated but doesn't require it
+const optionalAuth = async (req, res, next) => {
+    try {
+        const token = req.cookies.auth_token;
+        if (token && token !== 'null' && token !== 'undefined') {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const user = await User.findById(decoded.id);
+            if (user) {
+                req.user = user;
+            }
+        }
+    } catch (error) {
+        // Silently fail - authentication is optional
+        logger.debug('Optional auth failed:', error.message);
+    }
+    next();
+};
+
 //REQUEST
 
 //HEALTH CHECK
-app.get('/health', async (req, res) => {
+app.get('/api/health', async (req, res) => {
     try {
         // Check database connection
         const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
@@ -469,10 +568,17 @@ app.post('/api/signin', async (req, res) => {
                 
                 console.log('Token generated successfully:', !!token);
                 
+                // Set httpOnly cookie
+                res.cookie('auth_token', token, {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: 'strict',
+                    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+                });
+                
                 return res.json({ 
                     success: true, 
                     message: 'SignIn Successful', 
-                    token,
                     userData: { ...user.toObject(), isAdmin: user.isAdmin } 
                 });
             } catch (error) {
@@ -515,7 +621,15 @@ app.post('/api/social', async (req, res) => {
                     { expiresIn: '7d' }
                 );
                 
-                res.json({ success: true, message: 'Account created successfully', token, userData: newUser });
+                // Set httpOnly cookie
+                res.cookie('auth_token', token, {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: 'strict',
+                    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+                });
+                
+                res.json({ success: true, message: 'Account created successfully', userData: newUser });
             } else {
                 const newUser = new User({ email, mName, password, type });
                 await newUser.save();
@@ -528,7 +642,15 @@ app.post('/api/social', async (req, res) => {
                     { expiresIn: '7d' }
                 );
                 
-                res.json({ success: true, message: 'Account created successfully', token, userData: newUser });
+                // Set httpOnly cookie
+                res.cookie('auth_token', token, {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: 'strict',
+                    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+                });
+                
+                res.json({ success: true, message: 'Account created successfully', userData: newUser });
             }
         } else {
             const token = jwt.sign(
@@ -537,7 +659,15 @@ app.post('/api/social', async (req, res) => {
                 { expiresIn: '7d' }
             );
             
-            return res.json({ success: true, message: 'SignIn Successful', token, userData: user });
+            // Set httpOnly cookie
+            res.cookie('auth_token', token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+            });
+            
+            return res.json({ success: true, message: 'SignIn Successful', userData: user });
         }
 
     } catch (error) {
@@ -545,6 +675,23 @@ app.post('/api/social', async (req, res) => {
         res.status(500).json({ success: false, message: 'Internal Server Error' });
     }
 
+});
+
+//LOGOUT
+app.post('/api/logout', (req, res) => {
+    try {
+        // Clear the httpOnly cookie
+        res.clearCookie('auth_token', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict'
+        });
+        
+        res.json({ success: true, message: 'Logged out successfully' });
+    } catch (error) {
+        console.error('Logout error:', error);
+        res.status(500).json({ success: false, message: 'Logout failed' });
+    }
 });
 
 //SEND MAIL
@@ -665,90 +812,342 @@ app.post('/api/reset-password', async (req, res) => {
     }
 });
 
-//GET DATA FROM MODEL
+//GET DATA FROM MODEL (Enhanced with multi-LLM support)
 app.post('/api/prompt', requireAuth, async (req, res) => {
     const receivedData = req.body;
-
     const promptString = receivedData.prompt;
+    const { provider, model, temperature } = receivedData;
 
-    const safetySettings = [
-        {
-            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-        {
-            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-        {
-            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-        {
-            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-    ];
+    try {
+        // If provider is specified, use new LLM service
+        if (provider) {
+            const result = await llmService.generateContent(promptString, {
+                provider,
+                model,
+                temperature
+            });
 
-    const genAI = await getAI();
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
+            if (result.success) {
+                // Maintain backward compatibility with existing response format
+                res.status(200).json({ 
+                    generatedText: result.data.content,
+                    // Add metadata for enhanced clients
+                    metadata: {
+                        provider: result.data.provider,
+                        providerName: result.data.providerName,
+                        model: result.data.model,
+                        responseTime: result.data.responseTime,
+                        timestamp: result.timestamp
+                    }
+                });
+            } else {
+                res.status(500).json({ 
+                    success: false, 
+                    message: result.error.message || 'Content generation failed'
+                });
+            }
+            return;
+        }
 
-    const prompt = promptString;
+        // Fallback to LangChain Gemini for backward compatibility
+        const result = await llmService.generateContent(promptString, {
+          provider: 'gemini',
+          temperature: 0.7
+        });
 
-    await model.generateContent(prompt).then(result => {
-        const response = result.response;
-        const generatedText = response.text();
-        res.status(200).json({ generatedText });
-    }).catch(error => {
-        console.log(error);
+        if (result.success) {
+          res.status(200).json({ 
+            generatedText: result.data.content,
+            // Add metadata to indicate this used fallback path
+            metadata: {
+              provider: result.data.provider,
+              providerName: result.data.providerName + ' (Fallback)',
+              model: result.data.model,
+              responseTime: result.data.responseTime,
+              legacy: true
+            }
+          });
+        } else {
+          res.status(500).json({ 
+            success: false, 
+            message: result.error.message || 'Content generation failed'
+          });
+        }
+        
+    } catch (error) {
+        logger.error(`Prompt generation error: ${error.message}`, { 
+            error: error.stack, 
+            prompt: promptString?.substring(0, 100),
+            provider 
+        });
         res.status(500).json({ success: false, message: 'Internal server error' });
-    })
+    }
 });
 
-//GET GENERATE THEORY
+// NEW MULTI-LLM ENDPOINTS
+
+//GET LLM PROVIDERS LIST
+app.get('/api/llm/providers', async (req, res) => {
+    try {
+        const providers = llmService.getProviders();
+        const status = llmService.getStatus();
+        
+        res.status(200).json({
+            success: true,
+            providers: providers,
+            status: status.status,
+            summary: {
+                total: status.total,
+                available: status.available,
+                free: status.free,
+                paid: status.paid
+            }
+        });
+    } catch (error) {
+        logger.error(`Get providers error: ${error.message}`, { error: error.stack });
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to get providers',
+            error: error.message 
+        });
+    }
+});
+
+//GENERATE CONTENT WITH MULTI-LLM SUPPORT
+app.post('/api/llm/generate', requireAuth, async (req, res) => {
+    try {
+        const { prompt, provider, model, temperature, preferFree } = req.body;
+        
+        // Validate request
+        if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Prompt is required and must be a non-empty string'
+            });
+        }
+
+        // Generate content using LLM service
+        const result = await llmService.generateContentAuto(prompt, {
+            provider,
+            model,
+            temperature,
+            preferFree
+        });
+
+        res.status(200).json(result);
+        
+    } catch (error) {
+        logger.error(`LLM generation error: ${error.message}`, { 
+            error: error.stack, 
+            prompt: req.body.prompt?.substring(0, 100),
+            provider: req.body.provider 
+        });
+        
+        res.status(500).json({
+            success: false,
+            error: {
+                message: 'Content generation failed',
+                code: 'GENERATION_ERROR',
+                details: error.message
+            }
+        });
+    }
+});
+
+//HEALTH CHECK FOR SPECIFIC PROVIDER
+app.get('/api/llm/health/:providerId', async (req, res) => {
+    try {
+        const { providerId } = req.params;
+        const healthResult = await llmService.checkProviderHealth(providerId);
+        
+        res.status(200).json({
+            success: true,
+            health: healthResult
+        });
+        
+    } catch (error) {
+        logger.error(`Provider health check error: ${error.message}`, { 
+            error: error.stack, 
+            providerId: req.params.providerId 
+        });
+        
+        res.status(500).json({
+            success: false,
+            message: 'Health check failed',
+            error: error.message
+        });
+    }
+});
+
+//HEALTH CHECK FOR ALL PROVIDERS
+app.get('/api/llm/health', async (req, res) => {
+    try {
+        const healthResults = await llmService.checkAllProvidersHealth();
+        
+        res.status(200).json({
+            success: true,
+            health: healthResults,
+            timestamp: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        logger.error(`All providers health check error: ${error.message}`, { error: error.stack });
+        
+        res.status(500).json({
+            success: false,
+            message: 'Health check failed',
+            error: error.message
+        });
+    }
+});
+
+//GET GENERATE THEORY (Enhanced with multi-LLM support)
 app.post('/api/generate', requireAuth, async (req, res) => {
     const receivedData = req.body;
-
     const promptString = receivedData.prompt;
+    const { provider, model, temperature } = receivedData;
+    
+    // Generate request ID for logging correlation
+    const requestId = logger.llm.generateRequestId();
+    const startTime = Date.now();
+    
+    // Log request start
+    logger.llm.logRequestStart(requestId, '/api/generate', {
+        prompt: promptString?.substring(0, 100) + '...',
+        provider,
+        model,
+        temperature
+    }, req.user?.id, provider);
 
-    const safetySettings = [
-        {
-            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-        {
-            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-        {
-            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-        {
-            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-    ];
+    try {
+        // If provider is specified, use new LLM service
+        if (provider) {
+            const result = await llmService.generateContent(promptString, {
+                provider,
+                model,
+                temperature
+            });
 
-    const genAI = await getAI();
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
+            if (result.success) {
+                const duration = Date.now() - startTime;
+                
+                // Log successful request
+                logger.llm.logRequestSuccess(requestId, '/api/generate', {
+                    contentLength: result.data.content?.length,
+                    provider: result.data.provider,
+                    model: result.data.model
+                }, duration, req.user?.id, result.data.provider);
+                
+                // Maintain backward compatibility with existing response format
+                res.status(200).json({ 
+                    text: result.data.content,
+                    contentType: 'markdown',
+                    // Add metadata for enhanced clients
+                    metadata: {
+                        provider: result.data.provider,
+                        providerName: result.data.providerName,
+                        model: result.data.model,
+                        responseTime: result.data.responseTime,
+                        timestamp: result.timestamp
+                    }
+                });
+            } else {
+                // Log error with context
+                logger.llm.logRequestError(requestId, '/api/generate', new Error(result.error.message || 'Content generation failed'), {
+                    userId: req.user?.id,
+                    provider,
+                    model,
+                    prompt: promptString?.substring(0, 100)
+                });
+                
+                res.status(500).json({ 
+                    success: false, 
+                    message: result.error.message || 'Content generation failed'
+                });
+            }
+            return;
+        }
 
-    const prompt = promptString
+        // Fallback to original Gemini implementation for backward compatibility
+        const safetySettings = [
+            {
+                category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+            {
+                category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+            {
+                category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+            {
+                category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+        ];
 
-    await model.generateContent(prompt).then(result => {
-        const response = result.response;
-        const txt = response.text();
-        // Store raw markdown instead of converting to HTML for better formatting
-        const text = txt;
-        res.status(200).json({ 
-            text,
-            contentType: 'markdown' // Add content type for frontend detection
+        // Use LangChain Gemini for backward compatibility
+        const result = await llmService.generateContent(promptString, {
+          provider: 'gemini',
+          temperature: 0.7
         });
-    }).catch(error => {
-        console.log('Error', error);
-        res.status(500).json({ success: false, message: 'Internal server error' });
-    })
 
+        if (result.success) {
+          const duration = Date.now() - startTime;
+          
+          // Log fallback usage
+          logger.llm.logProviderFallback(requestId, '/api/generate', provider || 'none', 'gemini', 'Legacy fallback path');
+          
+          // Log successful request
+          logger.llm.logRequestSuccess(requestId, '/api/generate', {
+              contentLength: result.data.content?.length,
+              provider: result.data.provider,
+              model: result.data.model,
+              legacy: true
+          }, duration, req.user?.id, result.data.provider);
+          
+          res.status(200).json({ 
+            text: result.data.content,
+            contentType: 'markdown',
+            // Add metadata to indicate this used fallback path
+            metadata: {
+              provider: result.data.provider,
+              providerName: result.data.providerName + ' (Fallback)',
+              model: result.data.model,
+              responseTime: result.data.responseTime,
+              legacy: true
+            }
+          });
+        } else {
+          // Log error with context
+          logger.llm.logRequestError(requestId, '/api/generate', new Error(result.error.message || 'Content generation failed'), {
+              userId: req.user?.id,
+              provider: 'gemini',
+              prompt: promptString?.substring(0, 100),
+              legacy: true
+          });
+          
+          res.status(500).json({ 
+            success: false, 
+            message: result.error.message || 'Content generation failed'
+          });
+        }
+        
+    } catch (error) {
+        // Log error with enhanced context
+        logger.llm.logRequestError(requestId, '/api/generate', error, {
+            userId: req.user?.id,
+            provider,
+            model,
+            temperature,
+            prompt: promptString?.substring(0, 100),
+            duration: Date.now() - startTime
+        });
+        
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
 });
 
 //GET IMAGE
@@ -758,8 +1157,10 @@ app.post('/api/image', async (req, res) => {
     gis(promptString, logResults);
     function logResults(error, results) {
         if (error) {
-            //ERROR
-            console.log('Error', error);
+            logger.error('Image search error', { 
+                error: error.message,
+                prompt: promptString?.substring(0, 100)
+            });
         }
         else {
             res.status(200).json({ url: results[0].url });
@@ -797,55 +1198,168 @@ app.post('/api/transcript', async (req, res) => {
 
 //STORE COURSE
 app.post('/api/course', requireAuth, async (req, res) => {
-    const { user, content, type, mainTopic, lang } = req.body;
+    const { user, content, type, mainTopic, lang, isPublic } = req.body;
+    
+    // Generate request ID for logging correlation
+    const requestId = logger.llm.generateRequestId();
+    const startTime = Date.now();
+    
+    // Log request start
+    logger.llm.logRequestStart(requestId, '/api/course', {
+        mainTopic,
+        type,
+        contentLength: content?.length,
+        lang
+    }, user, 'unsplash');
 
-    unsplash.search.getPhotos({
-        query: mainTopic,
-        page: 1,
-        perPage: 1,
-        orientation: 'landscape',
-    }).then(async (result) => {
-        const photos = result.response.results;
-        const photo = photos && photos.length > 0 ? photos[0].urls.regular : null;
+    try {
+        const result = await unsplash.search.getPhotos({
+            query: mainTopic,
+            page: 1,
+            perPage: 1,
+            orientation: 'landscape',
+        });
+
+        // Safely access Unsplash response with fallback
+        const photos = safeGetArray(result, 'response.results', []);
+        const firstPhoto = safeGetFirst(result, 'response.results');
+        const photo = safeGet(firstPhoto, 'urls.regular', null);
+
+        // Log if Unsplash API returned unexpected data
+        if (!photo) {
+            logger.llm.logValidationFailure(requestId, '/api/course', {
+                expected: 'response.results[0].urls.regular',
+                issue: 'No usable images returned'
+            }, {
+                hasResponse: !!safeGet(result, 'response'),
+                hasResults: !!safeGet(result, 'response.results'),
+                resultsLength: safeGetArray(result, 'response.results', []).length,
+                mainTopic
+            });
+        }
+
         try {
             // Generate SEO-friendly slug
             const title = extractTitleFromContent(content, mainTopic);
             const slug = await generateUniqueSlug(title, Course);
             
-            const newCourse = new Course({ user, content, type, mainTopic, slug, photo });
+            const newCourse = new Course({ 
+                user, 
+                content, 
+                type, 
+                mainTopic, 
+                slug, 
+                photo,
+                isPublic: isPublic ?? false // Default to false for backward compatibility
+            });
             await newCourse.save();
             const newLang = new LangSchema({ course: newCourse._id, lang: lang });
             await newLang.save();
             
-            logger.info(`Course created: ${newCourse._id} with slug: ${slug}`);
+            const duration = Date.now() - startTime;
+            
+            // Log successful course creation
+            logger.llm.logRequestSuccess(requestId, '/api/course', {
+                courseId: newCourse._id,
+                slug,
+                hasPhoto: !!photo,
+                mainTopic,
+                isPublic: newCourse.isPublic
+            }, duration, user, 'unsplash');
+            
             res.json({ 
                 success: true, 
                 message: 'Course created successfully', 
                 courseId: newCourse._id,
-                slug: slug
+                slug: slug,
+                isPublic: newCourse.isPublic
             });
         } catch (error) {
-            logger.error(`Course creation error: ${error.message}`, { error: error.stack, user, mainTopic });
+            // Log course creation error with context
+            logger.llm.logRequestError(requestId, '/api/course', error, {
+                userId: user,
+                mainTopic,
+                hasPhoto: !!photo,
+                step: 'course_creation'
+            });
             res.status(500).json({ success: false, message: 'Internal server error' });
         }
-    }).catch(error => {
-        console.log('Error', error);
-        res.status(500).json({ success: false, message: 'Internal server error' });
-    })
+    } catch (error) {
+        // Handle Unsplash API errors gracefully
+        logger.llm.logRequestError(requestId, '/api/course', error, {
+            userId: user,
+            mainTopic,
+            unsplashQuery: mainTopic,
+            step: 'unsplash_api'
+        });
+
+        // Continue course creation without photo
+        try {
+            const title = extractTitleFromContent(content, mainTopic);
+            const slug = await generateUniqueSlug(title, Course);
+            
+            const newCourse = new Course({ user, content, type, mainTopic, slug, photo: null });
+            await newCourse.save();
+            const newLang = new LangSchema({ course: newCourse._id, lang: lang });
+            await newLang.save();
+            
+            const duration = Date.now() - startTime;
+            
+            // Log successful fallback course creation
+            logger.llm.logRequestSuccess(requestId, '/api/course', {
+                courseId: newCourse._id,
+                slug,
+                hasPhoto: false,
+                mainTopic,
+                fallback: true
+            }, duration, user, 'fallback');
+            
+            res.json({ 
+                success: true, 
+                message: 'Course created successfully (without image)', 
+                courseId: newCourse._id,
+                slug: slug
+            });
+        } catch (courseError) {
+            // Log fallback course creation error
+            logger.llm.logRequestError(requestId, '/api/course', courseError, {
+                userId: user,
+                mainTopic,
+                step: 'fallback_course_creation'
+            });
+            res.status(500).json({ success: false, message: 'Internal server error' });
+        }
+    }
 });
 
 //STORE COURSE SHARED
 app.post('/api/courseshared', requireAuth, async (req, res) => {
     const { user, content, type, mainTopic } = req.body;
 
-    unsplash.search.getPhotos({
-        query: mainTopic,
-        page: 1,
-        perPage: 1,
-        orientation: 'landscape',
-    }).then(async (result) => {
-        const photos = result.response.results;
-        const photo = photos && photos.length > 0 ? photos[0].urls.regular : null;
+    try {
+        const result = await unsplash.search.getPhotos({
+            query: mainTopic,
+            page: 1,
+            perPage: 1,
+            orientation: 'landscape',
+        });
+
+        // Safely access Unsplash response with fallback
+        const photos = safeGetArray(result, 'response.results', []);
+        const firstPhoto = safeGetFirst(result, 'response.results');
+        const photo = safeGet(firstPhoto, 'urls.regular', null);
+
+        // Log if Unsplash API returned unexpected data
+        if (!photo) {
+            logger.warn(`Unsplash API returned no usable images for shared course topic: ${mainTopic}`, {
+                unsplashResponse: {
+                    hasResponse: !!safeGet(result, 'response'),
+                    hasResults: !!safeGet(result, 'response.results'),
+                    resultsLength: safeGetArray(result, 'response.results', []).length
+                }
+            });
+        }
+
         try {
             // Generate SEO-friendly slug for shared course
             const title = extractTitleFromContent(content, mainTopic);
@@ -854,7 +1368,10 @@ app.post('/api/courseshared', requireAuth, async (req, res) => {
             const newCourse = new Course({ user, content, type, mainTopic, slug, photo });
             await newCourse.save();
             
-            logger.info(`Shared course created: ${newCourse._id} with slug: ${slug}`);
+            logger.info(`Shared course created: ${newCourse._id} with slug: ${slug}`, {
+                hasPhoto: !!photo,
+                mainTopic
+            });
             res.json({ 
                 success: true, 
                 message: 'Course created successfully', 
@@ -865,7 +1382,39 @@ app.post('/api/courseshared', requireAuth, async (req, res) => {
             logger.error(`Shared course creation error: ${error.message}`, { error: error.stack, user, mainTopic });
             res.status(500).json({ success: false, message: 'Internal server error' });
         }
-    })
+    } catch (error) {
+        // Handle Unsplash API errors gracefully
+        logger.error(`Unsplash API error for shared course creation: ${error.message}`, { 
+            error: error.stack, 
+            user, 
+            mainTopic,
+            unsplashQuery: mainTopic
+        });
+
+        // Continue course creation without photo
+        try {
+            const title = extractTitleFromContent(content, mainTopic);
+            const slug = await generateUniqueSlug(title, Course);
+            
+            const newCourse = new Course({ user, content, type, mainTopic, slug, photo: null });
+            await newCourse.save();
+            
+            logger.info(`Shared course created without photo due to Unsplash error: ${newCourse._id} with slug: ${slug}`);
+            res.json({ 
+                success: true, 
+                message: 'Course created successfully (without image)', 
+                courseId: newCourse._id,
+                slug: slug
+            });
+        } catch (courseError) {
+            logger.error(`Shared course creation fallback error: ${courseError.message}`, { 
+                error: courseError.stack, 
+                user, 
+                mainTopic 
+            });
+            res.status(500).json({ success: false, message: 'Internal server error' });
+        }
+    }
 });
 
 //UPDATE COURSE
@@ -955,17 +1504,43 @@ app.post('/api/sendcertificate', async (req, res) => {
 // Backend: Modify API to handle pagination
 app.get('/api/courses', async (req, res) => {
     try {
-        const { userId, page = 1, limit = 9 } = req.query;
+        const { userId, page = 1, limit = 9, visibility = 'all' } = req.query;
         const skip = (page - 1) * limit;
 
-        const courses = await Course.find({ user: userId })
-            .skip(parseInt(skip))
-            .limit(parseInt(limit));
+        // Build query based on visibility filter
+        const query = { user: userId };
+        if (visibility === 'public') {
+            query.isPublic = true;
+        } else if (visibility === 'private') {
+            query.isPublic = false;
+        }
+        // 'all' means no additional filter
 
-        res.json(courses);
+        const courses = await Course.find(query)
+            .select('user content type mainTopic slug photo date end completed isPublic forkCount forkedFrom ownerName')
+            .skip(parseInt(skip))
+            .limit(parseInt(limit))
+            .sort({ date: -1 });
+
+        const total = await Course.countDocuments(query);
+
+        res.json({
+            success: true,
+            courses: courses,
+            pagination: {
+                currentPage: parseInt(page),
+                totalPages: Math.ceil(total / limit),
+                totalItems: total,
+                hasNext: page * limit < total,
+                hasPrev: page > 1
+            }
+        });
     } catch (error) {
         console.log('Error', error);
-        res.status(500).send('Internal Server Error');
+        res.status(500).json({
+            success: false,
+            message: 'Internal Server Error'
+        });
     }
 });
 
@@ -983,7 +1558,7 @@ app.get('/api/shareable', async (req, res) => {
 });
 
 //GET COURSE BY SLUG
-app.get('/api/course/:slug', async (req, res) => {
+app.get('/api/course/:slug', optionalAuth, async (req, res) => {
     try {
         const { slug } = req.params;
         const course = await Course.findOne({ slug });
@@ -992,6 +1567,17 @@ app.get('/api/course/:slug', async (req, res) => {
             return res.status(404).json({ 
                 success: false, 
                 message: 'Course not found' 
+            });
+        }
+        
+        // Check access control: content must be public OR user must be the owner
+        const isOwner = req.user && course.user === req.user._id.toString();
+        const isPublic = course.isPublic === true;
+        
+        if (!isPublic && !isOwner) {
+            return res.status(403).json({
+                success: false,
+                message: 'This content is private'
             });
         }
         
@@ -2835,50 +3421,49 @@ app.post('/api/flutterwavecancel', async (req, res) => {
 });
 
 
-//CHAT
+//CHAT (Enhanced with multi-LLM support)
 app.post('/api/chat', requireAuth, async (req, res) => {
     const receivedData = req.body;
-
     const promptString = receivedData.prompt;
+    const { provider, model, temperature } = receivedData;
 
-    const safetySettings = [
-        {
-            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-        {
-            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-        {
-            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-        {
-            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-    ];
-
-    const genAI = await getAI();
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
-
-    const prompt = promptString;
-
-    await model.generateContent(prompt).then(result => {
-        const response = result.response;
-        const txt = response.text();
-        // Store raw markdown instead of converting to HTML for better formatting
-        const text = txt;
-        res.status(200).json({ 
-            text,
-            contentType: 'markdown' // Add content type for frontend detection
+    try {
+        // Use new LLM service with provider support
+        const result = await llmService.generateContent(promptString, {
+            provider,
+            model,
+            temperature: temperature || 0.7
         });
-    }).catch(error => {
-        console.log('Error', error);
-        res.status(500).json({ success: false, message: 'Internal server error' });
-    })
 
+        if (result.success) {
+            // Maintain backward compatibility with existing response format
+            res.status(200).json({ 
+                text: result.data.content,
+                contentType: 'markdown',
+                // Add metadata for enhanced clients
+                metadata: {
+                    provider: result.data.provider,
+                    providerName: result.data.providerName,
+                    model: result.data.model,
+                    responseTime: result.data.responseTime,
+                    timestamp: result.timestamp
+                }
+            });
+        } else {
+            res.status(500).json({ 
+                success: false, 
+                message: result.error.message || 'Chat generation failed'
+            });
+        }
+        
+    } catch (error) {
+        logger.error(`Chat generation error: ${error.message}`, { 
+            error: error.stack, 
+            prompt: promptString?.substring(0, 100),
+            provider 
+        });
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
 });
 
 
@@ -3263,6 +3848,11 @@ app.get('/api/blogs/public', async (req, res) => {
 // Serve static files from the dist directory
 app.use(express.static('dist'));
 
+// Catch-all handler: send back index.html for client-side routing
+app.get('*', (req, res) => {
+    res.sendFile('index.html', { root: 'dist' });
+});
+
 //LISTEN
 // Error handling middleware (must be last)
 app.use(errorHandler);
@@ -3277,7 +3867,7 @@ const startServer = async () => {
             logger.info(`🚀 Server started successfully!`);
             logger.info(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
             logger.info(`🌐 Server URL: ${serverURL}`);
-            logger.info(`❤️  Health check: ${serverURL}/health`);
+            logger.info(`❤️  Health check: ${serverURL}/api/health`);
             logger.info(`🔗 API Base URL: ${serverURL}/api`);
             
             // Initialize settings cache
@@ -3312,8 +3902,21 @@ const server = await startServer();
 
 //CREATE QUIZ
 app.post('/api/quiz/create', requireAuth, async (req, res) => {
+    // Generate request ID for logging correlation
+    const requestId = logger.llm.generateRequestId();
+    const startTime = Date.now();
+    
     try {
-        const { userId, keyword, title, format, questionAndAnswers } = req.body;
+        const { userId, keyword, title, format, provider, model, questionAndAnswers, isPublic } = req.body;
+        
+        // Log request start
+        logger.llm.logRequestStart(requestId, '/api/quiz/create', {
+            keyword,
+            title,
+            format,
+            provider,
+            model
+        }, userId, provider);
         
         if (!userId || !keyword || !title) {
             return res.status(400).json({
@@ -3336,10 +3939,24 @@ app.post('/api/quiz/create', requireAuth, async (req, res) => {
         
         Make the questions challenging and cover various aspects of the topic.`;
 
-        const genAI = await getAI();
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-        const result = await model.generateContent(quizPrompt);
-        const quizContent = result.response.text();
+        // Use LLM factory with provider selection
+        const result = await llmService.generateContent(quizPrompt, {
+            provider: provider,
+            model: model
+        });
+
+        if (!result.success) {
+            logger.llm.logRequestError(requestId, '/api/quiz/create', new Error(result.error || 'Failed to generate quiz content'), {
+                userId,
+                keyword,
+                title,
+                provider,
+                model
+            });
+            throw new Error(result.error || 'Failed to generate quiz content');
+        }
+
+        const quizContent = result.data.content;
 
         // Generate unique slug
         const baseSlug = generateSlug(`${title}-${Date.now()}`);
@@ -3362,12 +3979,23 @@ app.post('/api/quiz/create', requireAuth, async (req, res) => {
             viewCount: 0,
             lastVisitedAt: new Date(),
             createdAt: new Date(),
-            updatedAt: new Date()
+            updatedAt: new Date(),
+            isPublic: isPublic ?? false // Default to false for backward compatibility
         });
 
         await newQuiz.save();
 
-        logger.info(`Quiz created: ${newQuiz._id} with slug: ${slug}`);
+        const duration = Date.now() - startTime;
+        
+        // Log successful quiz creation
+        logger.llm.logRequestSuccess(requestId, '/api/quiz/create', {
+            quizId: newQuiz._id,
+            slug,
+            keyword,
+            title,
+            contentLength: quizContent?.length,
+            provider: result.data.provider
+        }, duration, userId, result.data.provider);
         
         res.json({
             success: true,
@@ -3376,12 +4004,22 @@ app.post('/api/quiz/create', requireAuth, async (req, res) => {
                 _id: newQuiz._id,
                 slug: newQuiz.slug,
                 title: newQuiz.title,
-                keyword: newQuiz.keyword
+                keyword: newQuiz.keyword,
+                isPublic: newQuiz.isPublic
             }
         });
 
     } catch (error) {
-        logger.error(`Quiz creation error: ${error.message}`, { error: error.stack });
+        // Log quiz creation error with context
+        logger.llm.logRequestError(requestId, '/api/quiz/create', error, {
+            userId: req.body.userId,
+            keyword: req.body.keyword,
+            title: req.body.title,
+            provider: req.body.provider,
+            model: req.body.model,
+            duration: Date.now() - startTime
+        });
+        
         res.status(500).json({
             success: false,
             message: 'Failed to create quiz'
@@ -3392,7 +4030,7 @@ app.post('/api/quiz/create', requireAuth, async (req, res) => {
 //GET USER QUIZZES
 app.get('/api/quizzes', async (req, res) => {
     try {
-        const { userId, page = 1, limit = 10 } = req.query;
+        const { userId, page = 1, limit = 10, visibility = 'all' } = req.query;
         
         if (!userId) {
             return res.status(400).json({
@@ -3401,12 +4039,21 @@ app.get('/api/quizzes', async (req, res) => {
             });
         }
 
+        // Build query based on visibility filter
+        const query = { userId };
+        if (visibility === 'public') {
+            query.isPublic = true;
+        } else if (visibility === 'private') {
+            query.isPublic = false;
+        }
+        // 'all' means no additional filter
+
         const skip = (page - 1) * limit;
-        const totalCount = await Quiz.countDocuments({ userId });
+        const totalCount = await Quiz.countDocuments(query);
         const totalPages = Math.ceil(totalCount / limit);
 
-        const quizzes = await Quiz.find({ userId })
-            .select('_id userId keyword title slug format tokens viewCount lastVisitedAt createdAt updatedAt')
+        const quizzes = await Quiz.find(query)
+            .select('_id userId keyword title slug format tokens viewCount lastVisitedAt createdAt updatedAt isPublic forkCount forkedFrom ownerName')
             .sort({ updatedAt: -1 })
             .skip(parseInt(skip))
             .limit(parseInt(limit));
@@ -3430,7 +4077,7 @@ app.get('/api/quizzes', async (req, res) => {
 });
 
 //GET QUIZ BY SLUG
-app.get('/api/quiz/:slug', async (req, res) => {
+app.get('/api/quiz/:slug', optionalAuth, async (req, res) => {
     try {
         const { slug } = req.params;
         
@@ -3440,6 +4087,17 @@ app.get('/api/quiz/:slug', async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: 'Quiz not found'
+            });
+        }
+
+        // Check access control: content must be public OR user must be the owner
+        const isOwner = req.user && quiz.userId === req.user._id.toString();
+        const isPublic = quiz.isPublic === true;
+        
+        if (!isPublic && !isOwner) {
+            return res.status(403).json({
+                success: false,
+                message: 'This content is private'
             });
         }
 
@@ -3548,8 +4206,20 @@ app.delete('/api/quiz/:slug', async (req, res) => {
 
 //CREATE FLASHCARD
 app.post('/api/flashcard/create', requireAuth, async (req, res) => {
+    // Generate request ID for logging correlation
+    const requestId = logger.llm.generateRequestId();
+    const startTime = Date.now();
+    
     try {
-        const { userId, keyword, title } = req.body;
+        const { userId, keyword, title, provider, model, isPublic } = req.body;
+        
+        // Log request start
+        logger.llm.logRequestStart(requestId, '/api/flashcard/create', {
+            keyword,
+            title,
+            provider,
+            model
+        }, userId, provider);
 
         if (!userId || !keyword || !title) {
             return res.status(400).json({
@@ -3559,28 +4229,6 @@ app.post('/api/flashcard/create', requireAuth, async (req, res) => {
         }
 
         // Generate flashcard content using AI
-        const safetySettings = [
-            {
-                category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            },
-            {
-                category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            },
-            {
-                category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            },
-            {
-                category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            },
-        ];
-
-        const genAI = await getAI();
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
-
         const prompt = `Create a comprehensive set of flashcards for the topic: "${keyword}". 
         
         Generate 15-20 flashcards that cover the key concepts, definitions, and important facts about this topic.
@@ -3605,9 +4253,24 @@ app.post('/api/flashcard/create', requireAuth, async (req, res) => {
         
         Return only the JSON array, no additional text.`;
 
-        const result = await model.generateContent(prompt);
-        const response = result.response;
-        const generatedText = response.text();
+        // Use LLM factory with provider selection
+        const result = await llmService.generateContent(prompt, {
+            provider: provider,
+            model: model
+        });
+
+        if (!result.success) {
+            logger.llm.logRequestError(requestId, '/api/flashcard/create', new Error(result.error || 'Failed to generate flashcard content'), {
+                userId,
+                keyword,
+                title,
+                provider,
+                model
+            });
+            throw new Error(result.error || 'Failed to generate flashcard content');
+        }
+
+        const generatedText = result.data.content;
 
         // Parse the generated flashcards
         let cards = [];
@@ -3620,7 +4283,15 @@ app.post('/api/flashcard/create', requireAuth, async (req, res) => {
                 throw new Error('No valid JSON found in response');
             }
         } catch (parseError) {
-            logger.error(`Flashcard parsing error: ${parseError.message}`);
+            logger.llm.logRequestError(requestId, '/api/flashcard/create', parseError, {
+                userId,
+                keyword,
+                title,
+                provider,
+                model,
+                step: 'json_parsing',
+                generatedText: generatedText?.substring(0, 200)
+            });
             return res.status(500).json({
                 success: false,
                 message: 'Failed to parse generated flashcards'
@@ -3639,25 +4310,48 @@ app.post('/api/flashcard/create', requireAuth, async (req, res) => {
             content: generatedText,
             cards,
             tokens: {
-                prompt: result.response.usageMetadata?.promptTokenCount || 0,
-                completion: result.response.usageMetadata?.candidatesTokenCount || 0,
-                total: result.response.usageMetadata?.totalTokenCount || 0
-            }
+                prompt: prompt.length,
+                completion: generatedText.length,
+                total: prompt.length + generatedText.length
+            },
+            isPublic: isPublic ?? false // Default to false for backward compatibility
         });
 
         await newFlashcard.save();
 
-        logger.info(`Flashcard set created: ${newFlashcard._id} with slug: ${slug}`);
+        const duration = Date.now() - startTime;
+        
+        // Log successful flashcard creation
+        logger.llm.logRequestSuccess(requestId, '/api/flashcard/create', {
+            flashcardId: newFlashcard._id,
+            slug,
+            keyword,
+            title,
+            cardsCount: cards.length,
+            contentLength: generatedText?.length,
+            provider: result.data.provider
+        }, duration, userId, result.data.provider);
+        
         res.json({
             success: true,
             message: 'Flashcard set created successfully',
             flashcardId: newFlashcard._id,
             slug: slug,
-            cards: cards
+            cards: cards,
+            isPublic: newFlashcard.isPublic
         });
 
     } catch (error) {
-        logger.error(`Flashcard creation error: ${error.message}`, { error: error.stack });
+        // Log flashcard creation error with context
+        logger.llm.logRequestError(requestId, '/api/flashcard/create', error, {
+            userId: req.body.userId,
+            keyword: req.body.keyword,
+            title: req.body.title,
+            provider: req.body.provider,
+            model: req.body.model,
+            duration: Date.now() - startTime
+        });
+        
         res.status(500).json({
             success: false,
             message: 'Failed to create flashcard set'
@@ -3668,7 +4362,7 @@ app.post('/api/flashcard/create', requireAuth, async (req, res) => {
 //GET USER FLASHCARDS
 app.get('/api/flashcards', async (req, res) => {
     try {
-        const { userId, page = 1, limit = 10 } = req.query;
+        const { userId, page = 1, limit = 10, visibility = 'all' } = req.query;
 
         if (!userId) {
             return res.status(400).json({
@@ -3677,14 +4371,23 @@ app.get('/api/flashcards', async (req, res) => {
             });
         }
 
+        // Build query based on visibility filter
+        const query = { userId };
+        if (visibility === 'public') {
+            query.isPublic = true;
+        } else if (visibility === 'private') {
+            query.isPublic = false;
+        }
+        // 'all' means no additional filter
+
         const skip = (page - 1) * limit;
-        const flashcards = await Flashcard.find({ userId })
-            .select('title keyword slug createdAt cards viewCount')
+        const flashcards = await Flashcard.find(query)
+            .select('title keyword slug createdAt cards viewCount isPublic forkCount forkedFrom ownerName')
             .sort({ createdAt: -1 })
             .skip(parseInt(skip))
             .limit(parseInt(limit));
 
-        const total = await Flashcard.countDocuments({ userId });
+        const total = await Flashcard.countDocuments(query);
 
         // Add card count to each flashcard
         const flashcardsWithCount = flashcards.map(flashcard => ({
@@ -3714,7 +4417,7 @@ app.get('/api/flashcards', async (req, res) => {
 });
 
 //GET FLASHCARD BY SLUG
-app.get('/api/flashcard/:slug', async (req, res) => {
+app.get('/api/flashcard/:slug', optionalAuth, async (req, res) => {
     try {
         const { slug } = req.params;
         const flashcard = await Flashcard.findOne({ slug });
@@ -3723,6 +4426,17 @@ app.get('/api/flashcard/:slug', async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: 'Flashcard set not found'
+            });
+        }
+
+        // Check access control: content must be public OR user must be the owner
+        const isOwner = req.user && flashcard.userId === req.user._id.toString();
+        const isPublic = flashcard.isPublic === true;
+        
+        if (!isPublic && !isOwner) {
+            return res.status(403).json({
+                success: false,
+                message: 'This content is private'
             });
         }
 
@@ -3788,8 +4502,21 @@ app.delete('/api/flashcard/:slug', async (req, res) => {
 
 //CREATE GUIDE
 app.post('/api/guide/create', requireAuth, async (req, res) => {
+    // Generate request ID for logging correlation
+    const requestId = logger.llm.generateRequestId();
+    const startTime = Date.now();
+    
     try {
-        const { userId, keyword, title, customization } = req.body;
+        const { userId, keyword, title, customization, provider, model, isPublic } = req.body;
+        
+        // Log request start
+        logger.llm.logRequestStart(requestId, '/api/guide/create', {
+            keyword,
+            title,
+            customization,
+            provider,
+            model
+        }, userId, provider);
 
         if (!userId || !keyword || !title) {
             return res.status(400).json({
@@ -3799,28 +4526,6 @@ app.post('/api/guide/create', requireAuth, async (req, res) => {
         }
 
         // Generate guide content using AI
-        const safetySettings = [
-            {
-                category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            },
-            {
-                category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            },
-            {
-                category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            },
-            {
-                category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            },
-        ];
-
-        const genAI = await getAI();
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
-
         const prompt = `Create a comprehensive study guide for the topic: "${keyword}".
 
         Title: ${title}
@@ -3863,9 +4568,24 @@ app.post('/api/guide/create', requireAuth, async (req, res) => {
         
         Write the complete guide following this exact structure.`;
 
-        const result = await model.generateContent(prompt);
-        const response = result.response;
-        const generatedText = response.text();
+        // Use LLM factory with provider selection
+        const result = await llmService.generateContent(prompt, {
+            provider: provider,
+            model: model
+        });
+
+        if (!result.success) {
+            logger.llm.logRequestError(requestId, '/api/guide/create', new Error(result.error || 'Failed to generate guide content'), {
+                userId,
+                keyword,
+                title,
+                provider,
+                model
+            });
+            throw new Error(result.error || 'Failed to generate guide content');
+        }
+
+        const generatedText = result.data.content;
         
         // Log the raw response for debugging (first 500 chars)
         logger.info(`AI Response preview: ${generatedText.substring(0, 500)}...`);
@@ -3970,15 +4690,30 @@ app.post('/api/guide/create', requireAuth, async (req, res) => {
             deepDiveTopics: guideData.deepDiveTopics || [],
             questions: guideData.questions || [],
             tokens: {
-                prompt: result.response.usageMetadata?.promptTokenCount || 0,
-                completion: result.response.usageMetadata?.candidatesTokenCount || 0,
-                total: result.response.usageMetadata?.totalTokenCount || 0
-            }
+                prompt: prompt.length,
+                completion: generatedText.length,
+                total: prompt.length + generatedText.length
+            },
+            isPublic: isPublic ?? false // Default to false for backward compatibility
         });
 
-        logger.info('Saving guide to database');
         await newGuide.save();
-        logger.info(`Guide saved successfully: ${newGuide._id} with slug: ${slug}`);
+        
+        const duration = Date.now() - startTime;
+        
+        // Log successful guide creation
+        logger.llm.logRequestSuccess(requestId, '/api/guide/create', {
+            guideId: newGuide._id,
+            slug,
+            keyword,
+            title,
+            contentLength: generatedText?.length,
+            relatedTopicsCount: guideData.relatedTopics?.length || 0,
+            deepDiveTopicsCount: guideData.deepDiveTopics?.length || 0,
+            questionsCount: guideData.questions?.length || 0,
+            provider: result.data.provider
+        }, duration, userId, result.data.provider);
+        
         res.json({
             success: true,
             message: 'Guide created successfully',
@@ -3989,12 +4724,22 @@ app.post('/api/guide/create', requireAuth, async (req, res) => {
                 keyword: newGuide.keyword,
                 relatedTopics: newGuide.relatedTopics,
                 deepDiveTopics: newGuide.deepDiveTopics,
-                questions: newGuide.questions
+                questions: newGuide.questions,
+                isPublic: newGuide.isPublic
             }
         });
 
     } catch (error) {
-        logger.error(`Guide creation error: ${error.message}`, { error: error.stack, userId, keyword, title });
+        // Log guide creation error with context
+        logger.llm.logRequestError(requestId, '/api/guide/create', error, {
+            userId: req.body.userId,
+            keyword: req.body.keyword,
+            title: req.body.title,
+            provider: req.body.provider,
+            model: req.body.model,
+            duration: Date.now() - startTime
+        });
+        
         res.status(500).json({
             success: false,
             message: `Failed to create guide: ${error.message}`
@@ -4014,7 +4759,7 @@ app.get('/api/guide/test', (req, res) => {
 //GET USER GUIDES
 app.get('/api/guides', async (req, res) => {
     try {
-        const { userId, page = 1, limit = 10 } = req.query;
+        const { userId, page = 1, limit = 10, visibility = 'all' } = req.query;
 
         if (!userId) {
             return res.status(400).json({
@@ -4023,14 +4768,23 @@ app.get('/api/guides', async (req, res) => {
             });
         }
 
+        // Build query based on visibility filter
+        const query = { userId };
+        if (visibility === 'public') {
+            query.isPublic = true;
+        } else if (visibility === 'private') {
+            query.isPublic = false;
+        }
+        // 'all' means no additional filter
+
         const skip = (page - 1) * limit;
-        const guides = await Guide.find({ userId })
-            .select('title keyword slug createdAt viewCount relatedTopics')
+        const guides = await Guide.find(query)
+            .select('title keyword slug createdAt viewCount relatedTopics isPublic forkCount forkedFrom ownerName')
             .sort({ createdAt: -1 })
             .skip(parseInt(skip))
             .limit(parseInt(limit));
 
-        const total = await Guide.countDocuments({ userId });
+        const total = await Guide.countDocuments(query);
 
         res.json({
             success: true,
@@ -4054,7 +4808,7 @@ app.get('/api/guides', async (req, res) => {
 });
 
 //GET GUIDE BY SLUG
-app.get('/api/guide/:slug', async (req, res) => {
+app.get('/api/guide/:slug', optionalAuth, async (req, res) => {
     try {
         const { slug } = req.params;
         const guide = await Guide.findOne({ slug });
@@ -4063,6 +4817,17 @@ app.get('/api/guide/:slug', async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: 'Guide not found'
+            });
+        }
+
+        // Check access control: content must be public OR user must be the owner
+        const isOwner = req.user && guide.userId === req.user._id.toString();
+        const isPublic = guide.isPublic === true;
+        
+        if (!isPublic && !isOwner) {
+            return res.status(403).json({
+                success: false,
+                message: 'This content is private'
             });
         }
 
@@ -4126,14 +4891,536 @@ app.delete('/api/guide/:slug', async (req, res) => {
     }
 });
 
-// Catch-all handler: send back React's index.html file for client-side routing
-app.get('*', (req, res) => {
-    // Skip API routes - return 404 for API routes that don't exist
-    if (req.path.startsWith('/api/')) {
-        return res.status(404).json({ error: 'API endpoint not found' });
-    }
+// VISIBILITY MANAGEMENT ENDPOINTS
 
-    res.sendFile('index.html', { root: 'dist' });
+// Helper function to get the correct model based on content type
+const getContentModel = (contentType) => {
+    const models = {
+        'course': Course,
+        'quiz': Quiz,
+        'flashcard': Flashcard,
+        'guide': Guide
+    };
+    return models[contentType];
+};
+
+// PATCH endpoint for toggling content visibility
+app.patch('/api/:contentType/:slug/visibility', requireAuth, async (req, res) => {
+    try {
+        const { contentType, slug } = req.params;
+        const { isPublic } = req.body;
+        const userId = req.user._id.toString();
+
+        // Validate content type
+        const Model = getContentModel(contentType);
+        if (!Model) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid content type'
+            });
+        }
+
+        // Validate isPublic parameter
+        if (typeof isPublic !== 'boolean') {
+            return res.status(400).json({
+                success: false,
+                message: 'isPublic must be a boolean value'
+            });
+        }
+
+        // Find content by slug
+        const content = await Model.findOne({ slug });
+
+        if (!content) {
+            return res.status(404).json({
+                success: false,
+                message: `${contentType.charAt(0).toUpperCase() + contentType.slice(1)} not found`
+            });
+        }
+
+        // Verify ownership
+        if (content.userId !== userId && content.user !== userId) {
+            return res.status(403).json({
+                success: false,
+                message: 'You do not have permission to modify this content'
+            });
+        }
+
+        // Update visibility
+        content.isPublic = isPublic;
+        await content.save();
+
+        logger.info(`${contentType} visibility updated: ${slug} - isPublic: ${isPublic}`);
+
+        res.json({
+            success: true,
+            isPublic: content.isPublic,
+            message: `${contentType.charAt(0).toUpperCase() + contentType.slice(1)} visibility updated successfully`
+        });
+
+    } catch (error) {
+        logger.error(`Toggle visibility error: ${error.message}`, { 
+            error: error.stack, 
+            contentType: req.params.contentType,
+            slug: req.params.slug 
+        });
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update visibility'
+        });
+    }
+});
+
+// GET endpoint for visibility status
+app.get('/api/:contentType/:slug/visibility', requireAuth, async (req, res) => {
+    try {
+        const { contentType, slug } = req.params;
+        const userId = req.user._id.toString();
+
+        // Validate content type
+        const Model = getContentModel(contentType);
+        if (!Model) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid content type'
+            });
+        }
+
+        // Find content by slug
+        const content = await Model.findOne({ slug });
+
+        if (!content) {
+            return res.status(404).json({
+                success: false,
+                message: `${contentType.charAt(0).toUpperCase() + contentType.slice(1)} not found`
+            });
+        }
+
+        // Verify ownership
+        if (content.userId !== userId && content.user !== userId) {
+            return res.status(403).json({
+                success: false,
+                message: 'You do not have permission to view this content visibility status'
+            });
+        }
+
+        logger.info(`${contentType} visibility status retrieved: ${slug}`);
+
+        res.json({
+            success: true,
+            isPublic: content.isPublic || false,
+            forkCount: content.forkCount || 0
+        });
+
+    } catch (error) {
+        logger.error(`Get visibility status error: ${error.message}`, { 
+            error: error.stack, 
+            contentType: req.params.contentType,
+            slug: req.params.slug 
+        });
+        res.status(500).json({
+            success: false,
+            message: 'Failed to retrieve visibility status'
+        });
+    }
+});
+
+// PUBLIC CONTENT DISCOVERY ENDPOINTS
+
+// GET unified public content endpoint
+app.get('/api/public/content', optionalAuth, async (req, res) => {
+    try {
+        const { 
+            type = 'all', 
+            page = 1, 
+            limit = 20, 
+            search = '', 
+            sortBy = 'recent' 
+        } = req.query;
+
+        // Validate and parse pagination parameters
+        const pageNum = Math.max(1, parseInt(page));
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit))); // Max 100 items per page
+        const skip = (pageNum - 1) * limitNum;
+
+        // Build base query for public content
+        const baseQuery = { isPublic: true };
+
+        // Add search functionality if search term provided
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i');
+            baseQuery.$or = [
+                { title: searchRegex },
+                { keyword: searchRegex },
+                { mainTopic: searchRegex }
+            ];
+        }
+
+        // Determine which models to query based on type
+        let modelsToQuery = [];
+        if (type === 'all') {
+            modelsToQuery = [
+                { model: Course, type: 'course' },
+                { model: Quiz, type: 'quiz' },
+                { model: Flashcard, type: 'flashcard' },
+                { model: Guide, type: 'guide' }
+            ];
+        } else {
+            const Model = getContentModel(type);
+            if (!Model) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid content type. Must be: course, quiz, flashcard, guide, or all'
+                });
+            }
+            modelsToQuery = [{ model: Model, type }];
+        }
+
+        // Determine sort order
+        let sortOptions = {};
+        switch (sortBy) {
+            case 'popular':
+                sortOptions = { viewCount: -1, createdAt: -1 };
+                break;
+            case 'forks':
+                sortOptions = { forkCount: -1, createdAt: -1 };
+                break;
+            case 'recent':
+            default:
+                sortOptions = { createdAt: -1 };
+                break;
+        }
+
+        // Query all relevant models
+        const contentPromises = modelsToQuery.map(async ({ model, type }) => {
+            const items = await model
+                .find(baseQuery)
+                .select('title slug keyword mainTopic ownerName userId user forkCount viewCount createdAt date isPublic forkedFrom')
+                .sort(sortOptions)
+                .lean();
+            
+            // Add contentType field to each item
+            return items.map(item => ({
+                ...item,
+                contentType: type,
+                // Normalize date field (Course uses 'date', others use 'createdAt')
+                createdAt: item.createdAt || item.date
+            }));
+        });
+
+        // Wait for all queries to complete
+        const allContentArrays = await Promise.all(contentPromises);
+        const allContent = allContentArrays.flat();
+
+        // Sort combined results
+        allContent.sort((a, b) => {
+            if (sortBy === 'popular') {
+                return (b.viewCount || 0) - (a.viewCount || 0);
+            } else if (sortBy === 'forks') {
+                return (b.forkCount || 0) - (a.forkCount || 0);
+            } else {
+                return new Date(b.createdAt) - new Date(a.createdAt);
+            }
+        });
+
+        // Apply pagination to combined results
+        const totalItems = allContent.length;
+        const paginatedContent = allContent.slice(skip, skip + limitNum);
+        const totalPages = Math.ceil(totalItems / limitNum);
+
+        logger.info(`Public content retrieved: type=${type}, page=${pageNum}, results=${paginatedContent.length}`);
+
+        res.json({
+            success: true,
+            data: paginatedContent,
+            pagination: {
+                currentPage: pageNum,
+                totalPages,
+                totalItems,
+                itemsPerPage: limitNum,
+                hasNext: pageNum < totalPages,
+                hasPrev: pageNum > 1
+            }
+        });
+
+    } catch (error) {
+        logger.error(`Get public content error: ${error.message}`, { 
+            error: error.stack,
+            query: req.query
+        });
+        res.status(500).json({
+            success: false,
+            message: 'Failed to retrieve public content'
+        });
+    }
+});
+
+// GET public content by specific type
+app.get('/api/public/:contentType', optionalAuth, async (req, res) => {
+    try {
+        const { contentType } = req.params;
+        const { 
+            page = 1, 
+            limit = 20, 
+            search = '', 
+            sortBy = 'recent' 
+        } = req.query;
+
+        // Validate content type
+        const Model = getContentModel(contentType);
+        if (!Model) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid content type. Must be: course, quiz, flashcard, or guide'
+            });
+        }
+
+        // Validate and parse pagination parameters
+        const pageNum = Math.max(1, parseInt(page));
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+        const skip = (pageNum - 1) * limitNum;
+
+        // Build query for public content
+        const query = { isPublic: true };
+
+        // Add search functionality
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i');
+            query.$or = [
+                { title: searchRegex },
+                { keyword: searchRegex },
+                { mainTopic: searchRegex }
+            ];
+        }
+
+        // Determine sort order
+        let sortOptions = {};
+        switch (sortBy) {
+            case 'popular':
+                sortOptions = { viewCount: -1, createdAt: -1 };
+                break;
+            case 'forks':
+                sortOptions = { forkCount: -1, createdAt: -1 };
+                break;
+            case 'recent':
+            default:
+                sortOptions = { createdAt: -1 };
+                break;
+        }
+
+        // Get total count for pagination
+        const totalItems = await Model.countDocuments(query);
+
+        // Query content with pagination
+        const content = await Model
+            .find(query)
+            .select('title slug keyword mainTopic ownerName userId user forkCount viewCount createdAt date isPublic forkedFrom')
+            .sort(sortOptions)
+            .skip(skip)
+            .limit(limitNum)
+            .lean();
+
+        // Add contentType field and normalize date
+        const normalizedContent = content.map(item => ({
+            ...item,
+            contentType,
+            createdAt: item.createdAt || item.date
+        }));
+
+        const totalPages = Math.ceil(totalItems / limitNum);
+
+        logger.info(`Public ${contentType} content retrieved: page=${pageNum}, results=${content.length}`);
+
+        res.json({
+            success: true,
+            data: normalizedContent,
+            pagination: {
+                currentPage: pageNum,
+                totalPages,
+                totalItems,
+                itemsPerPage: limitNum,
+                hasNext: pageNum < totalPages,
+                hasPrev: pageNum > 1
+            }
+        });
+
+    } catch (error) {
+        logger.error(`Get public ${req.params.contentType} error: ${error.message}`, { 
+            error: error.stack,
+            contentType: req.params.contentType,
+            query: req.query
+        });
+        res.status(500).json({
+            success: false,
+            message: `Failed to retrieve public ${req.params.contentType} content`
+        });
+    }
+});
+
+// GET single public content by slug
+app.get('/api/public/:contentType/:slug', optionalAuth, async (req, res) => {
+    try {
+        const { contentType, slug } = req.params;
+
+        // Validate content type
+        const Model = getContentModel(contentType);
+        if (!Model) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid content type. Must be: course, quiz, flashcard, or guide'
+            });
+        }
+
+        // Find content by slug
+        const content = await Model.findOne({ slug }).lean();
+
+        if (!content) {
+            return res.status(404).json({
+                success: false,
+                message: `${contentType.charAt(0).toUpperCase() + contentType.slice(1)} not found`
+            });
+        }
+
+        // Check if content is public
+        if (!content.isPublic) {
+            return res.status(403).json({
+                success: false,
+                message: 'This content is private and cannot be accessed'
+            });
+        }
+
+        // Add contentType field
+        const normalizedContent = {
+            ...content,
+            contentType,
+            createdAt: content.createdAt || content.date
+        };
+
+        logger.info(`Public ${contentType} retrieved: ${slug}`);
+
+        res.json({
+            success: true,
+            content: normalizedContent
+        });
+
+    } catch (error) {
+        logger.error(`Get public ${req.params.contentType} by slug error: ${error.message}`, { 
+            error: error.stack,
+            contentType: req.params.contentType,
+            slug: req.params.slug
+        });
+        res.status(500).json({
+            success: false,
+            message: `Failed to retrieve public ${req.params.contentType}`
+        });
+    }
+});
+
+// FORK FUNCTIONALITY ENDPOINTS
+
+// POST endpoint for forking content
+app.post('/api/:contentType/:slug/fork', requireAuth, async (req, res) => {
+    try {
+        const { contentType, slug } = req.params;
+        const userId = req.user._id.toString();
+        const userName = req.user.mName || req.user.email;
+
+        // Validate content type
+        const Model = getContentModel(contentType);
+        if (!Model) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid content type'
+            });
+        }
+
+        // Find the original content by slug
+        const originalContent = await Model.findOne({ slug });
+
+        if (!originalContent) {
+            return res.status(404).json({
+                success: false,
+                message: `${contentType.charAt(0).toUpperCase() + contentType.slice(1)} not found`
+            });
+        }
+
+        // Check if content is public
+        if (!originalContent.isPublic) {
+            return res.status(403).json({
+                success: false,
+                message: 'Cannot fork private content'
+            });
+        }
+
+        // Check if user is trying to fork their own content
+        const originalOwnerId = originalContent.userId || originalContent.user;
+        if (originalOwnerId === userId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot fork your own content'
+            });
+        }
+
+        // Create a copy of the content
+        const contentCopy = originalContent.toObject();
+        delete contentCopy._id;
+        delete contentCopy.__v;
+
+        // Generate a unique slug for the forked content
+        const baseSlug = `${slug}-fork`;
+        const uniqueSlug = await generateUniqueSlug(Model, baseSlug);
+
+        // Set forked content properties
+        contentCopy.slug = uniqueSlug;
+        contentCopy.userId = userId;
+        contentCopy.user = userId; // For backward compatibility with Course model
+        contentCopy.isPublic = false; // Forked content is private by default
+        contentCopy.forkCount = 0; // Reset fork count for the copy
+        contentCopy.viewCount = 0; // Reset view count
+        contentCopy.ownerName = userName;
+        
+        // Set forkedFrom metadata
+        contentCopy.forkedFrom = {
+            contentId: originalContent._id,
+            originalOwnerId: originalOwnerId,
+            originalOwnerName: originalContent.ownerName || 'Unknown User',
+            forkedAt: new Date()
+        };
+
+        // Create the forked content
+        const forkedContent = new Model(contentCopy);
+        await forkedContent.save();
+
+        // Increment fork count on original content
+        await Model.findByIdAndUpdate(
+            originalContent._id,
+            { $inc: { forkCount: 1 } }
+        );
+
+        logger.info(`Content forked successfully: ${contentType}/${slug} -> ${uniqueSlug} by user ${userId}`);
+
+        res.json({
+            success: true,
+            message: 'Content forked successfully',
+            forkedContent: {
+                _id: forkedContent._id,
+                slug: forkedContent.slug,
+                contentType
+            }
+        });
+
+    } catch (error) {
+        logger.error(`Fork ${req.params.contentType} error: ${error.message}`, { 
+            error: error.stack,
+            contentType: req.params.contentType,
+            slug: req.params.slug,
+            userId: req.user?._id
+        });
+        res.status(500).json({
+            success: false,
+            message: `Failed to fork ${req.params.contentType}`
+        });
+    }
 });
 
 // Graceful shutdown

@@ -43,11 +43,11 @@ const AdminDashboard = () => {
     async function dashboardData() {
       const postURL = serverURL + `/api/dashboard`;
       const response = await axios.post(postURL);
-      sessionStorage.setItem('terms', response.data.admin.terms)
-      sessionStorage.setItem('privacy', response.data.admin.privacy)
-      sessionStorage.setItem('cancel', response.data.admin.cancel)
-      sessionStorage.setItem('refund', response.data.admin.refund)
-      sessionStorage.setItem('billing', response.data.admin.billing)
+      localStorage.setItem('terms', response.data.admin.terms)
+      localStorage.setItem('privacy', response.data.admin.privacy)
+      localStorage.setItem('cancel', response.data.admin.cancel)
+      localStorage.setItem('refund', response.data.admin.refund)
+      localStorage.setItem('billing', response.data.admin.billing)
       usersPieData[0].value = response.data.paid;
       usersPieData[1].value = response.data.free;
       coursesPieData[0].value = response.data.courses - response.data.videoType;
@@ -62,7 +62,7 @@ const AdminDashboard = () => {
     <div className="space-y-6 sm:space-y-8 animate-fade-in">
       {/* Header Section */}
       <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
           Admin Dashboard
         </h1>
         <p className="text-muted-foreground">
