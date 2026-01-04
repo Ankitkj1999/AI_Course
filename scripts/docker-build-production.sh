@@ -15,14 +15,14 @@ echo "📦 Building production image: $FULL_IMAGE_NAME"
 if [[ $(uname -m) == "arm64" ]] || [[ $(uname -m) == "aarch64" ]]; then
     echo "🍎 Detected ARM64 (Apple Silicon), building for linux/amd64..."
     docker build --platform linux/amd64 \
-        --build-arg VITE_WEBSITE_URL=https://gksage.com \
-        --build-arg VITE_SERVER_URL=https://gksage.com \
+        --build-arg VITE_WEBSITE_URL=http://gksage.run.place \
+        --build-arg VITE_SERVER_URL=http://gksage.run.place \
         -t $FULL_IMAGE_NAME .
 else
     echo "🐧 Detected AMD64, building normally..."
     docker build \
-        --build-arg VITE_WEBSITE_URL=https://gksage.com \
-        --build-arg VITE_SERVER_URL=https://gksage.com \
+        --build-arg VITE_WEBSITE_URL=http://gksage.run.place \
+        --build-arg VITE_SERVER_URL=http://gksage.run.place \
         -t $FULL_IMAGE_NAME .
 fi
 

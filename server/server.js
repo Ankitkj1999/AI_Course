@@ -69,9 +69,9 @@ const corsOptions = {
             'http://localhost:5010',
             'https://localhost:5010',
             // Production domains
-            'https://gksage.com',
-            'https://www.gksage.com',
-            'http://gksage.com',
+            'http://gksage.run.place',
+            'http://gksage.run.place',
+            'http://gksage.run.place',
             'http://www.gksage.com',
             // Additional origins from environment
             ...envOrigins,

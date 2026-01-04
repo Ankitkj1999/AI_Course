@@ -5,7 +5,7 @@ export const companyName = import.meta.env.VITE_COMPANY_NAME || 'Spacester';
 // Dynamic URL detection based on environment
 export const websiteURL = typeof window !== 'undefined' 
   ? `${window.location.protocol}//${window.location.host}`
-  : import.meta.env.VITE_WEBSITE_URL || 'https://gksage.com';
+  : import.meta.env.VITE_WEBSITE_URL || 'http://gksage.run.place';
 
 // Dynamic server URL detection
 const getServerURL = () => {
