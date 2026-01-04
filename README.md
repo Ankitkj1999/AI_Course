@@ -1,17 +1,10 @@
 # AiCourse
- 
-## 🎥 Platform Demo
-
-[![AiCourse Demo](src/res/screenshot.png)](public/AI+Course.mp4)
-
-*Click to watch the demo video*
-
 
 ## 🎥 Platform Demo
 
-https://github.com/Ankitkj1999/AI_Course/assets/yourfilehere/AI+Course.mp4
+[![Demo Video](https://github.com/Ankitkj1999/AI_Course/blob/main/src/res/screenshot.png)](https://github.com/Ankitkj1999/AI_Course/raw/main/demo.mp4)
 
-
+*Click the thumbnail to watch the full demo*
 ## Deployment
 
 ### Automated Docker Build (GitHub Actions)
