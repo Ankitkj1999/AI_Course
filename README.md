@@ -1,8 +1,15 @@
 # AiCourse
+ 
+## 🎥 Platform Demo
 
-## 🎥 Demo Video
+[![AiCourse Demo](src/res/screenshot.png)](public/AI+Course.mp4)
 
-Watch our platform in action: [View Demo Video](https://zalon-prod-image-processing-bkt.s3.ap-south-1.amazonaws.com/TEST/AI+Course.mp4)
+*Click to watch the demo video*
+
+
+## 🎥 Platform Demo
+
+https://github.com/Ankitkj1999/AI_Course/assets/yourfilehere/AI+Course.mp4
 
 
 ## Deployment
